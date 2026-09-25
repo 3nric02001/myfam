@@ -1,28 +1,17 @@
+# Runs the app behind your own reverse proxy (nginx, Traefik, Nginx Proxy Manager, ...),
+# which terminates HTTPS and forwards to this container over plain HTTP.
 services:
   app:
     build: .
     restart: unless-stopped
     environment:
-      ORIGIN: https://${DOMAIN}
+      # Public URL as users reach it through the proxy, e.g. https://myfam.example.de
+      ORIGIN: ${PUBLIC_URL:?PUBLIC_URL is not set}
+    ports:
+      # Only reachable from this host by default; set BIND=0.0.0.0 if the proxy runs elsewhere.
+      - '${BIND:-127.0.0.1}:${PORT:-3000}:3000'
     volumes:
       - app-data:/data
 
-  caddy:
-    image: caddy:2
-    restart: unless-stopped
-    depends_on: [app]
-    ports:
-      - '80:80'
-      - '443:443'
-      - '443:443/udp'
-    environment:
-      DOMAIN: ${DOMAIN}
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy-data:/data
-      - caddy-config:/config
-
 volumes:
   app-data:
-  caddy-data:
-  caddy-config:

@@ -43,15 +43,30 @@ Nach einer Änderung an `src/lib/server/db/schema.ts`: `npm run db:generate` erz
 
 ## Betrieb mit Docker (Ubuntu)
 
-Voraussetzungen: Docker mit Compose-Plugin und eine Domain, die auf den Server zeigt (Ports 80 und 443 offen).
+Die App läuft als ein Container hinter deinem eigenen Reverse Proxy (z. B. nginx, Traefik oder Nginx Proxy Manager). Der Proxy kümmert sich um HTTPS und leitet per HTTP an den Container weiter.
 
 ```sh
 git clone https://github.com/3nric02001/myfam.git && cd myfam
-echo "DOMAIN=myfam.deine-domain.de" > .env
+echo "PUBLIC_URL=https://myfam.deine-domain.de" > .env
 docker compose up -d --build
 ```
 
-Caddy holt automatisch ein HTTPS-Zertifikat. Danach unter `https://<DOMAIN>/registrieren` die erste Familie anlegen und die anderen über **Familie → Einladungslink erstellen** einladen.
+Danach lauscht die App auf `127.0.0.1:3000`. Im Reverse Proxy leitest du die Domain dorthin weiter, z. B. mit nginx:
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:3000;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+- `PUBLIC_URL` muss genau die Adresse sein, die im Browser steht. SvelteKit prüft damit die Herkunft von Formularen (CSRF-Schutz), und die Einladungslinks werden daraus gebaut.
+- `PORT` ändert den Port auf dem Host. `BIND=0.0.0.0` macht ihn im Netzwerk erreichbar, falls der Proxy auf einem anderen Rechner läuft.
+- Läuft der Proxy selbst in Docker, kannst du den Container stattdessen in dasselbe Docker-Netzwerk hängen und `app:3000` als Ziel nehmen.
+
+Danach unter `https://<deine Domain>/registrieren` die erste Familie anlegen und die anderen über **Familie → Einladungslink erstellen** einladen.
 
 - **Update:** `git pull && docker compose up -d --build`
 - **Backup:** Die Datenbank liegt im Volume `app-data` (`/data/myfam.db`), z. B.
