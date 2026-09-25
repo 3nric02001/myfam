@@ -10,7 +10,10 @@
 	let { data, form }: PageProps = $props();
 
 	type NewType = 'text' | 'table' | 'link' | 'image';
-	let adding = $state<NewType | null>(null);
+	// The composer at the bottom starts on text, the most common kind of content.
+	let adding = $state<NewType>('text');
+	// Only move the focus (and open the phone keyboard) after the user picked a kind.
+	let picked = $state(false);
 	let editingId = $state<string | null>(null);
 	let renaming = $state(false);
 	let uploading = $state(false);
@@ -22,12 +25,18 @@
 		{ type: 'image', label: 'Bild', icon: '🖼️' }
 	];
 
+	function pick(type: NewType) {
+		adding = type;
+		picked = true;
+	}
+
 	// Close the form after a successful save, keep it open (with the input) on errors.
 	type AfterSubmit = Parameters<Exclude<Awaited<ReturnType<SubmitFunction>>, void>>[0];
 	async function afterSave({ result, update }: AfterSubmit) {
-		await update({ reset: false });
+		// Clear the composer after adding, but keep edits in place on errors.
+		await update({ reset: result.type === 'success' });
 		if (result.type === 'success') {
-			adding = null;
+			adding = 'text';
 			editingId = null;
 			renaming = false;
 		}
@@ -75,12 +84,6 @@
 	<VisibilityBadge visibility={data.card.visibility} />
 	{#if data.card.createdBy}<span>angelegt von {data.card.createdBy}</span>{/if}
 </div>
-
-{#if data.blocks.length === 0 && !adding}
-	<p class="card p-6 text-center text-slate-500">
-		Die Karte ist noch leer. Füge unten Text, eine Tabelle, einen Link oder ein Bild hinzu.
-	</p>
-{/if}
 
 <ul class="space-y-3">
 	{#each data.blocks as block, i (block.id)}
@@ -146,10 +149,7 @@
 					<BlockView {block} />
 					<button
 						class="absolute -top-2 -right-2 rounded-full bg-white/80 px-2 py-1 text-slate-400"
-						onclick={() => {
-							editingId = block.id;
-							adding = null;
-						}}
+						onclick={() => (editingId = block.id)}
 						aria-label="Bearbeiten">✎</button
 					>
 				</div>
@@ -158,11 +158,18 @@
 	{/each}
 </ul>
 
-{#snippet textFields(text = '')}
+{#snippet textFields(text = '', focus = true, rows = 8)}
 	<!-- svelte-ignore a11y_autofocus -->
-	<textarea name="text" rows="8" maxlength="20000" required autofocus class="w-full" value={text}
-	></textarea>
-	<p class="text-xs text-slate-500">
+	<textarea
+		name="text"
+		{rows}
+		maxlength="20000"
+		required
+		autofocus={focus}
+		class="w-full"
+		value={text}
+		placeholder="Schreib etwas …"></textarea>
+	<p class="text-xs text-slate-400">
 		Formatierung: **fett**, *kursiv*, # Überschrift, - Liste, 1. Nummeriert, - [ ] Aufgabe
 	</p>
 {/snippet}
@@ -193,8 +200,25 @@
 	</div>
 {/snippet}
 
-{#if adding}
-	<div class="card mt-3 p-4">
+{#if !editingId}
+	<div class="card mt-3 p-3">
+		<div class="mb-2 flex gap-1" role="tablist" aria-label="Was möchtest du hinzufügen?">
+			{#each addOptions as option (option.type)}
+				<button
+					type="button"
+					role="tab"
+					aria-selected={adding === option.type}
+					class="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs {adding === option.type
+						? 'bg-emerald-100 font-semibold text-emerald-800'
+						: 'text-slate-500 active:bg-slate-100'}"
+					onclick={() => pick(option.type)}
+				>
+					<span aria-hidden="true">{option.icon}</span>
+					{option.label}
+				</button>
+			{/each}
+		</div>
+
 		{#if adding === 'image'}
 			<form
 				method="POST"
@@ -203,59 +227,32 @@
 				use:enhance={uploadImage}
 				class="space-y-3"
 			>
-				<h2 class="font-semibold">Bild hinzufügen</h2>
 				<input name="file" type="file" accept="image/*" required class="w-full text-sm" />
 				<input name="caption" maxlength="200" placeholder="Bildunterschrift (optional)" />
-				<p class="text-xs text-slate-500">
+				<p class="text-xs text-slate-400">
 					Große Fotos werden automatisch verkleinert. Maximal 10 MB.
 				</p>
 				{#if errorFor(null)}<p class="error">{errorFor(null)}</p>{/if}
-				<div class="flex gap-2">
-					<button class="btn-primary flex-1" disabled={uploading}>
-						{uploading ? 'Wird hochgeladen …' : 'Hochladen'}
-					</button>
-					<button type="button" class="btn-secondary" onclick={() => (adding = null)}
-						>Abbrechen</button
-					>
-				</div>
+				<button class="btn-primary w-full" disabled={uploading}>
+					{uploading ? 'Wird hochgeladen …' : 'Bild hochladen'}
+				</button>
 			</form>
 		{:else}
-			<form method="POST" action="?/add" use:enhance={closeOnSuccess} class="space-y-3">
-				<input type="hidden" name="type" value={adding} />
-				<h2 class="font-semibold">
-					{adding === 'text' ? 'Text' : adding === 'table' ? 'Tabelle' : 'Link'} hinzufügen
-				</h2>
-				{#if adding === 'text'}
-					{@render textFields()}
-				{:else if adding === 'table'}
-					<TableEditor />
-				{:else}
-					{@render linkFields()}
-				{/if}
-				{#if errorFor(null)}<p class="error">{errorFor(null)}</p>{/if}
-				<div class="flex gap-2">
-					<button class="btn-primary flex-1">Hinzufügen</button>
-					<button type="button" class="btn-secondary" onclick={() => (adding = null)}
-						>Abbrechen</button
-					>
-				</div>
-			</form>
+			{#key adding}
+				<form method="POST" action="?/add" use:enhance={closeOnSuccess} class="space-y-3">
+					<input type="hidden" name="type" value={adding} />
+					{#if adding === 'text'}
+						{@render textFields('', picked, 4)}
+					{:else if adding === 'table'}
+						<TableEditor />
+					{:else}
+						{@render linkFields()}
+					{/if}
+					{#if errorFor(null)}<p class="error">{errorFor(null)}</p>{/if}
+					<button class="btn-primary w-full">Hinzufügen</button>
+				</form>
+			{/key}
 		{/if}
-	</div>
-{:else}
-	<div class="mt-4 grid grid-cols-4 gap-2">
-		{#each addOptions as option (option.type)}
-			<button
-				class="card flex flex-col items-center gap-1 py-3 text-xs text-slate-700 active:bg-slate-50"
-				onclick={() => {
-					adding = option.type;
-					editingId = null;
-				}}
-			>
-				<span class="text-xl" aria-hidden="true">{option.icon}</span>
-				+ {option.label}
-			</button>
-		{/each}
 	</div>
 {/if}
 
