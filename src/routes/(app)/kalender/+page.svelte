@@ -35,7 +35,7 @@
 <svelte:head><title>Kalender · MyFam</title></svelte:head>
 
 <div class="mb-3 flex items-center gap-2">
-	<h1 class="flex-1 text-xl font-bold">{monthLabel(data.month)}</h1>
+	<h1 class="flex-1 text-xl font-semibold tracking-tight">{monthLabel(data.month)}</h1>
 	<a
 		href="?monat={addMonths(data.month, -1)}"
 		class="btn-secondary flex w-11 items-center justify-center px-0"

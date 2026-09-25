@@ -7,7 +7,7 @@
 
 <svelte:head><title>Familie anlegen · MyFam</title></svelte:head>
 
-<h1 class="mb-4 text-xl font-bold">Familie anlegen</h1>
+<h1 class="mb-4 text-xl font-semibold tracking-tight">Familie anlegen</h1>
 {#if !data.family}
 	<p class="mb-4 text-sm text-slate-600">
 		Du gehörst gerade zu keiner Familie. Lege eine neue an oder lass dir einen Einladungslink

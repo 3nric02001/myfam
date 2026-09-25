@@ -12,7 +12,7 @@
 	<a href="/kalender?tag={data.date}" class="icon-btn -ml-2 text-slate-500" aria-label="Zurück"
 		><ChevronLeft size={24} aria-hidden="true" /></a
 	>
-	<h1 class="text-xl font-bold">Neuer Termin</h1>
+	<h1 class="text-xl font-semibold tracking-tight">Neuer Termin</h1>
 </div>
 
 <EventForm

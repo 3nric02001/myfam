@@ -51,7 +51,8 @@ src/routes/
 ## Design
 
 - **Farben** stehen zentral in `src/routes/layout.css`: `brand` (Petrol-Grün, Buttons und aktive Elemente), `accent` (Bernstein, z. B. Feiertage und Angebote), `slate` (warme Grautöne) und `surface` (Hintergrund von Karten). Komponenten nutzen nur diese Namen.
-- **Dunkelmodus** folgt automatisch der Einstellung des Geräts. Dafür werden die Farbskalen getauscht, Komponenten brauchen keine `dark:`-Klassen.
+- **Hell/Dunkel** lässt sich unter Einstellungen → Darstellung pro Gerät wählen (Cookie `theme`), Standard ist „Automatisch“ nach der Geräteeinstellung. Dafür werden die Farbskalen getauscht, Komponenten brauchen keine `dark:`-Klassen.
+- **Schrift** ist Manrope, selbst ausgeliefert über `@fontsource-variable/manrope` (keine Anfrage an Google).
 - **Piktogramme** kommen aus [Lucide](https://lucide.dev) (`@lucide/svelte`), keine Emojis.
 
 ## Entwickeln

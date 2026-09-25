@@ -4,6 +4,7 @@ import { db } from '$lib/server/db';
 import { sessionCookieName, setSessionFamily, validateSession } from '$lib/server/auth';
 import { getMembership, listFamiliesOfUser } from '$lib/server/families';
 import { setSessionCookie } from '$lib/server/cookies';
+import { parseTheme, themeColor, themeCookieName } from '$lib/theme';
 
 export const init: ServerInit = () => {
 	if (env.ORIGIN) console.log(`MyFam erwartet Aufrufe über ${env.ORIGIN}`);
@@ -14,13 +15,28 @@ export const handle: Handle = async ({ event, resolve }) => {
 	event.locals.sessionId = null;
 	event.locals.family = null;
 
+	// Render the chosen appearance right away, so a forced theme never flashes the other one.
+	const theme = parseTheme(event.cookies.get(themeCookieName));
+	const render = () =>
+		resolve(event, {
+			transformPageChunk: ({ html }) => {
+				if (theme === 'system') return html;
+				return html
+					.replace('<html lang="de">', `<html lang="de" data-theme="${theme}">`)
+					.replace(
+						/<meta name="theme-color"[^>]*>\s*<meta name="theme-color"[^>]*>/,
+						`<meta name="theme-color" content="${themeColor[theme]}" />`
+					);
+			}
+		});
+
 	const token = event.cookies.get(sessionCookieName);
-	if (!token) return resolve(event);
+	if (!token) return render();
 
 	const result = await validateSession(db, token);
 	if (!result) {
 		event.cookies.delete(sessionCookieName, { path: '/' });
-		return resolve(event);
+		return render();
 	}
 
 	setSessionCookie(event, token, result.session.expiresAt);
@@ -39,5 +55,5 @@ export const handle: Handle = async ({ event, resolve }) => {
 	}
 	event.locals.family = family;
 
-	return resolve(event);
+	return render();
 };

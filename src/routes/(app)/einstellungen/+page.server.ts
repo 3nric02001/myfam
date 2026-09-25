@@ -3,9 +3,28 @@ import { db } from '$lib/server/db';
 import { changeEmail, changeName, changePassword } from '$lib/server/account';
 import { requireUser } from '$lib/server/guards';
 import { field, rawField } from '$lib/server/validation';
-import type { Actions } from './$types';
+import { dev } from '$app/environment';
+import { parseTheme, themeCookieName } from '$lib/theme';
+import type { Actions, PageServerLoad } from './$types';
+
+export const load: PageServerLoad = ({ cookies }) => ({
+	theme: parseTheme(cookies.get(themeCookieName))
+});
 
 export const actions: Actions = {
+	// Stored per device in a cookie, so the phone can stay light while the tablet is dark.
+	theme: async ({ request, cookies, url }) => {
+		const theme = parseTheme(field(await request.formData(), 'theme'));
+		cookies.set(themeCookieName, theme, {
+			path: '/',
+			httpOnly: false,
+			sameSite: 'lax',
+			secure: !dev && url.protocol === 'https:',
+			maxAge: 60 * 60 * 24 * 400
+		});
+		return { action: 'theme', theme };
+	},
+
 	name: async ({ request, locals }) => {
 		const { user } = requireUser(locals);
 		const name = field(await request.formData(), 'name');

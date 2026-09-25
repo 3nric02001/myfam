@@ -19,7 +19,7 @@
 
 <div class="mb-4 flex items-start gap-2">
 	<div class="flex-1">
-		<h1 class="text-xl font-bold break-words">{data.folder.name}</h1>
+		<h1 class="text-xl font-semibold tracking-tight break-words">{data.folder.name}</h1>
 		<div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
 			<VisibilityBadge
 				visibility={data.folder.visibility}

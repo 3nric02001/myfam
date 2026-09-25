@@ -21,7 +21,7 @@
 
 <svelte:head><title>Familie · MyFam</title></svelte:head>
 
-<h1 class="mb-4 text-xl font-bold">Familie</h1>
+<h1 class="mb-4 text-xl font-semibold tracking-tight">Familie</h1>
 {#if form?.message}<p class="error mb-4">{form.message}</p>{/if}
 
 <section class="card mb-5 px-3">
