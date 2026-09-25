@@ -7,6 +7,8 @@
 	let { data, form }: PageProps = $props();
 
 	let open = $derived(data.items.filter((i) => !i.done));
+	let editHistory = $state(false);
+	let suggestions = $derived(data.history.slice(0, 12));
 	let done = $derived(data.items.filter((i) => i.done));
 </script>
 
@@ -31,13 +33,54 @@
 		required
 		maxlength="100"
 		class="flex-1"
+		list="history-names"
+		autocomplete="off"
 	/>
+	<datalist id="history-names">
+		{#each data.history as h (h.key)}<option value={h.name}></option>{/each}
+	</datalist>
 	<input name="quantity" placeholder="Menge" maxlength="30" class="w-20" />
 	<button class="btn-primary px-3" aria-label="Hinzufügen"
 		><Plus size={22} aria-hidden="true" /></button
 	>
 </form>
 {#if form?.message}<p class="error mb-4">{form.message}</p>{/if}
+
+{#if suggestions.length}
+	<section class="mb-5" aria-label="Oft gekauft">
+		<div class="mb-2 flex items-center justify-between">
+			<h2 class="text-sm font-semibold text-slate-500">Oft gekauft</h2>
+			<button class="text-sm text-slate-500 underline" onclick={() => (editHistory = !editHistory)}>
+				{editHistory ? 'Fertig' : 'Bearbeiten'}
+			</button>
+		</div>
+		<ul class="flex flex-wrap gap-2">
+			{#each suggestions as h (h.key)}
+				<li>
+					{#if editHistory}
+						<form method="POST" action="?/forget" use:enhance>
+							<input type="hidden" name="key" value={h.key} />
+							<button
+								class="flex min-h-9 items-center gap-1 rounded-full border border-slate-300 bg-white py-1 pr-2 pl-3 text-sm text-slate-500"
+								aria-label="{h.name} aus dem Verlauf entfernen"
+								>{h.name}<X size={14} aria-hidden="true" /></button
+							>
+						</form>
+					{:else}
+						<form method="POST" action="?/add" use:enhance>
+							<input type="hidden" name="name" value={h.name} />
+							<button
+								class="flex min-h-9 items-center gap-1 rounded-full border border-slate-300 bg-white py-1 pr-3 pl-2 text-sm"
+								aria-label="{h.name} hinzufügen"
+								><Plus size={14} aria-hidden="true" />{h.name}</button
+							>
+						</form>
+					{/if}
+				</li>
+			{/each}
+		</ul>
+	</section>
+{/if}
 
 {#if open.length}
 	{#await data.offers}
@@ -63,8 +106,20 @@
 						{open.length === 1 ? 'Artikel' : 'Artikeln'} im Angebot
 					</span>
 				{:else}
-					<span class="block font-medium">Keine passenden Angebote gefunden</span>
+					<span class="block font-medium">Keine passenden Angebote diese Woche</span>
 					<span class="block text-slate-500">Angebot eintragen oder Märkte ändern</span>
+				{/if}
+				{#if offers.configured && offers.next}
+					<span class="mt-1 block text-xs text-slate-500">
+						Nächste Woche: {offers.next.stores.map(storeLabel).join(' + ')} ({offers.next.covered}
+						von {open.length})
+					</span>
+				{/if}
+				{#if offers.questions.length}
+					<span class="mt-1 block text-xs font-medium text-accent-700">
+						{offers.questions.length}
+						{offers.questions.length === 1 ? 'Rückfrage' : 'Rückfragen'}: Was meinst du genau?
+					</span>
 				{/if}
 				{#if offers.failed}
 					<span class="mt-1 block text-xs text-accent-700">

@@ -114,6 +114,11 @@
 	input[type='radio'] {
 		@apply border-slate-300 bg-surface text-brand-600 focus:ring-brand-600;
 	}
+	/* Without this, bg-surface above would hide the tick of @tailwindcss/forms. */
+	input[type='checkbox']:checked,
+	input[type='radio']:checked {
+		@apply border-transparent bg-current;
+	}
 	.card {
 		@apply rounded-2xl border border-slate-200/70 bg-surface shadow-[0_1px_2px_rgb(0_0_0/0.04),0_4px_12px_-4px_rgb(0_0_0/0.06)];
 	}

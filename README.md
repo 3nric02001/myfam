@@ -110,6 +110,8 @@ Danach unter `https://<deine Domain>/registrieren` die erste Familie anlegen und
 
 Unter **Einkauf → Tipp / Angebote** wählt jede Familie ihre Märkte (und die Postleitzahl). Die App sucht zu jedem offenen Artikel passende Angebote dieser Märkte und empfiehlt den Markt mit den meisten Angeboten, oder zwei Märkte, wenn ein zweiter Stopp weitere Artikel abdeckt.
 
+Ein Angebot zählt sicher, wenn der Artikel als eigenes Wort im Produktnamen steht („Milch“ in „Frische Milch“). Ist er nur das Ende eines längeren Worts („Vollmilch“, „Müllermilch“) oder nennt das Angebot eine andere Produktart („Schokolade“, „Drink“), fragt die App einmal nach, ob das zählt, und merkt sich die Antwort für die Familie. Mitten im Wort („Vollmilchschokolade“, „Milchreis“) passt es nie. Oben auf der Angebote-Seite lässt sich zwischen dieser und der nächsten Woche umschalten.
+
 Angebote kommen aus zwei Quellen:
 
 - **Von Hand eingetragen** (z. B. aus dem Prospekt). Funktioniert immer; abgelaufene Angebote verschwinden von selbst.

@@ -1,7 +1,16 @@
 import { and, asc, eq, gte, lt } from 'drizzle-orm';
 import type { DB } from './db/client';
-import { offer, offerSearchCache, offerSettings, user } from './db/schema';
-import { recommend, words, type Item, type Offer } from '$lib/offers';
+import { offer, offerMatchRule, offerSearchCache, offerSettings, user } from './db/schema';
+import {
+	recommend,
+	runsDuring,
+	term,
+	weekRange,
+	type Item,
+	type Offer,
+	type Rules,
+	type Week
+} from '$lib/offers';
 import { searchMarktguru } from './marktguru';
 
 // Every query is scoped to a family, like the shopping list itself.
@@ -38,20 +47,27 @@ export async function listManualOffers(db: DB, familyId: string, today: string) 
 			store: offer.store,
 			product: offer.product,
 			price: offer.price,
+			validFrom: offer.validFrom,
 			validUntil: offer.validUntil,
 			createdBy: user.name
 		})
 		.from(offer)
 		.leftJoin(user, eq(offer.createdBy, user.id))
 		.where(and(eq(offer.familyId, familyId), gte(offer.validUntil, today)))
-		.orderBy(asc(offer.store), asc(offer.product));
+		.orderBy(asc(offer.validFrom), asc(offer.store), asc(offer.product));
 }
 
 export async function addManualOffer(
 	db: DB,
 	familyId: string,
 	createdBy: string,
-	input: { store: string; product: string; price: number | null; validUntil: string }
+	input: {
+		store: string;
+		product: string;
+		price: number | null;
+		validFrom?: string | null;
+		validUntil: string;
+	}
 ) {
 	const [row] = await db
 		.insert(offer)
@@ -119,9 +135,51 @@ export async function autoOffers(
 	return { offers, failed };
 }
 
-/** The search term for an item: its words, so "H-Milch" and "h milch" share one search. */
-export function searchTerm(name: string) {
-	return words(name).join(' ');
+/** The family's answers to "does this count?", by term and variant. */
+export async function getRules(db: DB, familyId: string): Promise<Rules> {
+	const rows = await db.select().from(offerMatchRule).where(eq(offerMatchRule.familyId, familyId));
+	const rules: Rules = {};
+	for (const r of rows) (rules[r.term] ??= {})[r.variant] = r.fits;
+	return rules;
+}
+
+export async function listRules(db: DB, familyId: string) {
+	return db
+		.select({
+			term: offerMatchRule.term,
+			variant: offerMatchRule.variant,
+			example: offerMatchRule.example,
+			fits: offerMatchRule.fits
+		})
+		.from(offerMatchRule)
+		.where(eq(offerMatchRule.familyId, familyId))
+		.orderBy(asc(offerMatchRule.term), asc(offerMatchRule.example));
+}
+
+export async function setRule(
+	db: DB,
+	familyId: string,
+	input: { term: string; variant: string; example: string; fits: boolean }
+) {
+	await db
+		.insert(offerMatchRule)
+		.values({ familyId, ...input })
+		.onConflictDoUpdate({
+			target: [offerMatchRule.familyId, offerMatchRule.term, offerMatchRule.variant],
+			set: { fits: input.fits, example: input.example }
+		});
+}
+
+export async function deleteRule(db: DB, familyId: string, t: string, variant: string) {
+	await db
+		.delete(offerMatchRule)
+		.where(
+			and(
+				eq(offerMatchRule.familyId, familyId),
+				eq(offerMatchRule.term, t),
+				eq(offerMatchRule.variant, variant)
+			)
+		);
 }
 
 /** Everything the shopping page needs to show offers for the open items. */
@@ -130,7 +188,7 @@ export async function offersForList(
 	familyId: string,
 	items: Item[],
 	today: string,
-	options: { auto: boolean; search?: Search }
+	options: { auto: boolean; week?: Week; search?: Search }
 ) {
 	const settings = await getOfferSettings(db, familyId);
 	const manual: Offer[] = (await listManualOffers(db, familyId, today)).map((o) => ({
@@ -138,6 +196,7 @@ export async function offersForList(
 		product: o.product,
 		price: o.price,
 		oldPrice: null,
+		validFrom: o.validFrom,
 		validUntil: o.validUntil,
 		source: 'manual'
 	}));
@@ -145,13 +204,16 @@ export async function offersForList(
 	let auto: Offer[] = [];
 	let failed = false;
 	if (options.auto && settings.zip && settings.stores.length && items.length) {
-		const queries = [...new Set(items.map((i) => searchTerm(i.name)).filter(Boolean))];
+		const queries = [...new Set(items.map((i) => term(i.name)).filter(Boolean))];
 		({ offers: auto, failed } = await autoOffers(db, settings.zip, queries, today, options.search));
 	}
 
+	const range = weekRange(today, options.week ?? 'this');
+	const offers = [...manual, ...auto].filter((o) => runsDuring(o, range));
 	return {
 		configured: settings.stores.length > 0,
 		failed,
-		...recommend(items, [...manual, ...auto], settings.stores)
+		range,
+		...recommend(items, offers, settings.stores, await getRules(db, familyId))
 	};
 }

@@ -4,6 +4,10 @@ import {
 	addManualOffer,
 	autoOffers,
 	deleteManualOffer,
+	deleteRule,
+	getRules,
+	listRules,
+	setRule,
 	getOfferSettings,
 	listManualOffers,
 	offersForList,
@@ -29,6 +33,23 @@ describe('offer settings', () => {
 			stores: ['lidl', 'rewe']
 		});
 		expect(await getOfferSettings(db, b.family.id)).toEqual({ zip: null, stores: [] });
+	});
+});
+
+describe('answers about uncertain offers', () => {
+	it('stores one answer per term and variant and family', async () => {
+		const db = testDb();
+		const a = await seedFamily(db, 'anna');
+		const b = await seedFamily(db, 'bert');
+		const rule = { term: 'milch', variant: 'muellermilch', example: 'Müllermilch Banane' };
+		await setRule(db, a.family.id, { ...rule, fits: true });
+		await setRule(db, a.family.id, { ...rule, fits: false });
+		expect(await getRules(db, a.family.id)).toEqual({ milch: { muellermilch: false } });
+		expect(await getRules(db, b.family.id)).toEqual({});
+		expect(await listRules(db, a.family.id)).toEqual([{ ...rule, fits: false }]);
+
+		await deleteRule(db, a.family.id, 'milch', 'muellermilch');
+		expect(await getRules(db, a.family.id)).toEqual({});
 	});
 });
 
@@ -117,9 +138,13 @@ describe('automatic offers', () => {
 		const off = await offersForList(db, family.id, items, TODAY, { auto: false });
 		expect(off.best).toEqual({ stores: ['rewe'], covered: 1 });
 
+		// The offer ends on Saturday, so next week has none.
+		const next = await offersForList(db, family.id, items, TODAY, { auto: false, week: 'next' });
+		expect(next.best).toBe(null);
+
 		const search = vi.fn(async () => [lidlMilk]);
 		const on = await offersForList(db, family.id, items, TODAY, { auto: true, search });
-		expect(search).toHaveBeenCalledWith('h milch', '80331', TODAY);
+		expect(search).toHaveBeenCalledWith('milch', '80331', TODAY);
 		expect(on.best).toEqual({ stores: ['lidl', 'rewe'], covered: 2 });
 		expect(on.configured).toBe(true);
 	});
@@ -133,7 +158,7 @@ describe('marktguru offers', () => {
 			brand: { name: 'Milbona' },
 			product: { name: 'H-Milch' },
 			advertisers: [{ uniqueName: 'lidl' }, { uniqueName: 'penny' }],
-			validityDates: [{ from: '2026-09-22T00:00:00Z', to: '2026-09-27T23:59:59Z' }]
+			validityDates: [{ from: '2026-09-21T22:00:00Z', to: '2026-09-27T21:59:59Z' }]
 		};
 		expect(toOffers(raw, TODAY)).toEqual([
 			{
@@ -141,6 +166,7 @@ describe('marktguru offers', () => {
 				product: 'Milbona H-Milch',
 				price: 95,
 				oldPrice: 115,
+				validFrom: '2026-09-22',
 				validUntil: '2026-09-27',
 				source: 'marktguru'
 			},
@@ -149,6 +175,7 @@ describe('marktguru offers', () => {
 				product: 'Milbona H-Milch',
 				price: 95,
 				oldPrice: 115,
+				validFrom: '2026-09-22',
 				validUntil: '2026-09-27',
 				source: 'marktguru'
 			}
