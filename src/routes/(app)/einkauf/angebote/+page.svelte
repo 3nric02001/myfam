@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { ChevronLeft, X } from '@lucide/svelte';
 	import { enhance } from '$app/forms';
 	import { shortDate } from '$lib/dates';
 	import { formatPrice, STORES, storeLabel } from '$lib/offers';
@@ -14,7 +15,9 @@
 
 <svelte:head><title>Angebote · MyFam</title></svelte:head>
 
-<a href="/einkauf" class="mb-2 inline-block text-sm text-slate-500">← Einkaufsliste</a>
+<a href="/einkauf" class="mb-2 inline-flex items-center gap-1 text-sm text-slate-500"
+	><ChevronLeft size={16} aria-hidden="true" /> Einkaufsliste</a
+>
 <h1 class="mb-4 text-xl font-bold">Angebote</h1>
 {#if form?.message}<p class="error mb-4">{form.message}</p>{/if}
 
@@ -40,7 +43,7 @@
 				</p>
 			{/if}
 			{#if offers.failed}
-				<p class="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+				<p class="rounded-xl bg-accent-50 px-3 py-2 text-sm text-accent-800">
 					Automatische Angebote sind gerade nicht erreichbar. Es fehlen vielleicht welche.
 				</p>
 			{/if}
@@ -148,7 +151,9 @@
 					</span>
 					<form method="POST" action="?/delete" use:enhance>
 						<input type="hidden" name="id" value={o.id} />
-						<button class="p-2 text-slate-400" aria-label="Angebot {o.product} löschen">✕</button>
+						<button class="icon-btn" aria-label="Angebot {o.product} löschen"
+							><X size={18} aria-hidden="true" /></button
+						>
 					</form>
 				</li>
 			{/each}
@@ -177,7 +182,7 @@
 						name="stores"
 						value={store.id}
 						checked={data.settings.stores.includes(store.id)}
-						class="size-5 rounded text-emerald-600"
+						class="size-5 rounded text-brand-600"
 					/>
 					{store.label}
 				</label>

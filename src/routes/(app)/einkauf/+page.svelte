@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Check, Plus, ShoppingBasket, X } from '@lucide/svelte';
+	import { Check, ChevronRight, Plus, ShoppingBasket, Tag, X } from '@lucide/svelte';
 	import { enhance } from '$app/forms';
 	import { formatPrice, storeLabel } from '$lib/offers';
 	import type { PageProps } from './$types';
@@ -41,32 +41,43 @@
 
 {#if open.length}
 	{#await data.offers}
-		<p class="card mb-5 p-3 text-sm text-slate-500">🏷️ Suche Angebote …</p>
+		<p class="card mb-5 flex items-center gap-2 p-3 text-sm text-slate-500">
+			<Tag size={18} aria-hidden="true" /> Suche Angebote …
+		</p>
 	{:then offers}
-		<a href="/einkauf/angebote" class="card mb-5 block p-3 text-sm">
-			{#if !offers.configured}
-				<span class="font-medium">🏷️ Wo kaufst du ein?</span>
-				<span class="block text-slate-500">Märkte wählen, um passende Angebote zu sehen →</span>
-			{:else if offers.best}
-				<span class="block font-medium">
-					🏷️ Tipp: {offers.best.stores.map(storeLabel).join(' + ')}
-				</span>
-				<span class="block text-slate-500">
-					{offers.best.covered} von {open.length}
-					{open.length === 1 ? 'Artikel' : 'Artikeln'} im Angebot · Details →
-				</span>
-			{:else}
-				<span class="font-medium">🏷️ Keine passenden Angebote gefunden</span>
-				<span class="block text-slate-500">Angebot eintragen oder Märkte ändern →</span>
-			{/if}
-			{#if offers.failed}
-				<span class="mt-1 block text-xs text-amber-700">
-					Automatische Angebote gerade nicht erreichbar.
-				</span>
-			{/if}
+		<a href="/einkauf/angebote" class="card mb-5 flex items-center gap-3 p-3 text-sm">
+			<span
+				class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-50 text-accent-600"
+				aria-hidden="true"><Tag size={20} strokeWidth={1.75} /></span
+			>
+			<span class="flex-1">
+				{#if !offers.configured}
+					<span class="block font-medium">Wo kaufst du ein?</span>
+					<span class="block text-slate-500">Märkte wählen, um passende Angebote zu sehen</span>
+				{:else if offers.best}
+					<span class="block font-medium">
+						Tipp: {offers.best.stores.map(storeLabel).join(' + ')}
+					</span>
+					<span class="block text-slate-500">
+						{offers.best.covered} von {open.length}
+						{open.length === 1 ? 'Artikel' : 'Artikeln'} im Angebot
+					</span>
+				{:else}
+					<span class="block font-medium">Keine passenden Angebote gefunden</span>
+					<span class="block text-slate-500">Angebot eintragen oder Märkte ändern</span>
+				{/if}
+				{#if offers.failed}
+					<span class="mt-1 block text-xs text-accent-700">
+						Automatische Angebote gerade nicht erreichbar.
+					</span>
+				{/if}
+			</span>
+			<ChevronRight size={18} class="shrink-0 text-slate-400" aria-hidden="true" />
 		</a>
 	{:catch}
-		<p class="card mb-5 p-3 text-sm text-slate-500">🏷️ Angebote konnten nicht geladen werden.</p>
+		<p class="card mb-5 flex items-center gap-2 p-3 text-sm text-slate-500">
+			<Tag size={18} aria-hidden="true" /> Angebote konnten nicht geladen werden.
+		</p>
 	{/await}
 {/if}
 
@@ -100,8 +111,9 @@
 						{#await data.offers then offers}
 							{@const best = offers.byItem[item.id]?.[0]}
 							{#if best}
-								<span class="block text-xs font-medium text-emerald-700">
-									🏷️ {storeLabel(best.store)}
+								<span class="flex items-center gap-1 text-xs font-medium text-accent-700">
+									<Tag size={12} aria-hidden="true" />
+									{storeLabel(best.store)}
 									{formatPrice(best.price)}
 									{#if offers.byItem[item.id].length > 1}
 										<span class="font-normal text-slate-500">
