@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { formatPrice, storeLabel } from '$lib/offers';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
@@ -35,6 +36,37 @@
 </form>
 {#if form?.message}<p class="error mb-4">{form.message}</p>{/if}
 
+{#if open.length}
+	{#await data.offers}
+		<p class="card mb-5 p-3 text-sm text-slate-500">🏷️ Suche Angebote …</p>
+	{:then offers}
+		<a href="/einkauf/angebote" class="card mb-5 block p-3 text-sm">
+			{#if !offers.configured}
+				<span class="font-medium">🏷️ Wo kaufst du ein?</span>
+				<span class="block text-slate-500">Märkte wählen, um passende Angebote zu sehen →</span>
+			{:else if offers.best}
+				<span class="block font-medium">
+					🏷️ Tipp: {offers.best.stores.map(storeLabel).join(' + ')}
+				</span>
+				<span class="block text-slate-500">
+					{offers.best.covered} von {open.length}
+					{open.length === 1 ? 'Artikel' : 'Artikeln'} im Angebot · Details →
+				</span>
+			{:else}
+				<span class="font-medium">🏷️ Keine passenden Angebote gefunden</span>
+				<span class="block text-slate-500">Angebot eintragen oder Märkte ändern →</span>
+			{/if}
+			{#if offers.failed}
+				<span class="mt-1 block text-xs text-amber-700">
+					Automatische Angebote gerade nicht erreichbar.
+				</span>
+			{/if}
+		</a>
+	{:catch}
+		<p class="card mb-5 p-3 text-sm text-slate-500">🏷️ Angebote konnten nicht geladen werden.</p>
+	{/await}
+{/if}
+
 {#if data.items.length === 0}
 	<p class="py-10 text-center text-slate-500">Die Liste ist leer. 🎉</p>
 {/if}
@@ -54,6 +86,22 @@
 				<span class="flex-1">
 					<span class={item.done ? 'text-slate-400 line-through' : ''}>{item.name}</span>
 					{#if item.quantity}<span class="ml-1 text-sm text-slate-500">{item.quantity}</span>{/if}
+					{#if !item.done}
+						{#await data.offers then offers}
+							{@const best = offers.byItem[item.id]?.[0]}
+							{#if best}
+								<span class="block text-xs font-medium text-emerald-700">
+									🏷️ {storeLabel(best.store)}
+									{formatPrice(best.price)}
+									{#if offers.byItem[item.id].length > 1}
+										<span class="font-normal text-slate-500">
+											+{offers.byItem[item.id].length - 1} weitere</span
+										>
+									{/if}
+								</span>
+							{/if}
+						{/await}
+					{/if}
 					{#if item.createdBy}
 						<span class="block text-xs text-slate-400">von {item.createdBy}</span>
 					{/if}
