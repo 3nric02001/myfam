@@ -87,7 +87,7 @@
 	</form>
 {:else}
 	<div class="mb-4 flex items-start gap-2">
-		<h1 class="flex-1 text-xl font-bold break-words">{data.card.title}</h1>
+		<h1 class="flex-1 text-xl font-semibold tracking-tight break-words">{data.card.title}</h1>
 		<button class="icon-btn -mt-1.5" onclick={() => (renaming = true)} aria-label="Titel ändern"
 			><Pencil size={18} aria-hidden="true" /></button
 		>

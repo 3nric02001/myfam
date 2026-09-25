@@ -23,7 +23,9 @@
 		class="icon-btn -ml-2 text-slate-500"
 		aria-label="Zurück"><ChevronLeft size={24} aria-hidden="true" /></a
 	>
-	<h1 class="flex-1 text-xl font-bold">{data.editable ? 'Termin bearbeiten' : event.title}</h1>
+	<h1 class="flex-1 text-xl font-semibold tracking-tight">
+		{data.editable ? 'Termin bearbeiten' : event.title}
+	</h1>
 </div>
 
 {#if data.editable}

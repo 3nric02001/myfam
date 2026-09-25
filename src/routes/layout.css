@@ -11,6 +11,8 @@
  * stays the main text color without any `dark:` classes.
  */
 @theme {
+	/* Self-hosted (@fontsource-variable/manrope), so no request goes to Google. */
+	--font-sans: 'Manrope Variable', ui-sans-serif, system-ui, sans-serif;
 	--color-brand-50: #eef7f4;
 	--color-brand-100: #d6ede6;
 	--color-brand-200: #afdacd;
@@ -47,8 +49,9 @@
 	--color-surface: #ffffff;
 }
 
+/* Dark colors: when the device is dark (unless light was chosen) or when dark was chosen. */
 @media (prefers-color-scheme: dark) {
-	:root {
+	:root:not([data-theme='light']) {
 		--color-red-50: #3b1416;
 		--color-red-600: #f87171;
 		--color-red-700: #fca5a5;
@@ -87,6 +90,51 @@
 		--color-accent-950: #fdf4ea;
 		--color-surface: #1d1a18;
 	}
+}
+:root[data-theme='dark'] {
+	--color-red-50: #3b1416;
+	--color-red-600: #f87171;
+	--color-red-700: #fca5a5;
+	--color-brand-50: #173b34;
+	--color-brand-100: #1b483e;
+	--color-brand-200: #1b483e;
+	--color-brand-300: #1e594c;
+	--color-brand-400: #4fa38d;
+	--color-brand-500: #2f8873;
+	--color-brand-600: #2f8873;
+	--color-brand-700: #7fc1ae;
+	--color-brand-800: #afdacd;
+	--color-brand-900: #d6ede6;
+	--color-brand-950: #eef7f4;
+	--color-slate-50: #100e0d;
+	--color-slate-100: #2b2724;
+	--color-slate-200: #2b2724;
+	--color-slate-300: #45403b;
+	--color-slate-400: #7a726b;
+	--color-slate-500: #a9a29b;
+	--color-slate-600: #d7d3ce;
+	--color-slate-700: #d7d3ce;
+	--color-slate-800: #e8e5e1;
+	--color-slate-900: #f5f4f2;
+	--color-slate-950: #fafaf9;
+	--color-accent-50: #341708;
+	--color-accent-100: #5c2f14;
+	--color-accent-200: #713815;
+	--color-accent-300: #8c4412;
+	--color-accent-400: #e3812c;
+	--color-accent-500: #cc6a1a;
+	--color-accent-600: #cc6a1a;
+	--color-accent-700: #eda257;
+	--color-accent-800: #f4c58f;
+	--color-accent-900: #fae3c9;
+	--color-accent-950: #fdf4ea;
+	--color-surface: #1d1a18;
+}
+:root[data-theme='light'] {
+	color-scheme: light;
+}
+:root[data-theme='dark'] {
+	color-scheme: dark;
 }
 
 @layer base {

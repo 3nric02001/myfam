@@ -12,7 +12,7 @@
 <svelte:head><title>Planung · MyFam</title></svelte:head>
 
 <div class="mb-4 flex items-center justify-between">
-	<h1 class="text-xl font-bold">Planung</h1>
+	<h1 class="text-xl font-semibold tracking-tight">Planung</h1>
 	{#if !creating}
 		<button class="btn-primary" onclick={() => (creating = true)}
 			><FolderPlus size={18} aria-hidden="true" /> Ordner</button

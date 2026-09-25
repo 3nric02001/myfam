@@ -9,7 +9,7 @@
 			class="mx-auto flex size-16 items-center justify-center rounded-2xl bg-brand-600 text-white shadow-sm"
 			aria-hidden="true"><HouseHeart size={34} strokeWidth={1.75} /></span
 		>
-		<h1 class="mt-3 text-2xl font-bold text-slate-900">MyFam</h1>
+		<h1 class="mt-3 text-2xl font-semibold tracking-tight text-slate-900">MyFam</h1>
 		<p class="text-sm text-slate-500">Termine, Einkäufe und Planung für die ganze Familie</p>
 	</div>
 	{@render children()}

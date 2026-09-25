@@ -18,7 +18,7 @@
 <a href="/einkauf" class="mb-2 inline-flex items-center gap-1 text-sm text-slate-500"
 	><ChevronLeft size={16} aria-hidden="true" /> Einkaufsliste</a
 >
-<h1 class="mb-4 text-xl font-bold">Angebote</h1>
+<h1 class="mb-4 text-xl font-semibold tracking-tight">Angebote</h1>
 {#if form?.message}<p class="error mb-4">{form.message}</p>{/if}
 
 {#if data.settings.stores.length && data.items.length}

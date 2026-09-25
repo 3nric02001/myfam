@@ -12,7 +12,7 @@
 
 <svelte:head><title>Einkauf · MyFam</title></svelte:head>
 
-<h1 class="mb-4 text-xl font-bold">Einkaufsliste</h1>
+<h1 class="mb-4 text-xl font-semibold tracking-tight">Einkaufsliste</h1>
 
 <form
 	method="POST"

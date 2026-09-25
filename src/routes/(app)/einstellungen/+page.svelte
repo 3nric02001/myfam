@@ -1,8 +1,39 @@
 <script lang="ts">
+	import { Moon, Smartphone, Sun } from '@lucide/svelte';
 	import { enhance } from '$app/forms';
+	import { themeColor, type Theme } from '$lib/theme';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
+
+	const themes = [
+		{ value: 'system', label: 'Automatisch', icon: Smartphone },
+		{ value: 'light', label: 'Hell', icon: Sun },
+		{ value: 'dark', label: 'Dunkel', icon: Moon }
+	] as const;
+
+	// svelte-ignore state_referenced_locally
+	let theme = $state<Theme>(data.theme);
+
+	/** Switches the page right away; the form stores the choice for the next visit. */
+	function applyTheme() {
+		const root = document.documentElement;
+		if (theme === 'system') delete root.dataset.theme;
+		else root.dataset.theme = theme;
+		const metas = document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]');
+		metas.forEach((meta) => meta.remove());
+		const add = (color: string, media?: string) => {
+			const meta = document.createElement('meta');
+			meta.name = 'theme-color';
+			meta.content = color;
+			if (media) meta.media = media;
+			document.head.append(meta);
+		};
+		if (theme === 'system') {
+			add(themeColor.light, '(prefers-color-scheme: light)');
+			add(themeColor.dark, '(prefers-color-scheme: dark)');
+		} else add(themeColor[theme]);
+	}
 </script>
 
 <svelte:head><title>Einstellungen · MyFam</title></svelte:head>
@@ -14,7 +45,45 @@
 	{/if}
 {/snippet}
 
-<h1 class="mb-4 text-xl font-bold">Einstellungen</h1>
+<h1 class="mb-4 text-xl font-semibold tracking-tight">Einstellungen</h1>
+
+<form
+	method="POST"
+	action="?/theme"
+	use:enhance={() =>
+		({ update }) =>
+			update({ reset: false })}
+	class="card mb-5 space-y-4"
+>
+	<h2 class="font-semibold">Darstellung</h2>
+	<div class="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Darstellung">
+		{#each themes as option (option.value)}
+			<label
+				class="flex cursor-pointer flex-col items-center gap-1 rounded-xl border p-3 text-sm {theme ===
+				option.value
+					? 'border-brand-600 bg-brand-50 font-medium text-brand-800'
+					: 'border-slate-200 text-slate-600'}"
+			>
+				<input
+					type="radio"
+					name="theme"
+					value={option.value}
+					bind:group={theme}
+					onchange={(e) => {
+						applyTheme();
+						e.currentTarget.form?.requestSubmit();
+					}}
+					class="sr-only"
+				/>
+				<option.icon size={22} strokeWidth={1.75} aria-hidden="true" />
+				{option.label}
+			</label>
+		{/each}
+	</div>
+	<p class="text-xs text-slate-500">
+		Gilt für dieses Gerät. „Automatisch“ folgt der Einstellung des Handys.
+	</p>
+</form>
 
 <form
 	method="POST"
