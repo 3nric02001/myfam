@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { addMonths, dayLabel, monthLabel, shortDate } from '$lib/dates';
-	import { visibilityIcon, visibilityLabel } from './visibility';
+	import { visibilityIcon, visibilityLabel } from '$lib/visibility';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();

@@ -2,7 +2,7 @@
 	import { enhance } from '$app/forms';
 	import { dayLabel } from '$lib/dates';
 	import EventForm from '../EventForm.svelte';
-	import { visibilityIcon, visibilityLabel } from '../visibility';
+	import { visibilityIcon, visibilityLabel } from '$lib/visibility';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();

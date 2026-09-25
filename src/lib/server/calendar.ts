@@ -1,6 +1,7 @@
-import { and, asc, eq, gte, inArray, lte, or, sql } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 import type { DB } from './db/client';
 import { field } from './validation';
+import { visibleTo as sharedVisibleTo } from './visibility';
 import { calendarEvent, calendarEventShare, membership, user, type Visibility } from './db/schema';
 
 // Every query is scoped to a family and to what the viewer may see:
@@ -97,14 +98,11 @@ export function eventFromForm(form: FormData): EventInput {
 }
 
 function visibleTo(viewerId: string) {
-	return or(
-		eq(calendarEvent.visibility, 'family'),
-		eq(calendarEvent.createdBy, viewerId),
-		and(
-			eq(calendarEvent.visibility, 'shared'),
-			sql`exists (select 1 from ${calendarEventShare} where ${calendarEventShare.eventId} = ${calendarEvent.id} and ${calendarEventShare.userId} = ${viewerId})`
-		)
-	);
+	return sharedVisibleTo(viewerId, calendarEvent, {
+		table: calendarEventShare,
+		itemId: calendarEventShare.eventId,
+		userId: calendarEventShare.userId
+	});
 }
 
 /** Events the viewer may see that overlap the given date range (inclusive). */

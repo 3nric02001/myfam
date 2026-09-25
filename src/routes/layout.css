@@ -45,3 +45,34 @@
 		@apply rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800;
 	}
 }
+
+/* Formatted text on planning cards (see $lib/format.ts). */
+@layer components {
+	.rich {
+		@apply space-y-2 leading-relaxed break-words;
+	}
+	.rich h3 {
+		@apply text-lg font-bold;
+	}
+	.rich h4 {
+		@apply font-bold;
+	}
+	.rich h5 {
+		@apply font-semibold text-slate-600;
+	}
+	.rich ul {
+		@apply list-disc pl-5;
+	}
+	.rich ol {
+		@apply list-decimal pl-5;
+	}
+	.rich li.task {
+		@apply -ml-5 list-none;
+	}
+	.rich li.task.done {
+		@apply text-slate-400 line-through;
+	}
+	.rich a {
+		@apply text-emerald-700 underline;
+	}
+}
