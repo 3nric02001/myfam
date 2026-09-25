@@ -3,18 +3,24 @@ import { db } from '$lib/server/db';
 import { setSessionFamily } from '$lib/server/auth';
 import {
 	createInvite,
+	getFamilyState,
 	getMembership,
 	listMembers,
 	removeMember,
+	setFamilyState,
 	setRole
 } from '$lib/server/families';
+import { isState } from '$lib/holidays';
 import { requireAdmin, requireFamily, requireUser } from '$lib/server/guards';
 import { field } from '$lib/server/validation';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const { family } = requireFamily(locals);
-	return { members: await listMembers(db, family.id) };
+	return {
+		members: await listMembers(db, family.id),
+		state: await getFamilyState(db, family.id)
+	};
 };
 
 export const actions: Actions = {
@@ -43,6 +49,13 @@ export const actions: Actions = {
 		const role = field(form, 'role') === 'admin' ? 'admin' : 'member';
 		const result = await setRole(db, family.id, field(form, 'userId'), role);
 		if (!result.ok) return fail(400, { message: result.reason });
+	},
+
+	state: async ({ request, locals }) => {
+		const { family } = requireAdmin(locals);
+		const state = field(await request.formData(), 'state');
+		await setFamilyState(db, family.id, isState(state) ? state : null);
+		return { stateSaved: true };
 	},
 
 	switch: async ({ request, locals }) => {
