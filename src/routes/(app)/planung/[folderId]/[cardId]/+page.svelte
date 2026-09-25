@@ -1,4 +1,15 @@
 <script lang="ts">
+	import {
+		ArrowDown,
+		ArrowUp,
+		ChevronLeft,
+		Image,
+		Link,
+		Pencil,
+		Table2,
+		Trash2,
+		Type
+	} from '@lucide/svelte';
 	import { enhance } from '$app/forms';
 	import type { SubmitFunction } from '@sveltejs/kit';
 	import BlockView from '$lib/components/planning/BlockView.svelte';
@@ -18,11 +29,11 @@
 	let renaming = $state(false);
 	let uploading = $state(false);
 
-	const addOptions: { type: NewType; label: string; icon: string }[] = [
-		{ type: 'text', label: 'Text', icon: '📝' },
-		{ type: 'table', label: 'Tabelle', icon: '📊' },
-		{ type: 'link', label: 'Link', icon: '🔗' },
-		{ type: 'image', label: 'Bild', icon: '🖼️' }
+	const addOptions: { type: NewType; label: string; icon: typeof Type }[] = [
+		{ type: 'text', label: 'Text', icon: Type },
+		{ type: 'table', label: 'Tabelle', icon: Table2 },
+		{ type: 'link', label: 'Link', icon: Link },
+		{ type: 'image', label: 'Bild', icon: Image }
 	];
 
 	function pick(type: NewType) {
@@ -60,8 +71,12 @@
 
 <svelte:head><title>{data.card.title} · Planung · MyFam</title></svelte:head>
 
-<a href="/planung/{data.card.folderId}" class="mb-2 inline-block text-sm text-slate-500">
-	← {data.card.folderName}
+<a
+	href="/planung/{data.card.folderId}"
+	class="mb-2 inline-flex items-center gap-1 text-sm text-slate-500"
+>
+	<ChevronLeft size={16} aria-hidden="true" />
+	{data.card.folderName}
 </a>
 
 {#if renaming}
@@ -73,10 +88,8 @@
 {:else}
 	<div class="mb-4 flex items-start gap-2">
 		<h1 class="flex-1 text-xl font-bold break-words">{data.card.title}</h1>
-		<button
-			class="px-2 py-1 text-slate-400"
-			onclick={() => (renaming = true)}
-			aria-label="Titel ändern">✎</button
+		<button class="icon-btn -mt-1.5" onclick={() => (renaming = true)} aria-label="Titel ändern"
+			><Pencil size={18} aria-hidden="true" /></button
 		>
 	</div>
 {/if}
@@ -116,14 +129,15 @@
 				</form>
 				<div class="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-sm">
 					<div class="flex gap-1">
-						{#each [{ dir: 'up', label: '↑ Nach oben', off: i === 0 }, { dir: 'down', label: '↓ Nach unten', off: i === data.blocks.length - 1 }] as move (move.dir)}
+						{#each [{ dir: 'up', label: 'Nach oben', icon: ArrowUp, off: i === 0 }, { dir: 'down', label: 'Nach unten', icon: ArrowDown, off: i === data.blocks.length - 1 }] as move (move.dir)}
 							<form method="POST" action="?/move" use:enhance>
 								<input type="hidden" name="blockId" value={block.id} />
 								<input type="hidden" name="direction" value={move.dir} />
 								<button
-									class="rounded px-2 py-1 text-slate-600 disabled:opacity-30"
+									class="flex items-center gap-1 rounded-lg px-2 py-1 text-slate-600 disabled:opacity-30"
 									disabled={move.off}
 								>
+									<move.icon size={16} aria-hidden="true" />
 									{move.label}
 								</button>
 							</form>
@@ -141,16 +155,18 @@
 						}}
 					>
 						<input type="hidden" name="blockId" value={block.id} />
-						<button class="px-2 py-1 text-red-600">Löschen</button>
+						<button class="flex items-center gap-1 px-2 py-1 text-red-600"
+							><Trash2 size={16} aria-hidden="true" /> Löschen</button
+						>
 					</form>
 				</div>
 			{:else}
 				<div class="relative">
 					<BlockView {block} />
 					<button
-						class="absolute -top-2 -right-2 rounded-full bg-white/80 px-2 py-1 text-slate-400"
+						class="icon-btn absolute -top-3 -right-3 bg-surface/80"
 						onclick={() => (editingId = block.id)}
-						aria-label="Bearbeiten">✎</button
+						aria-label="Bearbeiten"><Pencil size={16} aria-hidden="true" /></button
 					>
 				</div>
 			{/if}
@@ -209,11 +225,11 @@
 					role="tab"
 					aria-selected={adding === option.type}
 					class="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs {adding === option.type
-						? 'bg-emerald-100 font-semibold text-emerald-800'
+						? 'bg-brand-100 font-semibold text-brand-800'
 						: 'text-slate-500 active:bg-slate-100'}"
 					onclick={() => pick(option.type)}
 				>
-					<span aria-hidden="true">{option.icon}</span>
+					<option.icon size={14} aria-hidden="true" />
 					{option.label}
 				</button>
 			{/each}

@@ -2,7 +2,8 @@
 	// Form fields for who can see an entry: `visibility` plus one `sharedWith` field per selected
 	// member. Used by calendar events and planning folders.
 	import type { Visibility } from '$lib/server/db/schema';
-	import { visibilityIcon, visibilityLabel } from '$lib/visibility';
+	import { visibilityLabel } from '$lib/visibility';
+	import VisibilityIcon from './VisibilityIcon.svelte';
 
 	let {
 		visibility: initial = 'family',
@@ -37,16 +38,16 @@
 	{#if lockVisibility}
 		<input type="hidden" name="visibility" value={visibility} />
 		<p class="text-sm text-slate-600">
-			{visibilityIcon[visibility]}
+			<VisibilityIcon {visibility} size={16} class="inline align-[-3px]" />
 			{visibilityLabel[visibility]} – nur die Person, die {noun} angelegt hat, kann das ändern.
 		</p>
 	{:else}
 		<div class="grid grid-cols-3 gap-2">
 			{#each options as option (option)}
 				<label
-					class="flex cursor-pointer flex-col items-center gap-1 rounded-lg border p-2 text-center text-xs {visibility ===
+					class="flex cursor-pointer flex-col items-center gap-1 rounded-xl border p-2 text-center text-xs {visibility ===
 					option
-						? 'border-emerald-600 bg-emerald-50 text-emerald-800'
+						? 'border-brand-600 bg-brand-50 text-brand-800'
 						: 'border-slate-300 text-slate-600'}"
 				>
 					<input
@@ -56,7 +57,7 @@
 						bind:group={visibility}
 						class="sr-only"
 					/>
-					<span class="text-xl" aria-hidden="true">{visibilityIcon[option]}</span>
+					<VisibilityIcon visibility={option} size={22} strokeWidth={1.75} />
 					{visibilityLabel[option]}
 				</label>
 			{/each}
@@ -65,7 +66,7 @@
 	{/if}
 
 	{#if visibility === 'shared'}
-		<div class="mt-2 space-y-1 rounded-lg bg-slate-50 p-3">
+		<div class="mt-2 space-y-1 rounded-xl bg-slate-50 p-3">
 			{#each members as member (member.id)}
 				<label class="flex min-h-10 items-center gap-2">
 					<input

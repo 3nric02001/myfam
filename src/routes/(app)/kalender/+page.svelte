@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { ChevronLeft, ChevronRight, PartyPopper, Plus } from '@lucide/svelte';
 	import { addMonths, dayLabel, monthLabel, shortDate } from '$lib/dates';
-	import { visibilityIcon, visibilityLabel } from '$lib/visibility';
+	import { visibilityLabel } from '$lib/visibility';
+	import VisibilityIcon from '$lib/components/VisibilityIcon.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -38,7 +40,7 @@
 		href="?monat={addMonths(data.month, -1)}"
 		class="btn-secondary flex w-11 items-center justify-center px-0"
 		aria-label="Vorheriger Monat"
-		data-sveltekit-noscroll>‹</a
+		data-sveltekit-noscroll><ChevronLeft size={20} aria-hidden="true" /></a
 	>
 	{#if !data.today.startsWith(data.month)}
 		<a
@@ -51,7 +53,7 @@
 		href="?monat={addMonths(data.month, 1)}"
 		class="btn-secondary flex w-11 items-center justify-center px-0"
 		aria-label="Nächster Monat"
-		data-sveltekit-noscroll>›</a
+		data-sveltekit-noscroll><ChevronRight size={20} aria-hidden="true" /></a
 	>
 </div>
 
@@ -70,7 +72,7 @@
 				type="button"
 				onclick={() => (selected = date)}
 				class="flex h-12 flex-col items-center justify-start gap-0.5 rounded-lg pt-1 {isSelected
-					? 'bg-emerald-600 text-white'
+					? 'bg-brand-600 text-white'
 					: ''} {!inMonth && !isSelected ? 'text-slate-300' : ''}"
 				aria-pressed={isSelected}
 				aria-label="{dayLabel(date)}{holiday ? `, ${holiday}` : ''}{count
@@ -80,13 +82,13 @@
 				<span
 					class="flex size-7 items-center justify-center rounded-full text-sm {isToday &&
 					!isSelected
-						? 'font-bold text-emerald-700 ring-1 ring-emerald-600'
-						: ''} {holiday && !isSelected && inMonth ? 'font-semibold text-rose-600' : ''}"
+						? 'font-bold text-brand-700 ring-1 ring-brand-600'
+						: ''} {holiday && !isSelected && inMonth ? 'font-semibold text-accent-600' : ''}"
 					>{Number(date.slice(8))}</span
 				>
 				<span class="flex h-1.5 gap-0.5" aria-hidden="true">
 					{#each [0, 1, 2].slice(0, count) as i (i)}
-						<span class="size-1.5 rounded-full {isSelected ? 'bg-white' : 'bg-emerald-600'}"></span>
+						<span class="size-1.5 rounded-full {isSelected ? 'bg-white' : 'bg-brand-600'}"></span>
 					{/each}
 				</span>
 			</button>
@@ -97,14 +99,17 @@
 <section class="mt-5">
 	<div class="mb-2 flex items-center justify-between">
 		<h2 class="font-semibold">{dayLabel(selected)}</h2>
-		<a href="/kalender/neu?datum={selected}" class="btn-primary flex items-center px-3 py-1 text-sm"
-			>+ Termin</a
+		<a href="/kalender/neu?datum={selected}" class="btn-primary px-3 py-1 text-sm"
+			><Plus size={18} aria-hidden="true" /> Termin</a
 		>
 	</div>
 
 	{#if holidayByDate.get(selected)}
-		<p class="mb-2 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
-			🎉 {holidayByDate.get(selected)} (Feiertag)
+		<p
+			class="mb-2 flex items-center gap-2 rounded-xl bg-accent-50 px-3 py-2 text-sm text-accent-700"
+		>
+			<PartyPopper size={18} aria-hidden="true" />
+			{holidayByDate.get(selected)} (Feiertag)
 		</p>
 	{/if}
 
@@ -124,9 +129,10 @@
 							</span>
 						</span>
 						<span
+							class="text-slate-400"
 							title={visibilityLabel[event.visibility]}
 							aria-label={visibilityLabel[event.visibility]}
-							>{visibilityIcon[event.visibility]}</span
+							><VisibilityIcon visibility={event.visibility} /></span
 						>
 					</a>
 				</li>

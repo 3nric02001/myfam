@@ -2,14 +2,22 @@
 	import { page } from '$app/state';
 	import { invalidateAll } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import {
+		CalendarDays,
+		HouseHeart,
+		ListTodo,
+		Settings,
+		ShoppingCart,
+		UsersRound
+	} from '@lucide/svelte';
 
 	let { data, children } = $props();
 
 	const tabs = [
-		{ href: '/einkauf', label: 'Einkauf', icon: '🛒' },
-		{ href: '/kalender', label: 'Kalender', icon: '📅' },
-		{ href: '/planung', label: 'Planung', icon: '✅' },
-		{ href: '/familie', label: 'Familie', icon: '👪' }
+		{ href: '/einkauf', label: 'Einkauf', icon: ShoppingCart },
+		{ href: '/kalender', label: 'Kalender', icon: CalendarDays },
+		{ href: '/planung', label: 'Planung', icon: ListTodo },
+		{ href: '/familie', label: 'Familie', icon: UsersRound }
 	];
 
 	// Pick up changes made by other family members when the app comes back into view.
@@ -26,21 +34,25 @@
 
 <div class="mx-auto flex min-h-dvh max-w-md flex-col">
 	<header
-		class="sticky top-0 z-10 flex items-center border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur"
+		class="sticky top-0 z-10 flex items-center gap-3 border-b border-slate-200/70 bg-surface/85 px-4 py-3 backdrop-blur"
 	>
-		<div class="flex-1">
+		<span
+			class="flex size-10 items-center justify-center rounded-xl bg-brand-600 text-white"
+			aria-hidden="true"><HouseHeart size={22} strokeWidth={1.75} /></span
+		>
+		<div class="flex-1 leading-tight">
 			<p class="text-xs text-slate-500">Hallo {data.user.name}</p>
 			<p class="font-semibold text-slate-900">{data.family?.name ?? 'MyFam'}</p>
 		</div>
 		<a
 			href="/einstellungen"
-			class="-mr-2 flex size-11 items-center justify-center rounded-full text-xl {page.url.pathname.startsWith(
+			class="-mr-2 flex size-11 items-center justify-center rounded-full {page.url.pathname.startsWith(
 				'/einstellungen'
 			)
-				? 'bg-emerald-50'
-				: ''}"
+				? 'bg-brand-50 text-brand-700'
+				: 'text-slate-500'}"
 			aria-label="Einstellungen"
-			title="Einstellungen"><span aria-hidden="true">⚙️</span></a
+			title="Einstellungen"><Settings size={22} strokeWidth={1.75} aria-hidden="true" /></a
 		>
 	</header>
 
@@ -49,7 +61,7 @@
 	</main>
 
 	<nav
-		class="fixed inset-x-0 bottom-0 z-10 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)]"
+		class="fixed inset-x-0 bottom-0 z-10 border-t border-slate-200/70 bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur"
 	>
 		<ul class="mx-auto grid max-w-md grid-cols-4">
 			{#each tabs as tab (tab.href)}
@@ -57,12 +69,17 @@
 				<li>
 					<a
 						href={tab.href}
-						class="flex flex-col items-center gap-0.5 py-2 text-xs {active
-							? 'font-semibold text-emerald-700'
+						class="flex flex-col items-center gap-1 pt-2 pb-1.5 text-xs {active
+							? 'font-semibold text-brand-700'
 							: 'text-slate-500'}"
 						aria-current={active ? 'page' : undefined}
 					>
-						<span class="text-xl" aria-hidden="true">{tab.icon}</span>
+						<span
+							class="flex h-8 w-14 items-center justify-center rounded-full transition-colors {active
+								? 'bg-brand-100'
+								: ''}"
+							aria-hidden="true"><tab.icon size={22} strokeWidth={active ? 2 : 1.75} /></span
+						>
 						{tab.label}
 					</a>
 				</li>

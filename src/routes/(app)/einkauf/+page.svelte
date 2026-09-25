@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Check, Plus, ShoppingBasket, X } from '@lucide/svelte';
 	import { enhance } from '$app/forms';
 	import type { PageProps } from './$types';
 
@@ -31,12 +32,20 @@
 		class="flex-1"
 	/>
 	<input name="quantity" placeholder="Menge" maxlength="30" class="w-20" />
-	<button class="btn-primary px-4" aria-label="Hinzufügen">+</button>
+	<button class="btn-primary px-3" aria-label="Hinzufügen"
+		><Plus size={22} aria-hidden="true" /></button
+	>
 </form>
 {#if form?.message}<p class="error mb-4">{form.message}</p>{/if}
 
 {#if data.items.length === 0}
-	<p class="py-10 text-center text-slate-500">Die Liste ist leer. 🎉</p>
+	<div class="flex flex-col items-center py-10 text-center text-slate-500">
+		<span
+			class="mb-3 flex size-14 items-center justify-center rounded-2xl bg-brand-50 text-brand-600"
+			><ShoppingBasket size={28} strokeWidth={1.75} aria-hidden="true" /></span
+		>
+		Die Liste ist leer.
+	</div>
 {/if}
 
 {#snippet row(item: (typeof data.items)[number])}
@@ -47,9 +56,10 @@
 			<button class="flex min-h-12 flex-1 items-center gap-3 text-left">
 				<span
 					class="flex size-6 shrink-0 items-center justify-center rounded-full border-2 {item.done
-						? 'border-emerald-600 bg-emerald-600 text-white'
+						? 'border-brand-600 bg-brand-600 text-white'
 						: 'border-slate-300'}"
-					aria-hidden="true">{item.done ? '✓' : ''}</span
+					aria-hidden="true"
+					>{#if item.done}<Check size={15} strokeWidth={3} />{/if}</span
 				>
 				<span class="flex-1">
 					<span class={item.done ? 'text-slate-400 line-through' : ''}>{item.name}</span>
@@ -62,7 +72,9 @@
 		</form>
 		<form method="POST" action="?/delete" use:enhance>
 			<input type="hidden" name="id" value={item.id} />
-			<button class="p-2 text-slate-400" aria-label="{item.name} löschen">✕</button>
+			<button class="icon-btn" aria-label="{item.name} löschen"
+				><X size={18} aria-hidden="true" /></button
+			>
 		</form>
 	</li>
 {/snippet}

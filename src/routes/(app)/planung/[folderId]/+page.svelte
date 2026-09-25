@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { ChevronLeft, ChevronRight, Pencil, Plus, StickyNote } from '@lucide/svelte';
 	import { enhance } from '$app/forms';
 	import VisibilityBadge from '$lib/components/VisibilityBadge.svelte';
 	import VisibilityPicker from '$lib/components/VisibilityPicker.svelte';
@@ -12,7 +13,9 @@
 
 <svelte:head><title>{data.folder.name} · Planung · MyFam</title></svelte:head>
 
-<a href="/planung" class="mb-2 inline-block text-sm text-slate-500">← Planung</a>
+<a href="/planung" class="mb-2 inline-flex items-center gap-1 text-sm text-slate-500"
+	><ChevronLeft size={16} aria-hidden="true" /> Planung</a
+>
 
 <div class="mb-4 flex items-start gap-2">
 	<div class="flex-1">
@@ -31,7 +34,7 @@
 			onclick={() => (editing = true)}
 			aria-label="Ordner bearbeiten"
 		>
-			✎
+			<Pencil size={18} aria-hidden="true" />
 		</button>
 	{/if}
 </div>
@@ -89,7 +92,9 @@
 		maxlength="100"
 		class="flex-1"
 	/>
-	<button class="btn-primary px-4" aria-label="Karte anlegen">+</button>
+	<button class="btn-primary px-3" aria-label="Karte anlegen"
+		><Plus size={22} aria-hidden="true" /></button
+	>
 </form>
 
 {#if data.cards.length === 0}
@@ -102,7 +107,10 @@
 					href="/planung/{data.folder.id}/{card.id}"
 					class="card flex items-center gap-3 p-4 active:bg-slate-50"
 				>
-					<span class="text-xl" aria-hidden="true">🗒️</span>
+					<span
+						class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600"
+						aria-hidden="true"><StickyNote size={20} strokeWidth={1.75} /></span
+					>
 					<span class="flex-1">
 						<span class="block font-medium break-words">{card.title}</span>
 						<span class="block text-xs text-slate-500">
@@ -112,7 +120,7 @@
 							)}
 						</span>
 					</span>
-					<span class="text-slate-400" aria-hidden="true">›</span>
+					<ChevronRight size={18} class="text-slate-400" aria-hidden="true" />
 				</a>
 			</li>
 		{/each}
