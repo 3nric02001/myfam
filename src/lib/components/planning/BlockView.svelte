@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Link } from '@lucide/svelte';
 	import { renderText } from '$lib/format';
 	import type { Block } from '$lib/planning';
 
@@ -47,9 +48,12 @@
 		rel="noopener noreferrer"
 		class="flex items-center gap-3 rounded-xl bg-slate-50 p-3 active:bg-slate-100"
 	>
-		<span class="text-xl" aria-hidden="true">🔗</span>
+		<span
+			class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600"
+			aria-hidden="true"><Link size={18} /></span
+		>
 		<span class="min-w-0 flex-1">
-			<span class="block truncate font-medium text-emerald-700">
+			<span class="block truncate font-medium text-brand-700">
 				{block.data.title || host(block.data.url)}
 			</span>
 			<span class="block truncate text-xs text-slate-500">{block.data.url}</span>

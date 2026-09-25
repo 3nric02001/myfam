@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Check, ChevronRight, Plus, ShoppingBasket, Tag, X } from '@lucide/svelte';
 	import { enhance } from '$app/forms';
 	import { formatPrice, storeLabel } from '$lib/offers';
 	import type { PageProps } from './$types';
@@ -32,43 +33,62 @@
 		class="flex-1"
 	/>
 	<input name="quantity" placeholder="Menge" maxlength="30" class="w-20" />
-	<button class="btn-primary px-4" aria-label="Hinzufügen">+</button>
+	<button class="btn-primary px-3" aria-label="Hinzufügen"
+		><Plus size={22} aria-hidden="true" /></button
+	>
 </form>
 {#if form?.message}<p class="error mb-4">{form.message}</p>{/if}
 
 {#if open.length}
 	{#await data.offers}
-		<p class="card mb-5 p-3 text-sm text-slate-500">🏷️ Suche Angebote …</p>
+		<p class="card mb-5 flex items-center gap-2 p-3 text-sm text-slate-500">
+			<Tag size={18} aria-hidden="true" /> Suche Angebote …
+		</p>
 	{:then offers}
-		<a href="/einkauf/angebote" class="card mb-5 block p-3 text-sm">
-			{#if !offers.configured}
-				<span class="font-medium">🏷️ Wo kaufst du ein?</span>
-				<span class="block text-slate-500">Märkte wählen, um passende Angebote zu sehen →</span>
-			{:else if offers.best}
-				<span class="block font-medium">
-					🏷️ Tipp: {offers.best.stores.map(storeLabel).join(' + ')}
-				</span>
-				<span class="block text-slate-500">
-					{offers.best.covered} von {open.length}
-					{open.length === 1 ? 'Artikel' : 'Artikeln'} im Angebot · Details →
-				</span>
-			{:else}
-				<span class="font-medium">🏷️ Keine passenden Angebote gefunden</span>
-				<span class="block text-slate-500">Angebot eintragen oder Märkte ändern →</span>
-			{/if}
-			{#if offers.failed}
-				<span class="mt-1 block text-xs text-amber-700">
-					Automatische Angebote gerade nicht erreichbar.
-				</span>
-			{/if}
+		<a href="/einkauf/angebote" class="card mb-5 flex items-center gap-3 p-3 text-sm">
+			<span
+				class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-50 text-accent-600"
+				aria-hidden="true"><Tag size={20} strokeWidth={1.75} /></span
+			>
+			<span class="flex-1">
+				{#if !offers.configured}
+					<span class="block font-medium">Wo kaufst du ein?</span>
+					<span class="block text-slate-500">Märkte wählen, um passende Angebote zu sehen</span>
+				{:else if offers.best}
+					<span class="block font-medium">
+						Tipp: {offers.best.stores.map(storeLabel).join(' + ')}
+					</span>
+					<span class="block text-slate-500">
+						{offers.best.covered} von {open.length}
+						{open.length === 1 ? 'Artikel' : 'Artikeln'} im Angebot
+					</span>
+				{:else}
+					<span class="block font-medium">Keine passenden Angebote gefunden</span>
+					<span class="block text-slate-500">Angebot eintragen oder Märkte ändern</span>
+				{/if}
+				{#if offers.failed}
+					<span class="mt-1 block text-xs text-accent-700">
+						Automatische Angebote gerade nicht erreichbar.
+					</span>
+				{/if}
+			</span>
+			<ChevronRight size={18} class="shrink-0 text-slate-400" aria-hidden="true" />
 		</a>
 	{:catch}
-		<p class="card mb-5 p-3 text-sm text-slate-500">🏷️ Angebote konnten nicht geladen werden.</p>
+		<p class="card mb-5 flex items-center gap-2 p-3 text-sm text-slate-500">
+			<Tag size={18} aria-hidden="true" /> Angebote konnten nicht geladen werden.
+		</p>
 	{/await}
 {/if}
 
 {#if data.items.length === 0}
-	<p class="py-10 text-center text-slate-500">Die Liste ist leer. 🎉</p>
+	<div class="flex flex-col items-center py-10 text-center text-slate-500">
+		<span
+			class="mb-3 flex size-14 items-center justify-center rounded-2xl bg-brand-50 text-brand-600"
+			><ShoppingBasket size={28} strokeWidth={1.75} aria-hidden="true" /></span
+		>
+		Die Liste ist leer.
+	</div>
 {/if}
 
 {#snippet row(item: (typeof data.items)[number])}
@@ -79,9 +99,10 @@
 			<button class="flex min-h-12 flex-1 items-center gap-3 text-left">
 				<span
 					class="flex size-6 shrink-0 items-center justify-center rounded-full border-2 {item.done
-						? 'border-emerald-600 bg-emerald-600 text-white'
+						? 'border-brand-600 bg-brand-600 text-white'
 						: 'border-slate-300'}"
-					aria-hidden="true">{item.done ? '✓' : ''}</span
+					aria-hidden="true"
+					>{#if item.done}<Check size={15} strokeWidth={3} />{/if}</span
 				>
 				<span class="flex-1">
 					<span class={item.done ? 'text-slate-400 line-through' : ''}>{item.name}</span>
@@ -90,8 +111,9 @@
 						{#await data.offers then offers}
 							{@const best = offers.byItem[item.id]?.[0]}
 							{#if best}
-								<span class="block text-xs font-medium text-emerald-700">
-									🏷️ {storeLabel(best.store)}
+								<span class="flex items-center gap-1 text-xs font-medium text-accent-700">
+									<Tag size={12} aria-hidden="true" />
+									{storeLabel(best.store)}
 									{formatPrice(best.price)}
 									{#if offers.byItem[item.id].length > 1}
 										<span class="font-normal text-slate-500">
@@ -110,7 +132,9 @@
 		</form>
 		<form method="POST" action="?/delete" use:enhance>
 			<input type="hidden" name="id" value={item.id} />
-			<button class="p-2 text-slate-400" aria-label="{item.name} löschen">✕</button>
+			<button class="icon-btn" aria-label="{item.name} löschen"
+				><X size={18} aria-hidden="true" /></button
+			>
 		</form>
 	</li>
 {/snippet}

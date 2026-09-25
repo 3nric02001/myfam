@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Folder, FolderOpen, FolderPlus } from '@lucide/svelte';
 	import { enhance } from '$app/forms';
 	import VisibilityBadge from '$lib/components/VisibilityBadge.svelte';
 	import VisibilityPicker from '$lib/components/VisibilityPicker.svelte';
@@ -13,7 +14,9 @@
 <div class="mb-4 flex items-center justify-between">
 	<h1 class="text-xl font-bold">Planung</h1>
 	{#if !creating}
-		<button class="btn-primary" onclick={() => (creating = true)}>+ Ordner</button>
+		<button class="btn-primary" onclick={() => (creating = true)}
+			><FolderPlus size={18} aria-hidden="true" /> Ordner</button
+		>
 	{/if}
 </div>
 
@@ -48,7 +51,10 @@
 
 {#if data.folders.length === 0 && !creating}
 	<div class="card p-6 text-center text-slate-500">
-		<p class="text-3xl" aria-hidden="true">🗂️</p>
+		<span
+			class="mx-auto flex size-14 items-center justify-center rounded-2xl bg-brand-50 text-brand-600"
+			><FolderOpen size={28} strokeWidth={1.75} aria-hidden="true" /></span
+		>
 		<p class="mt-2">
 			Noch keine Ordner. Lege einen an, z. B. für den Urlaub, Geschenkideen oder Rezepte.
 		</p>
@@ -63,8 +69,11 @@
 				class="card flex h-full min-h-28 flex-col justify-between p-3 active:bg-slate-50"
 			>
 				<span>
-					<span class="text-2xl" aria-hidden="true">📁</span>
-					<span class="mt-1 block font-semibold break-words">{folder.name}</span>
+					<span
+						class="flex size-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600"
+						aria-hidden="true"><Folder size={22} strokeWidth={1.75} /></span
+					>
+					<span class="mt-2 block font-semibold break-words">{folder.name}</span>
 					<span class="block text-xs text-slate-500">
 						{folder.cards}
 						{folder.cards === 1 ? 'Karte' : 'Karten'}

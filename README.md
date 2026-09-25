@@ -48,6 +48,12 @@ src/routes/
 - **Detailansicht:** Eine Karte besteht aus Inhalten, die man frei hinzufügen, bearbeiten, verschieben und löschen kann: Text mit einfacher Formatierung (`**fett**`, `*kursiv*`, `# Überschrift`, `- Liste`, `- [ ] Aufgabe`), Tabellen, Links und Bilder.
 - **Bilder** werden im Browser auf höchstens 2000 px verkleinert (dabei fallen auch GPS-Daten weg) und dürfen bis 10 MB groß sein. Erlaubt sind JPEG, PNG, WebP und GIF, geprüft wird der Dateiinhalt. Sie liegen im Ordner `uploads/` neben der Datenbank (im Docker-Volume unter `/data/uploads`) und werden nur an Personen ausgeliefert, die die Karte sehen dürfen. Mit `UPLOAD_DIR` lässt sich ein anderer Ordner wählen.
 
+## Design
+
+- **Farben** stehen zentral in `src/routes/layout.css`: `brand` (Petrol-Grün, Buttons und aktive Elemente), `accent` (Bernstein, z. B. Feiertage und Angebote), `slate` (warme Grautöne) und `surface` (Hintergrund von Karten). Komponenten nutzen nur diese Namen.
+- **Dunkelmodus** folgt automatisch der Einstellung des Geräts. Dafür werden die Farbskalen getauscht, Komponenten brauchen keine `dark:`-Klassen.
+- **Piktogramme** kommen aus [Lucide](https://lucide.dev) (`@lucide/svelte`), keine Emojis.
+
 ## Entwickeln
 
 ```sh

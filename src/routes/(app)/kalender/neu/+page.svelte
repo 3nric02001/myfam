@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { ChevronLeft } from '@lucide/svelte';
 	import EventForm from '../EventForm.svelte';
 	import type { PageProps } from './$types';
 
@@ -8,7 +9,9 @@
 <svelte:head><title>Neuer Termin · MyFam</title></svelte:head>
 
 <div class="mb-4 flex items-center gap-2">
-	<a href="/kalender?tag={data.date}" class="p-1 text-slate-500" aria-label="Zurück">‹</a>
+	<a href="/kalender?tag={data.date}" class="icon-btn -ml-2 text-slate-500" aria-label="Zurück"
+		><ChevronLeft size={24} aria-hidden="true" /></a
+	>
 	<h1 class="text-xl font-bold">Neuer Termin</h1>
 </div>
 

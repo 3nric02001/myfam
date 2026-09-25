@@ -1,8 +1,10 @@
 <script lang="ts">
+	import { ChevronLeft } from '@lucide/svelte';
 	import { enhance } from '$app/forms';
 	import { dayLabel } from '$lib/dates';
 	import EventForm from '../EventForm.svelte';
-	import { visibilityIcon, visibilityLabel } from '$lib/visibility';
+	import { visibilityLabel } from '$lib/visibility';
+	import VisibilityIcon from '$lib/components/VisibilityIcon.svelte';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
@@ -16,7 +18,11 @@
 <svelte:head><title>{event.title} · MyFam</title></svelte:head>
 
 <div class="mb-4 flex items-center gap-2">
-	<a href="/kalender?tag={event.startDate}" class="p-1 text-slate-500" aria-label="Zurück">‹</a>
+	<a
+		href="/kalender?tag={event.startDate}"
+		class="icon-btn -ml-2 text-slate-500"
+		aria-label="Zurück"><ChevronLeft size={24} aria-hidden="true" /></a
+	>
 	<h1 class="flex-1 text-xl font-bold">{data.editable ? 'Termin bearbeiten' : event.title}</h1>
 </div>
 
@@ -52,7 +58,7 @@
 		</p>
 		{#if event.notes}<p class="whitespace-pre-line text-slate-700">{event.notes}</p>{/if}
 		<p class="text-sm text-slate-500">
-			{visibilityIcon[event.visibility]}
+			<VisibilityIcon visibility={event.visibility} size={16} class="inline align-[-3px]" />
 			{visibilityLabel[event.visibility]}{event.visibility === 'shared' && sharedNames.length
 				? `: ${sharedNames.join(', ')}`
 				: ''}

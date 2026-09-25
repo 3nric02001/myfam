@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { X } from '@lucide/svelte';
 	// Editable grid. The first row is the header. Submits the cells as JSON in the `rows` field.
 	let { rows: initial = [] }: { rows?: string[][] } = $props();
 
@@ -35,7 +36,8 @@
 							class="w-full text-xs text-slate-400 disabled:opacity-30"
 							disabled={cols === 1}
 							onclick={() => removeCol(c)}
-							aria-label="Spalte {c + 1} entfernen">✕</button
+							aria-label="Spalte {c + 1} entfernen"
+							><X size={14} class="mx-auto" aria-hidden="true" /></button
 						>
 					</th>
 				{/each}
@@ -62,7 +64,8 @@
 							class="px-1 text-xs text-slate-400 disabled:opacity-30"
 							disabled={rows.length === 1}
 							onclick={() => removeRow(r)}
-							aria-label="Zeile {r + 1} entfernen">✕</button
+							aria-label="Zeile {r + 1} entfernen"
+							><X size={14} class="mx-auto" aria-hidden="true" /></button
 						>
 					</td>
 				</tr>

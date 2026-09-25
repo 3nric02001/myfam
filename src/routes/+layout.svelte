@@ -12,7 +12,7 @@
 </script>
 
 {#if wrongOrigin}
-	<div role="alert" class="sticky top-0 z-50 bg-red-600 px-4 py-3 text-sm text-white">
+	<div role="alert" class="sticky top-0 z-50 bg-[#dc2626] px-4 py-3 text-sm text-white">
 		<p class="mx-auto max-w-md">
 			Die App ist für <strong>{wrongOrigin}</strong> eingerichtet, du rufst sie aber über
 			<strong>{location.origin}</strong> auf. So funktionieren Anmelden und Speichern nicht. Setze

@@ -1,15 +1,99 @@
 @import 'tailwindcss';
 @plugin '@tailwindcss/forms';
 
+/*
+ * Color system. Components only use these names:
+ *   brand   – main color (buttons, active tab, selection)
+ *   accent  – highlights such as holidays
+ *   slate   – neutral grays for text, borders and backgrounds
+ *   surface – background of cards, header and navigation
+ * Dark mode swaps the scales, so `bg-slate-50` stays the page background and `text-slate-900`
+ * stays the main text color without any `dark:` classes.
+ */
+@theme {
+	--color-brand-50: #eef7f4;
+	--color-brand-100: #d6ede6;
+	--color-brand-200: #afdacd;
+	--color-brand-300: #7fc1ae;
+	--color-brand-400: #4fa38d;
+	--color-brand-500: #2f8873;
+	--color-brand-600: #236e5d;
+	--color-brand-700: #1e594c;
+	--color-brand-800: #1b483e;
+	--color-brand-900: #173b34;
+	--color-brand-950: #0c221e;
+	--color-slate-50: #fafaf9;
+	--color-slate-100: #f5f4f2;
+	--color-slate-200: #e8e5e1;
+	--color-slate-300: #d7d3ce;
+	--color-slate-400: #a9a29b;
+	--color-slate-500: #7a726b;
+	--color-slate-600: #59534d;
+	--color-slate-700: #45403b;
+	--color-slate-800: #2b2724;
+	--color-slate-900: #1d1a18;
+	--color-slate-950: #100e0d;
+	--color-accent-50: #fdf4ea;
+	--color-accent-100: #fae3c9;
+	--color-accent-200: #f4c58f;
+	--color-accent-300: #eda257;
+	--color-accent-400: #e3812c;
+	--color-accent-500: #cc6a1a;
+	--color-accent-600: #b05713;
+	--color-accent-700: #8c4412;
+	--color-accent-800: #713815;
+	--color-accent-900: #5c2f14;
+	--color-accent-950: #341708;
+	--color-surface: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--color-red-50: #3b1416;
+		--color-red-600: #f87171;
+		--color-red-700: #fca5a5;
+		--color-brand-50: #173b34;
+		--color-brand-100: #1b483e;
+		--color-brand-200: #1b483e;
+		--color-brand-300: #1e594c;
+		--color-brand-400: #4fa38d;
+		--color-brand-500: #2f8873;
+		--color-brand-600: #2f8873;
+		--color-brand-700: #7fc1ae;
+		--color-brand-800: #afdacd;
+		--color-brand-900: #d6ede6;
+		--color-brand-950: #eef7f4;
+		--color-slate-50: #100e0d;
+		--color-slate-100: #2b2724;
+		--color-slate-200: #2b2724;
+		--color-slate-300: #45403b;
+		--color-slate-400: #7a726b;
+		--color-slate-500: #a9a29b;
+		--color-slate-600: #d7d3ce;
+		--color-slate-700: #d7d3ce;
+		--color-slate-800: #e8e5e1;
+		--color-slate-900: #f5f4f2;
+		--color-slate-950: #fafaf9;
+		--color-accent-50: #341708;
+		--color-accent-100: #5c2f14;
+		--color-accent-200: #713815;
+		--color-accent-300: #8c4412;
+		--color-accent-400: #e3812c;
+		--color-accent-500: #cc6a1a;
+		--color-accent-600: #cc6a1a;
+		--color-accent-700: #eda257;
+		--color-accent-800: #f4c58f;
+		--color-accent-900: #fae3c9;
+		--color-accent-950: #fdf4ea;
+		--color-surface: #1d1a18;
+	}
+}
+
 @layer base {
 	html {
 		@apply bg-slate-50 text-slate-900 antialiased;
+		color-scheme: light dark;
 		-webkit-tap-highlight-color: transparent;
-	}
-	input,
-	select,
-	textarea {
-		@apply rounded-lg border-slate-300 text-base focus:border-emerald-600 focus:ring-emerald-600;
 	}
 	input:not([type='checkbox']):not([type='radio']) {
 		@apply w-full;
@@ -20,8 +104,18 @@
 }
 
 @layer components {
+	/* Form fields live here rather than in base so they win over @tailwindcss/forms. */
+	input:not([type='checkbox']):not([type='radio']):not([type='file']),
+	select,
+	textarea {
+		@apply rounded-xl border-slate-200 bg-surface text-base text-slate-900 placeholder:text-slate-400 focus:border-brand-600 focus:ring-brand-600;
+	}
+	input[type='checkbox'],
+	input[type='radio'] {
+		@apply border-slate-300 bg-surface text-brand-600 focus:ring-brand-600;
+	}
 	.card {
-		@apply rounded-2xl border border-slate-200 bg-white shadow-sm;
+		@apply rounded-2xl border border-slate-200/70 bg-surface shadow-[0_1px_2px_rgb(0_0_0/0.04),0_4px_12px_-4px_rgb(0_0_0/0.06)];
 	}
 	.card.space-y-4:not(.p-4) {
 		@apply p-5;
@@ -30,19 +124,23 @@
 		@apply mb-1 block text-sm font-medium text-slate-700;
 	}
 	.btn-primary {
-		@apply min-h-11 rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white active:bg-emerald-700 disabled:opacity-50;
+		@apply inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 font-semibold text-white shadow-sm active:bg-brand-700 disabled:opacity-50;
 	}
 	.btn-secondary {
-		@apply min-h-11 rounded-lg border border-slate-300 bg-white px-4 py-2 font-medium text-slate-700 active:bg-slate-100;
+		@apply inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-surface px-4 py-2 font-medium text-slate-700 active:bg-slate-100;
+	}
+	/* Round icon button, e.g. delete or edit next to a list entry. */
+	.icon-btn {
+		@apply inline-flex size-10 shrink-0 items-center justify-center rounded-full text-slate-400 active:bg-slate-100;
 	}
 	.link {
-		@apply font-medium text-emerald-700 underline;
+		@apply font-medium text-brand-700 underline;
 	}
 	.error {
-		@apply rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700;
+		@apply rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700;
 	}
 	.success {
-		@apply rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800;
+		@apply rounded-xl bg-brand-50 px-3 py-2 text-sm text-brand-800;
 	}
 }
 
@@ -73,6 +171,6 @@
 		@apply text-slate-400 line-through;
 	}
 	.rich a {
-		@apply text-emerald-700 underline;
+		@apply text-brand-700 underline;
 	}
 }

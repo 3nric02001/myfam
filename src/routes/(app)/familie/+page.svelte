@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Check, Share2, X } from '@lucide/svelte';
 	import { enhance } from '$app/forms';
 	import { STATES } from '$lib/holidays';
 	import type { PageProps } from './$types';
@@ -42,7 +43,7 @@
 					<form method="POST" action="?/role" use:enhance>
 						<input type="hidden" name="userId" value={member.id} />
 						<input type="hidden" name="role" value={member.role === 'admin' ? 'member' : 'admin'} />
-						<button class="text-xs text-emerald-700 underline">
+						<button class="text-xs text-brand-700 underline">
 							{member.role === 'admin' ? 'Zum Mitglied' : 'Zum Admin'}
 						</button>
 					</form>
@@ -54,7 +55,9 @@
 						}}
 					>
 						<input type="hidden" name="userId" value={member.id} />
-						<button class="p-1 text-slate-400" aria-label="{member.name} entfernen">✕</button>
+						<button class="icon-btn" aria-label="{member.name} entfernen"
+							><X size={18} aria-hidden="true" /></button
+						>
 					</form>
 				{/if}
 			</li>
@@ -76,7 +79,10 @@
 				onfocus={(e) => e.currentTarget.select()}
 			/>
 			<button class="btn-primary w-full" onclick={() => share(form.inviteUrl)}>
-				{copied ? 'Link kopiert ✓' : 'Link teilen'}
+				{#if copied}<Check size={18} aria-hidden="true" /> Link kopiert{:else}<Share2
+						size={18}
+						aria-hidden="true"
+					/> Link teilen{/if}
 			</button>
 		{:else}
 			<form
@@ -118,7 +124,9 @@
 			</select>
 			<button class="btn-primary">Speichern</button>
 		</form>
-		{#if form && 'stateSaved' in form}<p class="text-sm text-emerald-700">Gespeichert ✓</p>{/if}
+		{#if form && 'stateSaved' in form}<p class="flex items-center gap-1 text-sm text-brand-700">
+				<Check size={16} aria-hidden="true" /> Gespeichert
+			</p>{/if}
 	{:else}
 		<p class="text-sm text-slate-600">
 			{data.state ? `Bundesweit und ${STATES[data.state]}` : 'Nur bundesweite Feiertage'}. Das kann
@@ -136,7 +144,7 @@
 					<input type="hidden" name="familyId" value={f.id} />
 					<button
 						class="rounded-full border px-3 py-1 text-sm {f.id === data.family?.id
-							? 'border-emerald-600 bg-emerald-50 text-emerald-800'
+							? 'border-brand-600 bg-brand-50 text-brand-800'
 							: 'border-slate-300'}"
 						disabled={f.id === data.family?.id}>{f.name}</button
 					>
