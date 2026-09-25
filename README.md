@@ -41,6 +41,14 @@ npm run dev
 Nützliche Befehle: `npm test` (Unit-Tests), `npm run check` (Typen), `npm run lint`.
 Nach einer Änderung an `src/lib/server/db/schema.ts`: `npm run db:generate` erzeugt eine neue Migration.
 
+## Lokal mit Docker testen
+
+```sh
+docker compose up -d --build
+```
+
+Dann `http://localhost:3000` öffnen. Wichtig: genau diese Adresse benutzen, nicht `127.0.0.1` oder die IP des Rechners, sonst lehnt die App Formulare ab. Die App zeigt in dem Fall oben einen roten Hinweis an. Für eine andere Adresse oder einen anderen Port `PUBLIC_URL` bzw. `PORT` in der `.env` setzen.
+
 ## Betrieb mit Docker (Ubuntu)
 
 Die App läuft als ein Container hinter deinem eigenen Reverse Proxy (z. B. nginx, Traefik oder Nginx Proxy Manager). Der Proxy kümmert sich um HTTPS und leitet per HTTP an den Container weiter.

@@ -1,8 +1,13 @@
-import type { Handle } from '@sveltejs/kit';
+import type { Handle, ServerInit } from '@sveltejs/kit';
+import { env } from '$env/dynamic/private';
 import { db } from '$lib/server/db';
 import { sessionCookieName, setSessionFamily, validateSession } from '$lib/server/auth';
 import { getMembership, listFamiliesOfUser } from '$lib/server/families';
 import { setSessionCookie } from '$lib/server/cookies';
+
+export const init: ServerInit = () => {
+	if (env.ORIGIN) console.log(`MyFam erwartet Aufrufe über ${env.ORIGIN}`);
+};
 
 export const handle: Handle = async ({ event, resolve }) => {
 	event.locals.user = null;
