@@ -1,0 +1,81 @@
+# MyFam – Familien Organizer
+
+Ein gemeinsamer Ort für die ganze Familie: Einkaufsliste, Termine und Planung. Die App ist für das Smartphone gebaut und lässt sich dort wie eine normale App auf den Startbildschirm legen. Mehrere Familien können dieselbe Installation nutzen, ohne die Daten der anderen zu sehen.
+
+## Stand
+
+| Bereich                           | Stand                                                    |
+| --------------------------------- | -------------------------------------------------------- |
+| Konto, Login, Abmelden            | fertig                                                   |
+| Familien, Rollen, Einladungslinks | fertig                                                   |
+| Einkaufsliste                     | fertig (hinzufügen, abhaken, löschen, Erledigte löschen) |
+| Kalender                          | Platzhalter                                              |
+| Planung / Aufgaben                | Platzhalter                                              |
+
+## Technik
+
+- [SvelteKit](https://svelte.dev) mit TypeScript, Tailwind CSS, `adapter-node`
+- SQLite über [Drizzle ORM](https://orm.drizzle.team) (`better-sqlite3`), Migrationen in `drizzle/` laufen beim Start automatisch
+- Eigene Anmeldung: Passwörter mit Argon2id, Sitzungen per `httpOnly`-Cookie (in der Datenbank liegt nur ein Hash des Tokens)
+- Mandanten: Jede Tabelle mit Familiendaten hat eine `family_id`, und alle Abfragen in `src/lib/server/*.ts` filtern danach
+
+```
+src/lib/server/
+  auth.ts        Passwörter, Sitzungen
+  families.ts    Familien, Mitglieder, Einladungen
+  shopping.ts    Einkaufsliste
+  db/schema.ts   Datenbankschema
+src/routes/
+  (auth)/        Login, Registrieren, Einladung annehmen
+  (app)/         Einkauf, Kalender, Planung, Familie
+```
+
+## Entwickeln
+
+```sh
+cp .env.example .env
+npm install
+npm run dev
+```
+
+Nützliche Befehle: `npm test` (Unit-Tests), `npm run check` (Typen), `npm run lint`.
+Nach einer Änderung an `src/lib/server/db/schema.ts`: `npm run db:generate` erzeugt eine neue Migration.
+
+## Lokal mit Docker testen
+
+```sh
+docker compose up -d --build
+```
+
+Dann `http://localhost:3000` öffnen. Wichtig: genau diese Adresse benutzen, nicht `127.0.0.1` oder die IP des Rechners, sonst lehnt die App Formulare ab. Die App zeigt in dem Fall oben einen roten Hinweis an. Für eine andere Adresse oder einen anderen Port `PUBLIC_URL` bzw. `PORT` in der `.env` setzen.
+
+## Betrieb mit Docker (Ubuntu)
+
+Die App läuft als ein Container hinter deinem eigenen Reverse Proxy (z. B. nginx, Traefik oder Nginx Proxy Manager). Der Proxy kümmert sich um HTTPS und leitet per HTTP an den Container weiter.
+
+```sh
+git clone https://github.com/3nric02001/myfam.git && cd myfam
+echo "PUBLIC_URL=https://myfam.deine-domain.de" > .env
+docker compose up -d --build
+```
+
+Danach lauscht die App auf `127.0.0.1:3000`. Im Reverse Proxy leitest du die Domain dorthin weiter, z. B. mit nginx:
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:3000;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+- `PUBLIC_URL` muss genau die Adresse sein, die im Browser steht. SvelteKit prüft damit die Herkunft von Formularen (CSRF-Schutz), und die Einladungslinks werden daraus gebaut.
+- `PORT` ändert den Port auf dem Host. `BIND=0.0.0.0` macht ihn im Netzwerk erreichbar, falls der Proxy auf einem anderen Rechner läuft.
+- Läuft der Proxy selbst in Docker, kannst du den Container stattdessen in dasselbe Docker-Netzwerk hängen und `app:3000` als Ziel nehmen.
+
+Danach unter `https://<deine Domain>/registrieren` die erste Familie anlegen und die anderen über **Familie → Einladungslink erstellen** einladen.
+
+- **Update:** `git pull && docker compose up -d --build`
+- **Backup:** Die Datenbank liegt im Volume `app-data` (`/data/myfam.db`), z. B.
+  `docker compose exec app node -e "require('better-sqlite3')('/data/myfam.db').backup('/data/backup.db')"` und dann `docker compose cp app:/data/backup.db .`

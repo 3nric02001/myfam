@@ -1,0 +1,18 @@
+# Runs the app behind your own reverse proxy (nginx, Traefik, Nginx Proxy Manager, ...),
+# which terminates HTTPS and forwards to this container over plain HTTP.
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      # Public URL exactly as users open it in the browser, e.g. https://myfam.example.de.
+      # Form posts from any other address are rejected, so this must match.
+      ORIGIN: ${PUBLIC_URL:-http://localhost:${PORT:-3000}}
+    ports:
+      # Only reachable from this host by default; set BIND=0.0.0.0 if the proxy runs elsewhere.
+      - '${BIND:-127.0.0.1}:${PORT:-3000}:3000'
+    volumes:
+      - app-data:/data
+
+volumes:
+  app-data:

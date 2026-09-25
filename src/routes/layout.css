@@ -1,0 +1,44 @@
+@import 'tailwindcss';
+@plugin '@tailwindcss/forms';
+
+@layer base {
+	html {
+		@apply bg-slate-50 text-slate-900 antialiased;
+		-webkit-tap-highlight-color: transparent;
+	}
+	input,
+	select,
+	textarea {
+		@apply rounded-lg border-slate-300 text-base focus:border-emerald-600 focus:ring-emerald-600;
+	}
+	input:not([type='checkbox']):not([type='radio']) {
+		@apply w-full;
+	}
+	button {
+		@apply cursor-pointer;
+	}
+}
+
+@layer components {
+	.card {
+		@apply rounded-2xl border border-slate-200 bg-white shadow-sm;
+	}
+	.card.space-y-4:not(.p-4) {
+		@apply p-5;
+	}
+	.label {
+		@apply mb-1 block text-sm font-medium text-slate-700;
+	}
+	.btn-primary {
+		@apply min-h-11 rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white active:bg-emerald-700 disabled:opacity-50;
+	}
+	.btn-secondary {
+		@apply min-h-11 rounded-lg border border-slate-300 bg-white px-4 py-2 font-medium text-slate-700 active:bg-slate-100;
+	}
+	.link {
+		@apply font-medium text-emerald-700 underline;
+	}
+	.error {
+		@apply rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700;
+	}
+}
