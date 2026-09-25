@@ -9,14 +9,26 @@ export function isEmail(value: string) {
 	return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) && value.length <= 254;
 }
 
+export function checkName(name: string) {
+	if (!name || name.length > 60) return 'Bitte gib einen Namen an (max. 60 Zeichen).';
+	return null;
+}
+
+export function checkEmail(email: string) {
+	if (!isEmail(email)) return 'Bitte gib eine gültige E-Mail-Adresse an.';
+	return null;
+}
+
+export function checkPassword(password: string) {
+	if (password.length < MIN_PASSWORD_LENGTH)
+		return `Das Passwort muss mindestens ${MIN_PASSWORD_LENGTH} Zeichen lang sein.`;
+	if (password.length > 200) return 'Das Passwort ist zu lang.';
+	return null;
+}
+
 /** Checks the fields of a new account. Returns an error message or null. */
 export function checkAccount(input: { name: string; email: string; password: string }) {
-	if (!input.name || input.name.length > 60) return 'Bitte gib einen Namen an (max. 60 Zeichen).';
-	if (!isEmail(input.email)) return 'Bitte gib eine gültige E-Mail-Adresse an.';
-	if (input.password.length < MIN_PASSWORD_LENGTH)
-		return `Das Passwort muss mindestens ${MIN_PASSWORD_LENGTH} Zeichen lang sein.`;
-	if (input.password.length > 200) return 'Das Passwort ist zu lang.';
-	return null;
+	return checkName(input.name) ?? checkEmail(input.email) ?? checkPassword(input.password);
 }
 
 /** Like field(), but keeps surrounding whitespace (for passwords). */
