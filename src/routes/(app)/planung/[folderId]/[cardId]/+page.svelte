@@ -173,11 +173,12 @@
 		<input
 			id="link-url"
 			name="url"
-			type="url"
 			inputmode="url"
+			autocapitalize="off"
+			autocomplete="url"
 			required
 			value={url}
-			placeholder="https://…"
+			placeholder="z. B. www.beispiel.de"
 		/>
 	</div>
 	<div>

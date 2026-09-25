@@ -39,18 +39,16 @@ export const actions: Actions = {
 		if (name.length > 60) return fail(400, { message: 'Der Name ist zu lang (max. 60 Zeichen).' });
 		const members = await listMembers(db, family.id);
 		const folder = await getFolder(db, viewer, params.folderId);
-		// Shares always belong to the folder's creator, even when an admin edits it.
+		if (!folder) error(404, 'Ordner nicht gefunden.');
 		const access = parseVisibility(
 			form,
 			members.map((m) => m.id),
-			folder?.createdById ?? user.id
+			folder.createdById ?? user.id
 		);
 		if ('error' in access) return fail(400, { message: access.error });
-		if (!(await updateFolder(db, viewer, params.folderId, name, access))) {
+		if (!(await updateFolder(db, viewer, folder.id, name, access))) {
 			return fail(403, { message: 'Nur wer den Ordner angelegt hat, kann ihn ändern.' });
 		}
-		// An admin may have just hidden the folder from themselves.
-		if (!(await getFolder(db, viewer, params.folderId))) redirect(303, '/planung');
 		return { saved: true };
 	},
 

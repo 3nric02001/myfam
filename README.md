@@ -4,13 +4,13 @@ Ein gemeinsamer Ort für die ganze Familie: Einkaufsliste, Termine und Planung. 
 
 ## Stand
 
-| Bereich                           | Stand                                                    |
-| --------------------------------- | -------------------------------------------------------- |
-| Konto, Login, Abmelden            | fertig                                                   |
-| Familien, Rollen, Einladungslinks | fertig                                                   |
-| Einkaufsliste                     | fertig (hinzufügen, abhaken, löschen, Erledigte löschen) |
-| Kalender                          | Platzhalter                                              |
-| Planung / Aufgaben                | Platzhalter                                              |
+| Bereich                           | Stand                                                      |
+| --------------------------------- | ---------------------------------------------------------- |
+| Konto, Login, Abmelden            | fertig                                                     |
+| Familien, Rollen, Einladungslinks | fertig                                                     |
+| Einkaufsliste                     | fertig (hinzufügen, abhaken, löschen, Erledigte löschen)   |
+| Kalender                          | fertig (Termine mit Sichtbarkeit, deutsche Feiertage)      |
+| Planung                           | fertig (Ordner, Karten mit Text, Tabellen, Links, Bildern) |
 
 ## Technik
 
@@ -24,11 +24,29 @@ src/lib/server/
   auth.ts        Passwörter, Sitzungen
   families.ts    Familien, Mitglieder, Einladungen
   shopping.ts    Einkaufsliste
+  calendar.ts    Kalender: Termine, Sichtbarkeit, Freigaben
+  planning.ts    Planung: Ordner, Karten, Inhalte, Bilder
+  visibility.ts  Gemeinsames Sichtbarkeitsmodell (Familie / bestimmte Personen / nur ich)
+  uploads.ts     Hochgeladene Bilder im Dateisystem
   db/schema.ts   Datenbankschema
+src/lib/holidays.ts  Deutsche Feiertage (offline berechnet, optional je Bundesland)
 src/routes/
   (auth)/        Login, Registrieren, Einladung annehmen
   (app)/         Einkauf, Kalender, Planung, Familie
 ```
+
+## Kalender
+
+- **Sichtbarkeit pro Termin:** ganze Familie (Standard), bestimmte Personen oder nur ich. Wer einen Termin nicht sehen darf, bekommt ihn auch über den direkten Link nicht (404).
+- **Bearbeiten:** Die Person, die den Termin angelegt hat. Admins dürfen zusätzlich Termine der ganzen Familie ändern oder löschen, aber deren Sichtbarkeit nicht ändern. Private und geteilte Termine bleiben allein bei ihrer Person.
+- **Feiertage:** Die bundesweiten Feiertage werden immer angezeigt. Unter **Familie → Feiertage im Kalender** kann ein Admin das Bundesland wählen, dann kommen die regionalen dazu. Die Berechnung läuft offline (Osterformel), es wird kein externer Dienst gebraucht. Feiertage, die nur in Teilen eines Landes gelten (z. B. Mariä Himmelfahrt in Bayern), werden nicht angezeigt.
+
+## Planung
+
+- **Ordner** kann jedes Mitglied anlegen. Die Sichtbarkeit funktioniert wie beim Kalender: ganze Familie (Standard), bestimmte Personen oder nur ich. Nur wer den Ordner angelegt hat, kann das ändern. Admins dürfen Ordner der ganzen Familie umbenennen oder löschen.
+- **Karten** liegen in einem Ordner und erben dessen Sichtbarkeit. Wer den Ordner sieht, kann die Karten darin anlegen und bearbeiten.
+- **Detailansicht:** Eine Karte besteht aus Inhalten, die man frei hinzufügen, bearbeiten, verschieben und löschen kann: Text mit einfacher Formatierung (`**fett**`, `*kursiv*`, `# Überschrift`, `- Liste`, `- [ ] Aufgabe`), Tabellen, Links und Bilder.
+- **Bilder** werden im Browser auf höchstens 2000 px verkleinert (dabei fallen auch GPS-Daten weg) und dürfen bis 10 MB groß sein. Erlaubt sind JPEG, PNG, WebP und GIF, geprüft wird der Dateiinhalt. Sie liegen im Ordner `uploads/` neben der Datenbank (im Docker-Volume unter `/data/uploads`) und werden nur an Personen ausgeliefert, die die Karte sehen dürfen. Mit `UPLOAD_DIR` lässt sich ein anderer Ordner wählen.
 
 ## Entwickeln
 
@@ -79,3 +97,4 @@ Danach unter `https://<deine Domain>/registrieren` die erste Familie anlegen und
 - **Update:** `git pull && docker compose up -d --build`
 - **Backup:** Die Datenbank liegt im Volume `app-data` (`/data/myfam.db`), z. B.
   `docker compose exec app node -e "require('better-sqlite3')('/data/myfam.db').backup('/data/backup.db')"` und dann `docker compose cp app:/data/backup.db .`
+  Die Bilder aus der Planung liegen im selben Volume unter `/data/uploads` und gehören mit ins Backup: `docker compose cp app:/data/uploads ./uploads`

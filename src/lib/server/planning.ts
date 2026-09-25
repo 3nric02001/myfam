@@ -21,8 +21,8 @@ import {
 } from '$lib/planning';
 
 // Every query is scoped to a family and to what the user may see. Cards, blocks and images
-// inherit the permissions of their folder: whoever sees a folder may edit its cards,
-// while only the creator (or a family admin) may rename, re-share or delete the folder.
+// inherit the permissions of their folder: whoever sees a folder may edit its cards.
+// Only the creator may change who sees a folder; admins may rename or delete family folders.
 
 export type Viewer = { familyId: string; userId: string; isAdmin: boolean };
 
@@ -90,7 +90,9 @@ export async function getFolder(db: DB, v: Viewer, folderId: string) {
 	return {
 		...folder,
 		sharedWith: shares,
-		canManage: folder.createdById === v.userId || v.isAdmin
+		isCreator: folder.createdById === v.userId,
+		// Same rule as for calendar events: admins may tidy up family folders, not private ones.
+		canManage: folder.createdById === v.userId || (v.isAdmin && folder.visibility === 'family')
 	};
 }
 
@@ -122,7 +124,13 @@ export async function updateFolder(
 	if (!folder?.canManage) return false;
 	db.transaction((tx) => {
 		tx.update(planningFolder)
-			.set({ name: name.trim(), visibility: access.visibility })
+			.set({ name: name.trim() })
+			.where(eq(planningFolder.id, folder.id))
+			.run();
+		// Only the creator decides who sees the folder.
+		if (!folder.isCreator) return;
+		tx.update(planningFolder)
+			.set({ visibility: access.visibility })
 			.where(eq(planningFolder.id, folder.id))
 			.run();
 		tx.delete(planningFolderShare).where(eq(planningFolderShare.folderId, folder.id)).run();

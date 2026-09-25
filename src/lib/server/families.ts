@@ -2,6 +2,7 @@ import { and, asc, eq, gt, sql } from 'drizzle-orm';
 import type { DB } from './db/client';
 import { family, invite, membership, user, type Role } from './db/schema';
 import { generateToken, hashToken } from './auth';
+import type { State } from '$lib/holidays';
 
 const INVITE_DAYS = 7;
 
@@ -27,6 +28,19 @@ export async function getMembership(db: DB, userId: string, familyId: string) {
 		.innerJoin(family, eq(membership.familyId, family.id))
 		.where(and(eq(membership.userId, userId), eq(membership.familyId, familyId)));
 	return row ?? null;
+}
+
+/** The family's Bundesland for regional holidays, or null for nationwide holidays only. */
+export async function getFamilyState(db: DB, familyId: string) {
+	const [row] = await db
+		.select({ state: family.state })
+		.from(family)
+		.where(eq(family.id, familyId));
+	return (row?.state ?? null) as State | null;
+}
+
+export async function setFamilyState(db: DB, familyId: string, state: State | null) {
+	await db.update(family).set({ state }).where(eq(family.id, familyId));
 }
 
 export async function listMembers(db: DB, familyId: string) {

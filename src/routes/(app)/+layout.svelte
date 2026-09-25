@@ -25,9 +25,23 @@
 </script>
 
 <div class="mx-auto flex min-h-dvh max-w-md flex-col">
-	<header class="sticky top-0 z-10 border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur">
-		<p class="text-xs text-slate-500">Hallo {data.user.name}</p>
-		<p class="font-semibold text-slate-900">{data.family?.name ?? 'MyFam'}</p>
+	<header
+		class="sticky top-0 z-10 flex items-center border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur"
+	>
+		<div class="flex-1">
+			<p class="text-xs text-slate-500">Hallo {data.user.name}</p>
+			<p class="font-semibold text-slate-900">{data.family?.name ?? 'MyFam'}</p>
+		</div>
+		<a
+			href="/einstellungen"
+			class="-mr-2 flex size-11 items-center justify-center rounded-full text-xl {page.url.pathname.startsWith(
+				'/einstellungen'
+			)
+				? 'bg-emerald-50'
+				: ''}"
+			aria-label="Einstellungen"
+			title="Einstellungen"><span aria-hidden="true">⚙️</span></a
+		>
 	</header>
 
 	<main class="flex-1 px-4 pt-4 pb-28">

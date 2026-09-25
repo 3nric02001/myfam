@@ -61,9 +61,9 @@ describe('parseVisibility', () => {
 			parseVisibility(
 				form([
 					['visibility', 'shared'],
-					['share', 'b'],
-					['share', 'a'],
-					['share', 'stranger']
+					['sharedWith', 'b'],
+					['sharedWith', 'a'],
+					['sharedWith', 'stranger']
 				]),
 				['a', 'b'],
 				'a'
@@ -122,7 +122,18 @@ describe('planning folders', () => {
 		expect(updated?.sharedWith.map((s) => s.name)).toEqual(['cara']);
 		expect(await getFolder(db, anna, folder.id)).toBeNull();
 
+		// Anna is admin but cannot see or touch a folder that is not shared with her.
+		expect(await deleteFolder(db, anna, folder.id)).toBeNull();
+
 		await updateFolder(db, bert, folder.id, 'Garten 2027', { visibility: 'family', shareWith: [] });
+		// Admins may rename family folders, but not change who sees them.
+		expect(
+			await updateFolder(db, anna, folder.id, 'Garten', { visibility: 'private', shareWith: [] })
+		).toBe(true);
+		expect(await getFolder(db, cara, folder.id)).toMatchObject({
+			name: 'Garten',
+			visibility: 'family'
+		});
 		expect(await deleteFolder(db, anna, folder.id)).toEqual([]);
 		expect(await listFolders(db, bert)).toEqual([]);
 	});

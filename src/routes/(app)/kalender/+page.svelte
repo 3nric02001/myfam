@@ -1,7 +1,143 @@
+<script lang="ts">
+	import { addMonths, dayLabel, monthLabel, shortDate } from '$lib/dates';
+	import { visibilityIcon, visibilityLabel } from '$lib/visibility';
+	import type { PageProps } from './$types';
+
+	let { data }: PageProps = $props();
+
+	// Picking a day happens in the browser; a new month resets it to what the server chose.
+	let selected = $derived(data.selected);
+
+	const weekdays = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+
+	let holidayByDate = $derived(new Map(data.holidays.map((h) => [h.date, h.name])));
+
+	function eventsOn(date: string) {
+		return data.events.filter((e) => e.startDate <= date && e.endDate >= date);
+	}
+
+	function timeOf(event: (typeof data.events)[number], date: string) {
+		if (!event.startTime) return 'ganztägig';
+		const starts = event.startDate === date;
+		const ends = event.endDate === date;
+		if (starts && ends)
+			return event.endTime ? `${event.startTime}–${event.endTime}` : event.startTime;
+		if (starts) return `ab ${event.startTime}`;
+		if (ends) return event.endTime ? `bis ${event.endTime}` : 'ganztägig';
+		return 'ganztägig';
+	}
+
+	let selectedEvents = $derived(eventsOn(selected));
+</script>
+
 <svelte:head><title>Kalender · MyFam</title></svelte:head>
 
-<h1 class="mb-4 text-xl font-bold">Kalender</h1>
-<div class="card p-6 text-center text-slate-500">
-	<p class="text-3xl" aria-hidden="true">🚧</p>
-	<p class="mt-2">Gemeinsame Termine der Familie kommen hier bald hin.</p>
+<div class="mb-3 flex items-center gap-2">
+	<h1 class="flex-1 text-xl font-bold">{monthLabel(data.month)}</h1>
+	<a
+		href="?monat={addMonths(data.month, -1)}"
+		class="btn-secondary flex w-11 items-center justify-center px-0"
+		aria-label="Vorheriger Monat"
+		data-sveltekit-noscroll>‹</a
+	>
+	{#if !data.today.startsWith(data.month)}
+		<a
+			href="?monat={data.today.slice(0, 7)}"
+			class="btn-secondary px-3 text-sm"
+			data-sveltekit-noscroll>Heute</a
+		>
+	{/if}
+	<a
+		href="?monat={addMonths(data.month, 1)}"
+		class="btn-secondary flex w-11 items-center justify-center px-0"
+		aria-label="Nächster Monat"
+		data-sveltekit-noscroll>›</a
+	>
 </div>
+
+<div class="card p-2">
+	<div class="grid grid-cols-7 text-center text-xs font-medium text-slate-500">
+		{#each weekdays as w (w)}<div class="py-1">{w}</div>{/each}
+	</div>
+	<div class="grid grid-cols-7">
+		{#each data.days as date (date)}
+			{@const inMonth = date.startsWith(data.month)}
+			{@const holiday = holidayByDate.get(date)}
+			{@const count = eventsOn(date).length}
+			{@const isSelected = date === selected}
+			{@const isToday = date === data.today}
+			<button
+				type="button"
+				onclick={() => (selected = date)}
+				class="flex h-12 flex-col items-center justify-start gap-0.5 rounded-lg pt-1 {isSelected
+					? 'bg-emerald-600 text-white'
+					: ''} {!inMonth && !isSelected ? 'text-slate-300' : ''}"
+				aria-pressed={isSelected}
+				aria-label="{dayLabel(date)}{holiday ? `, ${holiday}` : ''}{count
+					? `, ${count} Termin${count === 1 ? '' : 'e'}`
+					: ''}"
+			>
+				<span
+					class="flex size-7 items-center justify-center rounded-full text-sm {isToday &&
+					!isSelected
+						? 'font-bold text-emerald-700 ring-1 ring-emerald-600'
+						: ''} {holiday && !isSelected && inMonth ? 'font-semibold text-rose-600' : ''}"
+					>{Number(date.slice(8))}</span
+				>
+				<span class="flex h-1.5 gap-0.5" aria-hidden="true">
+					{#each [0, 1, 2].slice(0, count) as i (i)}
+						<span class="size-1.5 rounded-full {isSelected ? 'bg-white' : 'bg-emerald-600'}"></span>
+					{/each}
+				</span>
+			</button>
+		{/each}
+	</div>
+</div>
+
+<section class="mt-5">
+	<div class="mb-2 flex items-center justify-between">
+		<h2 class="font-semibold">{dayLabel(selected)}</h2>
+		<a href="/kalender/neu?datum={selected}" class="btn-primary flex items-center px-3 py-1 text-sm"
+			>+ Termin</a
+		>
+	</div>
+
+	{#if holidayByDate.get(selected)}
+		<p class="mb-2 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+			🎉 {holidayByDate.get(selected)} (Feiertag)
+		</p>
+	{/if}
+
+	{#if selectedEvents.length}
+		<ul class="card px-3">
+			{#each selectedEvents as event (event.id)}
+				<li class="border-b border-slate-100 last:border-0">
+					<a href="/kalender/{event.id}" class="flex min-h-14 items-center gap-3 py-2">
+						<span class="w-20 shrink-0 text-sm text-slate-500">{timeOf(event, selected)}</span>
+						<span class="flex-1">
+							<span class="block">{event.title}</span>
+							<span class="block text-xs text-slate-400">
+								{#if event.startDate !== event.endDate}
+									{shortDate(event.startDate)}–{shortDate(event.endDate)} ·
+								{/if}
+								{event.createdBy ?? 'Unbekannt'}
+							</span>
+						</span>
+						<span
+							title={visibilityLabel[event.visibility]}
+							aria-label={visibilityLabel[event.visibility]}
+							>{visibilityIcon[event.visibility]}</span
+						>
+					</a>
+				</li>
+			{/each}
+		</ul>
+	{:else if !holidayByDate.get(selected)}
+		<p class="py-6 text-center text-sm text-slate-500">Keine Termine an diesem Tag.</p>
+	{/if}
+</section>
+
+<p class="mt-6 text-center text-xs text-slate-400">
+	Feiertage: {data.stateName ?? 'nur bundesweite'} ·
+	<a href="/familie#feiertage" class="underline">ändern</a>
+</p>

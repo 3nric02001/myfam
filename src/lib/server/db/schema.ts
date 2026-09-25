@@ -22,6 +22,8 @@ export const user = sqliteTable('user', {
 export const family = sqliteTable('family', {
 	id: id(),
 	name: text('name').notNull(),
+	/** Bundesland code (e.g. 'BY') for regional holidays; null shows only nationwide ones. */
+	state: text('state'),
 	createdAt: createdAt()
 });
 
@@ -82,8 +84,43 @@ export const shoppingItem = sqliteTable(
 	(t) => [index('shopping_item_family_idx').on(t.familyId)]
 );
 
-/** Who can see an entry: the whole family (default), selected members, or only its creator. */
+/** Who sees an event: the whole family, the creator plus chosen members, or only the creator. */
 export type Visibility = 'family' | 'shared' | 'private';
+
+/** Dates are stored as local 'YYYY-MM-DD' and times as 'HH:MM'; no time means all-day. */
+export const calendarEvent = sqliteTable(
+	'calendar_event',
+	{
+		id: id(),
+		familyId: text('family_id')
+			.notNull()
+			.references(() => family.id, { onDelete: 'cascade' }),
+		title: text('title').notNull(),
+		notes: text('notes'),
+		startDate: text('start_date').notNull(),
+		startTime: text('start_time'),
+		endDate: text('end_date').notNull(),
+		endTime: text('end_time'),
+		visibility: text('visibility').$type<Visibility>().notNull().default('family'),
+		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+		createdAt: createdAt()
+	},
+	(t) => [index('calendar_event_family_idx').on(t.familyId, t.startDate)]
+);
+
+/** Members an event with visibility 'shared' is shared with. */
+export const calendarEventShare = sqliteTable(
+	'calendar_event_share',
+	{
+		eventId: text('event_id')
+			.notNull()
+			.references(() => calendarEvent.id, { onDelete: 'cascade' }),
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' })
+	},
+	(t) => [primaryKey({ columns: [t.eventId, t.userId] })]
+);
 
 export const planningFolder = sqliteTable(
 	'planning_folder',
@@ -177,3 +214,4 @@ export const planningImage = sqliteTable('planning_image', {
 export type User = typeof user.$inferSelect;
 export type Family = typeof family.$inferSelect;
 export type ShoppingItem = typeof shoppingItem.$inferSelect;
+export type CalendarEvent = typeof calendarEvent.$inferSelect;

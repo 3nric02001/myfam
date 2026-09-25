@@ -32,7 +32,10 @@
 				autofocus
 			/>
 		</div>
-		<VisibilityPicker members={data.members} selfId={data.user.id} />
+		<VisibilityPicker
+			members={data.members.filter((m) => m.id !== data.user.id)}
+			noun="den Ordner"
+		/>
 		{#if form?.message}<p class="error">{form.message}</p>{/if}
 		<div class="flex gap-2">
 			<button class="btn-primary flex-1">Anlegen</button>

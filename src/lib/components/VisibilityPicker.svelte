@@ -1,59 +1,89 @@
 <script lang="ts">
-	// Form fields for who can see an entry: `visibility` plus one `share` field per selected member.
-	// Read on the server with parseVisibility() from $lib/server/visibility.
-	type Visibility = 'family' | 'shared' | 'private';
+	// Form fields for who can see an entry: `visibility` plus one `sharedWith` field per selected
+	// member. Used by calendar events and planning folders.
+	import type { Visibility } from '$lib/server/db/schema';
+	import { visibilityIcon, visibilityLabel } from '$lib/visibility';
 
 	let {
+		visibility: initial = 'family',
+		sharedWith = [],
 		members,
-		selfId,
-		visibility = 'family',
-		sharedWith = []
+		noun,
+		lockVisibility = false
 	}: {
-		members: { id: string; name: string }[];
-		selfId: string;
 		visibility?: Visibility;
 		sharedWith?: string[];
+		/** Family members the entry can be shared with (without the creator). */
+		members: { id: string; name: string }[];
+		/** What is being shared, e.g. „den Termin“ or „den Ordner“. */
+		noun: string;
+		/** Only the creator may change who sees an entry. */
+		lockVisibility?: boolean;
 	} = $props();
 
 	// svelte-ignore state_referenced_locally
-	let choice = $state<Visibility>(visibility);
-	let others = $derived(members.filter((m) => m.id !== selfId));
+	let visibility = $state<Visibility>(initial);
 
-	const options: { value: Visibility; label: string; hint: string }[] = [
-		{ value: 'family', label: 'Ganze Familie', hint: 'Alle Mitglieder sehen es' },
-		{ value: 'shared', label: 'Bestimmte Personen', hint: 'Nur du und die Ausgewählten' },
-		{ value: 'private', label: 'Nur ich', hint: 'Privat, niemand sonst sieht es' }
-	];
+	const options: Visibility[] = ['family', 'shared', 'private'];
+	let hints = $derived<Record<Visibility, string>>({
+		family: `Alle in der Familie sehen ${noun}.`,
+		shared: 'Nur du und die ausgewählten Personen.',
+		private: `Nur du siehst ${noun}.`
+	});
 </script>
 
 <fieldset>
-	<legend class="label">Wer sieht das?</legend>
-	<div class="space-y-1">
-		{#each options as option (option.value)}
-			<label class="flex items-center gap-3 rounded-lg px-1 py-1.5">
-				<input type="radio" name="visibility" value={option.value} bind:group={choice} />
-				<span>
-					<span class="block text-sm">{option.label}</span>
-					<span class="block text-xs text-slate-500">{option.hint}</span>
-				</span>
-			</label>
-		{/each}
-	</div>
-	{#if choice === 'shared'}
-		<div class="mt-2 ml-8 space-y-1 border-l-2 border-emerald-100 pl-3">
-			{#each others as member (member.id)}
-				<label class="flex items-center gap-2 py-1 text-sm">
+	<legend class="label">Wer sieht {noun}?</legend>
+	{#if lockVisibility}
+		<input type="hidden" name="visibility" value={visibility} />
+		<p class="text-sm text-slate-600">
+			{visibilityIcon[visibility]}
+			{visibilityLabel[visibility]} – nur die Person, die {noun} angelegt hat, kann das ändern.
+		</p>
+	{:else}
+		<div class="grid grid-cols-3 gap-2">
+			{#each options as option (option)}
+				<label
+					class="flex cursor-pointer flex-col items-center gap-1 rounded-lg border p-2 text-center text-xs {visibility ===
+					option
+						? 'border-emerald-600 bg-emerald-50 text-emerald-800'
+						: 'border-slate-300 text-slate-600'}"
+				>
+					<input
+						type="radio"
+						name="visibility"
+						value={option}
+						bind:group={visibility}
+						class="sr-only"
+					/>
+					<span class="text-xl" aria-hidden="true">{visibilityIcon[option]}</span>
+					{visibilityLabel[option]}
+				</label>
+			{/each}
+		</div>
+		<p class="mt-1 text-xs text-slate-500">{hints[visibility]}</p>
+	{/if}
+
+	{#if visibility === 'shared'}
+		<div class="mt-2 space-y-1 rounded-lg bg-slate-50 p-3">
+			{#each members as member (member.id)}
+				<label class="flex min-h-10 items-center gap-2">
 					<input
 						type="checkbox"
-						name="share"
+						name="sharedWith"
 						value={member.id}
 						checked={sharedWith.includes(member.id)}
+						disabled={lockVisibility}
+						class="size-5 rounded"
 					/>
 					{member.name}
 				</label>
+				{#if lockVisibility && sharedWith.includes(member.id)}
+					<input type="hidden" name="sharedWith" value={member.id} />
+				{/if}
 			{:else}
-				<p class="text-xs text-slate-500">
-					Es gibt noch keine anderen Mitglieder. Lade sie unter „Familie“ ein.
+				<p class="text-sm text-slate-500">
+					Außer dir ist noch niemand in der Familie. Lade jemanden über „Familie“ ein.
 				</p>
 			{/each}
 		</div>

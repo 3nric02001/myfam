@@ -53,10 +53,11 @@
 			<input id="folder-name" name="name" required maxlength="60" value={data.folder.name} />
 		</div>
 		<VisibilityPicker
-			members={data.members}
-			selfId={data.folder.createdById ?? data.user.id}
+			members={data.members.filter((m) => m.id !== data.folder.createdById)}
 			visibility={data.folder.visibility}
 			sharedWith={data.folder.sharedWith.map((s) => s.id)}
+			lockVisibility={!data.folder.isCreator}
+			noun="den Ordner"
 		/>
 		{#if form?.message}<p class="error">{form.message}</p>{/if}
 		<div class="flex gap-2">
