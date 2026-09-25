@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ChevronLeft, X } from '@lucide/svelte';
+	import { Check, ChevronLeft, CircleHelp, X } from '@lucide/svelte';
 	import { enhance } from '$app/forms';
 	import { shortDate } from '$lib/dates';
 	import { formatPrice, STORES, storeLabel } from '$lib/offers';
@@ -21,12 +21,66 @@
 <h1 class="mb-4 text-xl font-semibold tracking-tight">Angebote</h1>
 {#if form?.message}<p class="error mb-4">{form.message}</p>{/if}
 
+<nav class="mb-4 grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1 text-sm" aria-label="Woche">
+	{#each [{ week: 'this', href: '?', label: 'Diese Woche' }, { week: 'next', href: '?woche=naechste', label: 'Nächste Woche' }] as tab (tab.week)}
+		<a
+			href={tab.href}
+			class="rounded-lg py-2 text-center {data.week === tab.week
+				? 'bg-white font-semibold shadow-sm'
+				: 'text-slate-500'}"
+			aria-current={data.week === tab.week ? 'page' : undefined}>{tab.label}</a
+		>
+	{/each}
+</nav>
+
 {#if data.settings.stores.length && data.items.length}
 	{#await data.offers}
 		<p class="card mb-5 p-4 text-sm text-slate-500">Suche Angebote …</p>
 	{:then offers}
 		{@const missing = data.items.filter((i) => !offers.byItem[i.id])}
 		<section class="mb-5 space-y-3">
+			<p class="px-1 text-xs text-slate-500">
+				Angebote vom {shortDate(offers.range.from)} bis {shortDate(offers.range.to)}
+			</p>
+			{#if offers.questions.length}
+				<div class="card px-3">
+					<h2 class="flex items-center gap-2 pt-3 font-semibold">
+						<CircleHelp size={18} class="text-accent-600" aria-hidden="true" /> Was meinst du genau?
+					</h2>
+					<p class="text-sm text-slate-500">
+						Diese Angebote passen vielleicht. Sie zählen erst, wenn du sie bestätigst. Die Antwort
+						gilt auch für später.
+					</p>
+					<ul>
+						{#each offers.questions as q (q.term + '|' + q.variant)}
+							<li class="border-b border-slate-100 py-3 text-sm last:border-0">
+								<p>
+									Zählt <strong>{q.example.product}</strong>
+									<span class="text-slate-500"
+										>({storeLabel(q.example.store)}{#if q.example.price != null}, {formatPrice(
+												q.example.price
+											)}{/if})</span
+									>
+									als „{q.name}“?
+								</p>
+								<div class="mt-2 flex gap-2">
+									{#each [true, false] as fits (fits)}
+										<form method="POST" action="?/answer" use:enhance class="flex-1">
+											<input type="hidden" name="term" value={q.term} />
+											<input type="hidden" name="variant" value={q.variant} />
+											<input type="hidden" name="example" value={q.example.product} />
+											<input type="hidden" name="fits" value={String(fits)} />
+											<button class="{fits ? 'btn-primary' : 'btn-secondary'} w-full"
+												>{fits ? 'Ja, zählt' : 'Nein'}</button
+											>
+										</form>
+									{/each}
+								</div>
+							</li>
+						{/each}
+					</ul>
+				</div>
+			{/if}
 			{#if offers.best}
 				<div class="card p-4">
 					<p class="text-sm text-slate-500">Empfehlung</p>
@@ -39,7 +93,8 @@
 				</div>
 			{:else}
 				<p class="card p-4 text-sm text-slate-500">
-					Für deine Einkaufsliste gibt es gerade keine passenden Angebote in deinen Märkten.
+					Für deine Einkaufsliste gibt es {data.week === 'next' ? 'nächste Woche' : 'diese Woche'}
+					keine passenden Angebote in deinen Märkten.
 				</p>
 			{/if}
 			{#if offers.failed}
@@ -73,6 +128,9 @@
 									{/if}
 								</span>
 								<span class="block text-xs text-slate-400">
+									{#if hit.offer.validFrom && hit.offer.validFrom > data.today}ab {shortDate(
+											hit.offer.validFrom
+										)}{/if}
 									bis {shortDate(hit.offer.validUntil)} ·
 									{hit.offer.source === 'manual' ? 'eingetragen' : 'marktguru'}
 								</span>
@@ -130,10 +188,16 @@
 			<span class="label">Produkt</span>
 			<input name="product" required maxlength="100" placeholder="z. B. Vollmilch 1 l" />
 		</label>
-		<label class="block">
-			<span class="label">Gültig bis</span>
-			<input type="date" name="validUntil" required min={data.today} value={data.defaultUntil} />
-		</label>
+		<div class="grid grid-cols-2 gap-2">
+			<label>
+				<span class="label">Gültig ab</span>
+				<input type="date" name="validFrom" value={data.today} />
+			</label>
+			<label>
+				<span class="label">Gültig bis</span>
+				<input type="date" name="validUntil" required min={data.today} value={data.defaultUntil} />
+			</label>
+		</div>
 		<button class="btn-primary w-full">Eintragen</button>
 	</form>
 
@@ -146,6 +210,7 @@
 						{o.product}
 						{#if o.price != null}· {formatPrice(o.price)}{/if}
 						<span class="block text-xs text-slate-400">
+							{#if o.validFrom && o.validFrom > data.today}ab {shortDate(o.validFrom)}{/if}
 							bis {shortDate(o.validUntil)}{#if o.createdBy}&nbsp;· von {o.createdBy}{/if}
 						</span>
 					</span>
@@ -211,3 +276,43 @@
 		{#if form && 'saved' in form}<p class="success">Gespeichert.</p>{/if}
 	</form>
 </section>
+
+{#if data.rules.length}
+	<details class="card mt-5 px-3">
+		<summary class="cursor-pointer py-3 font-semibold"
+			>Deine Antworten ({data.rules.length})</summary
+		>
+		<p class="text-sm text-slate-500">
+			Was bei unklaren Angeboten zählt. Entfernst du eine Antwort, fragt die App wieder nach.
+		</p>
+		<ul>
+			{#each data.rules as r (r.term + '|' + r.variant)}
+				<li class="flex items-center gap-2 border-b border-slate-100 py-2 text-sm last:border-0">
+					<span class="flex-1">
+						<span class="block">{r.example}</span>
+						<span
+							class="flex items-center gap-1 text-xs {r.fits ? 'text-brand-700' : 'text-slate-500'}"
+						>
+							{#if r.fits}<Check size={12} aria-hidden="true" /> zählt als{:else}zählt nicht als{/if}
+							„{r.term}“
+						</span>
+					</span>
+					<form method="POST" action="?/answer" use:enhance>
+						<input type="hidden" name="term" value={r.term} />
+						<input type="hidden" name="variant" value={r.variant} />
+						<input type="hidden" name="example" value={r.example} />
+						<input type="hidden" name="fits" value={String(!r.fits)} />
+						<button class="text-xs text-slate-500 underline">Ändern</button>
+					</form>
+					<form method="POST" action="?/forgetRule" use:enhance>
+						<input type="hidden" name="term" value={r.term} />
+						<input type="hidden" name="variant" value={r.variant} />
+						<button class="icon-btn" aria-label="Antwort zu {r.example} entfernen"
+							><X size={16} aria-hidden="true" /></button
+						>
+					</form>
+				</li>
+			{/each}
+		</ul>
+	</details>
+{/if}

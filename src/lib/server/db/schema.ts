@@ -235,12 +235,49 @@ export const offer = sqliteTable(
 		store: text('store').notNull(),
 		product: text('product').notNull(),
 		price: integer('price'),
+		/** First day the offer is valid, 'YYYY-MM-DD'. */
+		validFrom: text('valid_from'),
 		/** Last day the offer is valid, 'YYYY-MM-DD'. */
 		validUntil: text('valid_until').notNull(),
 		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
 		createdAt: createdAt()
 	},
 	(t) => [index('offer_family_idx').on(t.familyId, t.validUntil)]
+);
+
+/**
+ * The family's answer to "does this count as <entry>?" for an uncertain kind of offer, e.g.
+ * term 'milch', variant 'muellermilch', fits false.
+ */
+export const offerMatchRule = sqliteTable(
+	'offer_match_rule',
+	{
+		familyId: text('family_id')
+			.notNull()
+			.references(() => family.id, { onDelete: 'cascade' }),
+		term: text('term').notNull(),
+		variant: text('variant').notNull(),
+		/** Example product the question was asked with, to show the answer later. */
+		example: text('example').notNull(),
+		fits: integer('fits', { mode: 'boolean' }).notNull(),
+		createdAt: createdAt()
+	},
+	(t) => [primaryKey({ columns: [t.familyId, t.term, t.variant] })]
+);
+
+/** Everything a family has put on the shopping list, for suggestions. Keyed by lowercase name. */
+export const shoppingHistory = sqliteTable(
+	'shopping_history',
+	{
+		familyId: text('family_id')
+			.notNull()
+			.references(() => family.id, { onDelete: 'cascade' }),
+		key: text('key').notNull(),
+		name: text('name').notNull(),
+		uses: integer('uses').notNull().default(1),
+		lastUsedAt: integer('last_used_at', { mode: 'timestamp' }).notNull()
+	},
+	(t) => [primaryKey({ columns: [t.familyId, t.key] })]
 );
 
 /**

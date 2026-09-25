@@ -4,6 +4,7 @@
 // It may stop working at any time; the app then simply shows the offers entered by hand.
 
 import { env } from '$env/dynamic/private';
+import { today as dayOf } from '$lib/dates';
 import type { Offer } from '$lib/offers';
 
 export const marktguruEnabled = () => env.MARKTGURU_ENABLED === 'true';
@@ -47,13 +48,27 @@ async function getKeys(fetchFn: Fetch) {
 const cents = (euros: number | null | undefined) =>
 	typeof euros === 'number' && euros > 0 ? Math.round(euros * 100) : null;
 
+/** The German calendar day of a timestamp like '2026-09-21T22:00:00Z' (that is the 22nd). */
+function berlinDay(timestamp: string | undefined) {
+	if (!timestamp) return '';
+	const date = new Date(timestamp);
+	return Number.isNaN(date.getTime()) ? '' : dayOf(date);
+}
+
 /** Turns marktguru's offer into ours. Returns one entry per store that has the offer. */
 export function toOffers(raw: RawOffer, today: string): Offer[] {
-	const validUntil = (raw.validityDates ?? [])
-		.map((d) => d.to?.slice(0, 10))
-		.filter((d): d is string => !!d)
+	const dates = raw.validityDates ?? [];
+	const validUntil = dates
+		.map((d) => berlinDay(d.to))
+		.filter(Boolean)
 		.sort()
 		.at(-1);
+	const validFrom =
+		dates
+			.map((d) => berlinDay(d.from))
+			.filter(Boolean)
+			.sort()
+			.at(0) ?? null;
 	if (!validUntil || validUntil < today) return [];
 	const name = [raw.brand?.name, raw.product?.name ?? raw.description].filter(Boolean).join(' ');
 	if (!name) return [];
@@ -65,6 +80,7 @@ export function toOffers(raw: RawOffer, today: string): Offer[] {
 			product: name,
 			price: cents(raw.price),
 			oldPrice: cents(raw.oldPrice),
+			validFrom,
 			validUntil,
 			source: 'marktguru' as const
 		}));

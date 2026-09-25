@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { fits, parsePrice, recommend, type Offer } from './offers';
+import {
+	matchOffer,
+	parsePrice,
+	recommend,
+	runsDuring,
+	term,
+	weekRange,
+	type Offer
+} from './offers';
 
 const offer = (
 	store: string,
@@ -15,15 +23,41 @@ const offer = (
 	source: 'manual'
 });
 
-describe('fits', () => {
-	it('matches every word of the item, also inside longer words and across umlauts', () => {
-		expect(fits('Milch', 'Weihenstephan H-Milch 1 l')).toBe(true);
-		expect(fits('milch', 'Vollmilch')).toBe(true);
-		expect(fits('Käse', 'Gouda Kaese am Stück')).toBe(true);
-		expect(fits('Butter Kerrygold', 'Kerrygold Original Irische Butter')).toBe(true);
-		expect(fits('Butter Kerrygold', 'Meggle Butter')).toBe(false);
-		expect(fits('Brot', 'Milch')).toBe(false);
-		expect(fits('!', 'Milch')).toBe(false);
+describe('matchOffer', () => {
+	const variant = (name: string, product: string) => matchOffer(name, product)?.variant ?? null;
+
+	it('is sure about a whole word, also across umlauts and plurals', () => {
+		expect(variant('Milch', 'Weihenstephan H-Milch 1 l')).toBe('');
+		expect(variant('Käse', 'Gouda Käse am Stück')).toBe('');
+		expect(variant('Bananen', 'Chiquita Banane')).toBe('');
+		expect(variant('Butter Kerrygold', 'Kerrygold Original Irische Butter')).toBe('');
+	});
+
+	it('asks about compound words that end in the entry', () => {
+		expect(variant('Milch', 'Vollmilch 3,5 %')).toBe('vollmilch');
+		expect(variant('Milch', 'Müllermilch Banane')).toBe('muellermilch');
+	});
+
+	it('does not match when the entry is only the start or middle of a word', () => {
+		expect(variant('Milch', 'Milka Vollmilchschokolade')).toBe(null);
+		expect(variant('Milch', 'Milchreis Klassik')).toBe(null);
+		expect(variant('Butter Kerrygold', 'Meggle Butter')).toBe(null);
+		expect(variant('Brot', 'Milch')).toBe(null);
+		expect(variant('!', 'Milch')).toBe(null);
+	});
+
+	it('asks when the offer names another kind of product', () => {
+		expect(variant('Milch', 'Milka Alpenmilch Schokolade')).toBe('alpenmilch schokolade');
+		expect(variant('Milch', 'Milch Schoko Drink')).toBe('drink schoko');
+		expect(variant('Bananen', 'Müllermilch Banane 400 ml')).toBe('muellermilch');
+		expect(variant('Sahne', 'Sahne Joghurt Kirsche')).toBe('joghurt');
+		expect(variant('Butter', 'Rama Butterkeks')).toBe(null);
+		expect(variant('Reis', 'Reis zum Preis von')).toBe('');
+	});
+
+	it('ignores amounts in the entry', () => {
+		expect(term('Milch 3,5 %')).toBe('milch');
+		expect(variant('Milch 1,5%', 'H-Milch')).toBe('');
 	});
 });
 
@@ -90,5 +124,50 @@ describe('recommend', () => {
 
 	it('has no recommendation without offers', () => {
 		expect(recommend(items, [], ['lidl']).best).toBe(null);
+	});
+
+	it('asks once about uncertain offers and counts them only when confirmed', () => {
+		const offers = [
+			offer('lidl', 'Müllermilch Banane', 89),
+			offer('rewe', 'Müllermilch Schoko', 99),
+			offer('rewe', 'Vollmilch', 109)
+		];
+		const open = recommend(items, offers, ['lidl', 'rewe']);
+		expect(open.byItem.m).toBeUndefined();
+		expect(open.questions.map((q) => [q.term, q.variant, q.example.product])).toEqual([
+			['milch', 'muellermilch', 'Müllermilch Banane'],
+			['milch', 'muellermilch schoko', 'Müllermilch Schoko'],
+			['milch', 'vollmilch', 'Vollmilch']
+		]);
+
+		const answered = recommend(items, offers, ['lidl', 'rewe'], {
+			milch: { muellermilch: false, 'muellermilch schoko': false, vollmilch: true }
+		});
+		expect(answered.questions).toEqual([]);
+		expect(answered.byItem.m.map((o) => o.product)).toEqual(['Vollmilch']);
+		expect(answered.best).toEqual({ stores: ['rewe'], covered: 1 });
+	});
+});
+
+describe('weeks', () => {
+	it('runs this week until Saturday and next week from Monday to Saturday', () => {
+		// 2026-09-24 is a Thursday.
+		expect(weekRange('2026-09-24', 'this')).toEqual({ from: '2026-09-24', to: '2026-09-26' });
+		expect(weekRange('2026-09-24', 'next')).toEqual({ from: '2026-09-28', to: '2026-10-03' });
+		// On Sunday, "this week" is the coming one.
+		expect(weekRange('2026-09-27', 'this')).toEqual({ from: '2026-09-27', to: '2026-10-03' });
+	});
+
+	it('counts an offer that runs on any day of the week', () => {
+		const next = weekRange('2026-09-24', 'next');
+		expect(runsDuring({ validFrom: '2026-09-28', validUntil: '2026-10-03' }, next)).toBe(true);
+		expect(runsDuring({ validFrom: '2026-09-21', validUntil: '2026-09-26' }, next)).toBe(false);
+		expect(runsDuring({ validFrom: null, validUntil: '2026-09-30' }, next)).toBe(true);
+		expect(
+			runsDuring(
+				{ validFrom: '2026-10-01', validUntil: '2026-10-03' },
+				weekRange('2026-09-24', 'this')
+			)
+		).toBe(false);
 	});
 });

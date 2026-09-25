@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { addItem, clearDone, deleteItem, listItems, setDone } from './shopping';
+import {
+	addItem,
+	clearDone,
+	deleteItem,
+	forgetHistory,
+	listHistory,
+	listItems,
+	setDone
+} from './shopping';
 import { seedFamily, testDb } from './test/setup';
 
 describe('shopping list', () => {
@@ -37,5 +45,25 @@ describe('shopping list', () => {
 		expect((await listItems(db, a.family.id)).map((i) => [i.name, i.done])).toEqual([
 			['Milch', false]
 		]);
+	});
+
+	it('remembers what was bought, most often first, per family', async () => {
+		const db = testDb();
+		const a = await seedFamily(db, 'anna');
+		const b = await seedFamily(db, 'bert');
+		await addItem(db, a.family.id, a.owner.id, { name: 'Brot' });
+		await addItem(db, a.family.id, a.owner.id, { name: 'milch' });
+		await addItem(db, a.family.id, a.owner.id, { name: 'Milch ' });
+
+		const history = await listHistory(db, a.family.id);
+		expect(history.map((h) => [h.name, h.uses])).toEqual([
+			['Milch', 2],
+			['Brot', 1]
+		]);
+		expect(await listHistory(db, b.family.id)).toEqual([]);
+
+		await forgetHistory(db, b.family.id, history[0].key);
+		await forgetHistory(db, a.family.id, history[1].key);
+		expect((await listHistory(db, a.family.id)).map((h) => h.name)).toEqual(['Milch']);
 	});
 });

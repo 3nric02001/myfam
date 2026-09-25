@@ -2,7 +2,15 @@ import { fail } from '@sveltejs/kit';
 import { today } from '$lib/dates';
 import { db } from '$lib/server/db';
 import { requireFamily } from '$lib/server/guards';
-import { addItem, clearDone, deleteItem, listItems, setDone } from '$lib/server/shopping';
+import {
+	addItem,
+	clearDone,
+	deleteItem,
+	forgetHistory,
+	listHistory,
+	listItems,
+	setDone
+} from '$lib/server/shopping';
 import { marktguruEnabled } from '$lib/server/marktguru';
 import { offersForList, purgeOffers } from '$lib/server/offers';
 import { field } from '$lib/server/validation';
@@ -14,10 +22,17 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const day = today();
 	const open = items.filter((i) => !i.done).map(({ id, name }) => ({ id, name }));
 	// Streamed, so the list shows at once even when fetching offers takes a moment.
-	const offers = purgeOffers(db, day).then(() =>
-		offersForList(db, family.id, open, day, { auto: marktguruEnabled() })
+	const auto = marktguruEnabled();
+	const offers = purgeOffers(db, day).then(async () => {
+		const thisWeek = await offersForList(db, family.id, open, day, { auto });
+		const nextWeek = await offersForList(db, family.id, open, day, { auto, week: 'next' });
+		return { ...thisWeek, next: nextWeek.best };
+	});
+	const onList = new Set(open.map((i) => i.name.trim().toLowerCase()));
+	const history = (await listHistory(db, family.id)).filter(
+		(h) => !onList.has(h.name.trim().toLowerCase())
 	);
-	return { items, offers };
+	return { items, offers, history };
 };
 
 export const actions: Actions = {
@@ -43,6 +58,11 @@ export const actions: Actions = {
 		const { family } = requireFamily(locals);
 		const form = await request.formData();
 		await deleteItem(db, family.id, field(form, 'id'));
+	},
+
+	forget: async ({ request, locals }) => {
+		const { family } = requireFamily(locals);
+		await forgetHistory(db, family.id, field(await request.formData(), 'key'));
 	},
 
 	clearDone: async ({ locals }) => {
