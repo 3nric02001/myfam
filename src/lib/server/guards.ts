@@ -16,3 +16,12 @@ export function requireAdmin(locals: App.Locals) {
 	if (ctx.family.role !== 'admin') redirect(303, '/familie');
 	return ctx;
 }
+
+/** The current user in the current family, as used by permission-checked queries. */
+export function requireViewer(locals: App.Locals) {
+	const ctx = requireFamily(locals);
+	return {
+		...ctx,
+		viewer: { familyId: ctx.family.id, userId: ctx.user.id, isAdmin: ctx.family.role === 'admin' }
+	};
+}
