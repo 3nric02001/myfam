@@ -9,7 +9,7 @@ Ein gemeinsamer Ort für die ganze Familie: Einkaufsliste, Termine und Planung. 
 | Konto, Login, Abmelden            | fertig                                                   |
 | Familien, Rollen, Einladungslinks | fertig                                                   |
 | Einkaufsliste                     | fertig (hinzufügen, abhaken, löschen, Erledigte löschen) |
-| Kalender                          | Platzhalter                                              |
+| Kalender                          | fertig (Termine mit Sichtbarkeit, deutsche Feiertage)    |
 | Planung / Aufgaben                | Platzhalter                                              |
 
 ## Technik
@@ -24,11 +24,19 @@ src/lib/server/
   auth.ts        Passwörter, Sitzungen
   families.ts    Familien, Mitglieder, Einladungen
   shopping.ts    Einkaufsliste
+  calendar.ts    Kalender: Termine, Sichtbarkeit, Freigaben
+src/lib/holidays.ts  Deutsche Feiertage (offline berechnet, optional je Bundesland)
   db/schema.ts   Datenbankschema
 src/routes/
   (auth)/        Login, Registrieren, Einladung annehmen
   (app)/         Einkauf, Kalender, Planung, Familie
 ```
+
+## Kalender
+
+- **Sichtbarkeit pro Termin:** ganze Familie (Standard), bestimmte Personen oder nur ich. Wer einen Termin nicht sehen darf, bekommt ihn auch über den direkten Link nicht (404).
+- **Bearbeiten:** Die Person, die den Termin angelegt hat. Admins dürfen zusätzlich Termine der ganzen Familie ändern oder löschen, aber deren Sichtbarkeit nicht ändern. Private und geteilte Termine bleiben allein bei ihrer Person.
+- **Feiertage:** Die bundesweiten Feiertage werden immer angezeigt. Unter **Familie → Feiertage im Kalender** kann ein Admin das Bundesland wählen, dann kommen die regionalen dazu. Die Berechnung läuft offline (Osterformel), es wird kein externer Dienst gebraucht. Feiertage, die nur in Teilen eines Landes gelten (z. B. Mariä Himmelfahrt in Bayern), werden nicht angezeigt.
 
 ## Entwickeln
 

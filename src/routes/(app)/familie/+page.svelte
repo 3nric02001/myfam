@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { STATES } from '$lib/holidays';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
@@ -92,6 +93,39 @@
 		{/if}
 	</section>
 {/if}
+
+<section id="feiertage" class="card mb-5 space-y-2 p-4">
+	<h2 class="font-semibold">Feiertage im Kalender</h2>
+	{#if isAdmin}
+		<p class="text-sm text-slate-500">
+			Bundesweite Feiertage werden immer angezeigt. Wählt euer Bundesland, um auch die regionalen zu
+			sehen.
+		</p>
+		<form
+			method="POST"
+			action="?/state"
+			use:enhance={() =>
+				async ({ update }) => {
+					await update({ reset: false });
+				}}
+			class="flex gap-2"
+		>
+			<select name="state" class="flex-1" value={data.state ?? ''}>
+				<option value="">Nur bundesweite Feiertage</option>
+				{#each Object.entries(STATES) as [code, name] (code)}
+					<option value={code}>{name}</option>
+				{/each}
+			</select>
+			<button class="btn-primary">Speichern</button>
+		</form>
+		{#if form && 'stateSaved' in form}<p class="text-sm text-emerald-700">Gespeichert ✓</p>{/if}
+	{:else}
+		<p class="text-sm text-slate-600">
+			{data.state ? `Bundesweit und ${STATES[data.state]}` : 'Nur bundesweite Feiertage'}. Das kann
+			ein Admin ändern.
+		</p>
+	{/if}
+</section>
 
 {#if data.families.length > 1}
 	<section class="card mb-5 p-4">
