@@ -8,6 +8,8 @@ services:
       # Public URL exactly as users open it in the browser, e.g. https://myfam.example.de.
       # Form posts from any other address are rejected, so this must match.
       ORIGIN: ${PUBLIC_URL:-http://localhost:${PORT:-3000}}
+      # Automatic supermarket offers via marktguru.de (see README). Off unless set to true.
+      MARKTGURU_ENABLED: ${MARKTGURU_ENABLED:-false}
     ports:
       # Only reachable from this host by default; set BIND=0.0.0.0 if the proxy runs elsewhere.
       - '${BIND:-127.0.0.1}:${PORT:-3000}:3000'

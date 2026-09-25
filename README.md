@@ -90,6 +90,7 @@ location / {
 
 - `PUBLIC_URL` muss genau die Adresse sein, die im Browser steht. SvelteKit prüft damit die Herkunft von Formularen (CSRF-Schutz), und die Einladungslinks werden daraus gebaut.
 - `PORT` ändert den Port auf dem Host. `BIND=0.0.0.0` macht ihn im Netzwerk erreichbar, falls der Proxy auf einem anderen Rechner läuft.
+- `MARKTGURU_ENABLED=true` schaltet automatische Angebote für die Einkaufsliste ein (siehe unten). Standardmäßig aus.
 - Läuft der Proxy selbst in Docker, kannst du den Container stattdessen in dasselbe Docker-Netzwerk hängen und `app:3000` als Ziel nehmen.
 
 Danach unter `https://<deine Domain>/registrieren` die erste Familie anlegen und die anderen über **Familie → Einladungslink erstellen** einladen.
@@ -98,3 +99,12 @@ Danach unter `https://<deine Domain>/registrieren` die erste Familie anlegen und
 - **Backup:** Die Datenbank liegt im Volume `app-data` (`/data/myfam.db`), z. B.
   `docker compose exec app node -e "require('better-sqlite3')('/data/myfam.db').backup('/data/backup.db')"` und dann `docker compose cp app:/data/backup.db .`
   Die Bilder aus der Planung liegen im selben Volume unter `/data/uploads` und gehören mit ins Backup: `docker compose cp app:/data/uploads ./uploads`
+
+## Angebote in der Einkaufsliste
+
+Unter **Einkauf → Tipp / Angebote** wählt jede Familie ihre Märkte (und die Postleitzahl). Die App sucht zu jedem offenen Artikel passende Angebote dieser Märkte und empfiehlt den Markt mit den meisten Angeboten, oder zwei Märkte, wenn ein zweiter Stopp weitere Artikel abdeckt.
+
+Angebote kommen aus zwei Quellen:
+
+- **Von Hand eingetragen** (z. B. aus dem Prospekt). Funktioniert immer; abgelaufene Angebote verschwinden von selbst.
+- **Automatisch über marktguru.de**, nur wenn `MARKTGURU_ENABLED=true` in der `.env` steht. Es gibt keine offizielle Schnittstelle: die App nutzt dieselbe wie die marktguru-Webseite. Deren [Nutzungsbedingungen](https://info.marktguru.de/agb) (§ 4) verbieten das automatische Auslesen, das Einschalten ist also deine Entscheidung als Betreiber. Die Ergebnisse werden 6 Stunden zwischengespeichert, höchstens 30 Suchen pro Aufruf. Bricht die Quelle weg, zeigt die App einen Hinweis und nutzt nur die eingetragenen Angebote.

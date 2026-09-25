@@ -211,6 +211,53 @@ export const planningImage = sqliteTable('planning_image', {
 	createdAt: createdAt()
 });
 
+/** Where a family shops: its postcode (for automatic offers) and the chosen stores. */
+export const offerSettings = sqliteTable('offer_settings', {
+	familyId: text('family_id')
+		.primaryKey()
+		.references(() => family.id, { onDelete: 'cascade' }),
+	zip: text('zip'),
+	/** Store ids from $lib/offers STORES. */
+	stores: text('stores', { mode: 'json' }).$type<string[]>().notNull().default([]),
+	updatedAt: integer('updated_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`)
+});
+
+/** An offer a family member typed in from a leaflet. Prices are in cents. */
+export const offer = sqliteTable(
+	'offer',
+	{
+		id: id(),
+		familyId: text('family_id')
+			.notNull()
+			.references(() => family.id, { onDelete: 'cascade' }),
+		store: text('store').notNull(),
+		product: text('product').notNull(),
+		price: integer('price'),
+		/** Last day the offer is valid, 'YYYY-MM-DD'. */
+		validUntil: text('valid_until').notNull(),
+		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+		createdAt: createdAt()
+	},
+	(t) => [index('offer_family_idx').on(t.familyId, t.validUntil)]
+);
+
+/**
+ * Offers fetched automatically for a search term and postcode, kept for a few hours so the
+ * list page does not ask the source again on every load. Public data, shared by all families.
+ */
+export const offerSearchCache = sqliteTable(
+	'offer_search_cache',
+	{
+		zip: text('zip').notNull(),
+		query: text('query').notNull(),
+		results: text('results', { mode: 'json' }).notNull(),
+		fetchedAt: integer('fetched_at', { mode: 'timestamp' }).notNull()
+	},
+	(t) => [primaryKey({ columns: [t.zip, t.query] })]
+);
+
 export type User = typeof user.$inferSelect;
 export type Family = typeof family.$inferSelect;
 export type ShoppingItem = typeof shoppingItem.$inferSelect;
