@@ -1,6 +1,6 @@
-import { and, eq, gte, isNotNull, lte } from 'drizzle-orm';
+import { and, eq, gte, isNotNull, isNull, lte } from 'drizzle-orm';
 import type { DB } from './db/client';
-import { calendarEvent, calendarEventShare, membership, reminderSent } from './db/schema';
+import { calendarEvent, calendarEventShare, membership, reminderSent, task } from './db/schema';
 import { sendToUsers, type PushMessage, type Sender } from './push';
 import { addDays, dayLabel, today } from '$lib/dates';
 
@@ -126,7 +126,47 @@ export const eventReminders: ReminderSource = async (db, now) => {
 	return due;
 };
 
-export const sources: ReminderSource[] = [eventReminders];
+/** Open tasks are reminded at this time on the day they are due. */
+export const TASK_REMINDER_TIME = '08:00';
+
+/**
+ * Open tasks due today, in the morning: to the person they are assigned to, or to whoever
+ * created them when nobody is, so an unassigned task doesn't ping the whole family.
+ */
+export const taskReminders: ReminderSource = async (db, now) => {
+	const day = today(now);
+	const tasks = await db
+		.select()
+		.from(task)
+		.where(and(isNull(task.doneAt), gte(task.dueDate, addDays(day, -1)), lte(task.dueDate, day)));
+	const due: DueReminder[] = [];
+	for (const t of tasks) {
+		const at = berlinTime(t.dueDate, TASK_REMINDER_TIME);
+		if (at > now || now.getTime() - at.getTime() > GRACE_MS) continue;
+		if (at < t.createdAt) continue;
+		const to = t.assigneeId ?? t.createdBy;
+		if (!to) continue;
+		const [member] = await db
+			.select({ userId: membership.userId })
+			.from(membership)
+			.where(and(eq(membership.familyId, t.familyId), eq(membership.userId, to)));
+		if (!member) continue;
+		due.push({
+			key: `task:${t.id}:${t.dueDate}`,
+			at,
+			userIds: [to],
+			message: {
+				title: `Heute fällig: ${t.title}`,
+				body: t.assigneeId ? 'Diese Aufgabe ist dir zugewiesen.' : 'Deine Aufgabe von der Liste.',
+				url: `/kalender/aufgaben/${t.id}`,
+				tag: `task:${t.id}`
+			}
+		});
+	}
+	return due;
+};
+
+export const sources: ReminderSource[] = [eventReminders, taskReminders];
 
 /** Sends every due reminder that was not sent yet. Returns the keys it sent. */
 export async function sendDueReminders(

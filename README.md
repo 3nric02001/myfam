@@ -27,6 +27,7 @@ src/lib/server/
   shopping.ts    Einkaufsliste
   calendar.ts    Kalender: Termine, Sichtbarkeit, Freigaben
   meals.ts       Essensplan, Zutaten auf die Einkaufsliste
+  tasks.ts       Aufgaben mit Zuständigen und Fälligkeit
   planning.ts    Planung: Ordner, Karten, Inhalte, Bilder
   push.ts        Web Push: VAPID-Schlüssel, Geräte, Versand
   reminders.ts   Erinnerungen: was fällig ist, Scheduler im App-Prozess
@@ -48,6 +49,7 @@ src/routes/
   - Das Passwort wird mit AES-256-GCM verschlüsselt gespeichert. Den Schlüssel legt die App beim ersten Abo als `secret.key` neben der Datenbank an (im Docker-Volume), oder er kommt aus `SECRET_KEY` in der `.env`. Geht der Schlüssel verloren, müssen die Passwörter neu eingegeben werden.
 - **Feiertage:** Die bundesweiten Feiertage werden immer angezeigt. Unter **Familie → Feiertage im Kalender** kann ein Admin das Bundesland wählen, dann kommen die regionalen dazu. Die Berechnung läuft offline (Osterformel), es wird kein externer Dienst gebraucht. Feiertage, die nur in Teilen eines Landes gelten (z. B. Mariä Himmelfahrt in Bayern), werden nicht angezeigt.
 - **Essensplan:** In der Tagesansicht des Kalenders stehen Frühstück, Mittag und Abend als schlanke Zeilen, leere Mahlzeiten als „+“-Knöpfe. „Woche planen“ zeigt die ganze Woche. Frühere Gerichte werden beim Tippen vorgeschlagen und bringen ihre Zutaten mit. Ein Tipp auf den Einkaufswagen setzt die Zutaten auf die Einkaufsliste (Mengen wie „500 g“ werden erkannt, was schon offen auf der Liste steht, wird übersprungen). Der Essensplan ist für die ganze Familie sichtbar und bearbeitbar.
+- **Aufgaben:** Jede Aufgabe hat ein Fälligkeitsdatum und optional eine zuständige Person. Sie erscheint am Fälligkeitstag im Kalender, überfällige offene Aufgaben zusätzlich am heutigen Tag. Unter „Alle“ gibt es die ganze Liste, gruppiert nach überfällig, heute, morgen, nächste 7 Tage und später, mit dem Filter „Meine“ (mir zugewiesen oder von mir ohne Zuständige angelegt). Abhaken darf jeder, der die Aufgabe sieht. Sichtbarkeit und Bearbeiten funktionieren wie bei Terminen. Eine private Aufgabe lässt sich nur sich selbst zuweisen, und bei geteilten Aufgaben wird die zuständige Person automatisch mit eingeschlossen. Per Push erfährt die zuständige Person sofort, wenn ihr jemand eine Aufgabe gibt, und am Fälligkeitstag um 8 Uhr kommt eine Erinnerung an offene Aufgaben (an die zuständige Person, sonst an die Person, die sie angelegt hat).
 
 ## Erinnerungen per Push
 
