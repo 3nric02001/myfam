@@ -40,8 +40,15 @@
     {
       "idx": 5,
       "version": "6",
-      "when": 1790421204260,
-      "tag": "0005_planning_comments",
+      "when": 1790420943773,
+      "tag": "0005_shopping_categories",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1790421492705,
+      "tag": "0006_planning_comments",
       "breakpoints": true
     }
   ]
