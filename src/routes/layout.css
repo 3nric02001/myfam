@@ -86,17 +86,17 @@
 		--color-brand-800: #afdacd;
 		--color-brand-900: #d6ede6;
 		--color-brand-950: #eef7f4;
-		--color-slate-50: #100e0d;
-		--color-slate-100: #2b2724;
-		--color-slate-200: #2b2724;
-		--color-slate-300: #45403b;
-		--color-slate-400: #7a726b;
-		--color-slate-500: #b3aca5;
-		--color-slate-600: #d7d3ce;
-		--color-slate-700: #d7d3ce;
-		--color-slate-800: #e8e5e1;
-		--color-slate-900: #f5f4f2;
-		--color-slate-950: #fafaf9;
+		--color-slate-50: #0d1011;
+		--color-slate-100: #252b2b;
+		--color-slate-200: #252b2b;
+		--color-slate-300: #3a4242;
+		--color-slate-400: #6f7877;
+		--color-slate-500: #a8b1b0;
+		--color-slate-600: #d0d6d5;
+		--color-slate-700: #d0d6d5;
+		--color-slate-800: #e3e8e7;
+		--color-slate-900: #f2f5f4;
+		--color-slate-950: #f9fbfa;
 		--color-accent-50: #341708;
 		--color-accent-100: #5c2f14;
 		--color-accent-200: #713815;
@@ -108,8 +108,8 @@
 		--color-accent-800: #f4c58f;
 		--color-accent-900: #fae3c9;
 		--color-accent-950: #fdf4ea;
-		--color-surface: #221f1c;
-		--color-page: #0e0c0b;
+		--color-surface: #1a2020;
+		--color-page: #0b0e0e;
 	}
 }
 :root[data-theme='dark'] {
@@ -127,17 +127,17 @@
 	--color-brand-800: #afdacd;
 	--color-brand-900: #d6ede6;
 	--color-brand-950: #eef7f4;
-	--color-slate-50: #100e0d;
-	--color-slate-100: #2b2724;
-	--color-slate-200: #2b2724;
-	--color-slate-300: #45403b;
-	--color-slate-400: #7a726b;
-	--color-slate-500: #b3aca5;
-	--color-slate-600: #d7d3ce;
-	--color-slate-700: #d7d3ce;
-	--color-slate-800: #e8e5e1;
-	--color-slate-900: #f5f4f2;
-	--color-slate-950: #fafaf9;
+	--color-slate-50: #0d1011;
+	--color-slate-100: #252b2b;
+	--color-slate-200: #252b2b;
+	--color-slate-300: #3a4242;
+	--color-slate-400: #6f7877;
+	--color-slate-500: #a8b1b0;
+	--color-slate-600: #d0d6d5;
+	--color-slate-700: #d0d6d5;
+	--color-slate-800: #e3e8e7;
+	--color-slate-900: #f2f5f4;
+	--color-slate-950: #f9fbfa;
 	--color-accent-50: #341708;
 	--color-accent-100: #5c2f14;
 	--color-accent-200: #713815;
@@ -149,8 +149,8 @@
 	--color-accent-800: #f4c58f;
 	--color-accent-900: #fae3c9;
 	--color-accent-950: #fdf4ea;
-	--color-surface: #221f1c;
-	--color-page: #0e0c0b;
+	--color-surface: #1a2020;
+	--color-page: #0b0e0e;
 }
 :root[data-theme='light'] {
 	color-scheme: light;
@@ -189,6 +189,10 @@
 	}
 	button {
 		@apply cursor-pointer;
+	}
+	/* Keyboard focus (and the button a menu focuses when it opens) in brand green, not browser blue. */
+	:focus-visible {
+		@apply outline-2 outline-offset-2 outline-brand-600;
 	}
 }
 
