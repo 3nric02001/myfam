@@ -11,7 +11,7 @@ Ein gemeinsamer Ort für die ganze Familie: Einkaufsliste, Termine und Planung. 
 | Einkaufsliste                     | fertig (hinzufügen, abhaken, löschen, Erledigte löschen)   |
 | Kalender                          | fertig (Termine mit Sichtbarkeit, Feiertage, CalDAV-Abos)  |
 | Planung                           | fertig (Ordner, Karten mit Text, Tabellen, Links, Bildern) |
-| Erinnerungen per Push             | fertig für Termine                                         |
+| Erinnerungen per Push             | fertig für Termine und Planungs-Kommentare                 |
 
 ## Technik
 
@@ -55,6 +55,7 @@ src/routes/
 - **Pro Termin** wählt man die Erinnerung im Terminformular: bei Terminen mit Uhrzeit standardmäßig 30 Minuten vorher, bei ganztägigen am Vortag um 18 Uhr (oder „Keine“). Die Erinnerung geht an alle, die den Termin sehen dürfen und Benachrichtigungen eingeschaltet haben. Termine, die vor diesem Update angelegt wurden, haben keine Erinnerung.
 - **Technik:** Web Push mit eigenem VAPID-Schlüssel, ohne Konto bei einem Drittanbieter. Der Server schickt die verschlüsselte Nachricht direkt an den Push-Dienst des Browsers (Google, Apple, Mozilla, Microsoft), der Container braucht dafür ausgehendes HTTPS. Der Schlüssel wird beim ersten Start erzeugt und in der Datenbank gespeichert. Alternativ `VAPID_PUBLIC_KEY` und `VAPID_PRIVATE_KEY` setzen (`npx web-push generate-vapid-keys`); ändert sich der Schlüssel, muss jedes Gerät neu eingeschaltet werden.
 - **Zeitplan:** Ein Timer im App-Prozess prüft jede Minute, was fällig ist (deutsche Zeit, auch über die Zeitumstellung). War der Server kurz weg, werden bis zu 30 Minuten alte Erinnerungen nachgeholt, jede genau einmal. Weitere Arten (z. B. Aufgaben) hängen sich als eigene Quelle in `src/lib/server/reminders.ts` ein.
+- **Kommentare in der Planung:** Schreibt jemand einen Kommentar unter eine Karte, bekommen alle anderen, die den Ordner sehen dürfen, eine Nachricht mit Name, Kartentitel und dem Anfang des Kommentars. Mehrere Kommentare zur selben Karte ersetzen die vorherige Nachricht, statt sich zu stapeln. Geänderte Kommentare lösen keine neue Nachricht aus.
 - Der Service Worker (`src/service-worker.ts`) zeigt nur Benachrichtigungen an und speichert keine Seiten zwischen.
 
 ## Planung

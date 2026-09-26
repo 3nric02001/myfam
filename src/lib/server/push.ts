@@ -212,3 +212,8 @@ export async function sendToUsers(db: DB, userIds: string[], message: PushMessag
 	);
 	return delivered;
 }
+
+/** The sender for this installation's keys, from the environment or the database. */
+export function pushSender(db: DB, env: Record<string, string | undefined> = {}) {
+	return webPushSender(vapidKeys(db, env), vapidSubject(env));
+}
