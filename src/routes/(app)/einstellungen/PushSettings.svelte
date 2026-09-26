@@ -11,15 +11,19 @@
 		syncPush,
 		type PushStatus
 	} from '$lib/push-client';
+	import { notificationKinds } from '$lib/notifications';
+	import type { NotificationKind } from '$lib/server/db/schema';
 
 	let {
 		publicKey,
 		devices,
+		off,
 		message,
 		success
 	}: {
 		publicKey: string;
 		devices: { id: string; endpoint: string; device: string | null }[];
+		off: NotificationKind[];
 		message?: string;
 		success?: string;
 	} = $props();
@@ -184,7 +188,38 @@
 		</form>
 	{/each}
 </div>
-<p class="-mt-4 mb-6 px-1 text-xs text-slate-500">
-	Du bekommst Erinnerungen zu Terminen, die du sehen darfst (die Zeit legt man pro Termin fest), und
-	eine Nachricht bei neuen Kommentaren unter Planungs-Karten.
+<div class="card mb-2 divide-y divide-slate-100 overflow-hidden">
+	{#each notificationKinds as item (item.kind)}
+		<form
+			method="POST"
+			action="?/notification"
+			use:enhance={() =>
+				({ update }) =>
+					update({ reset: false })}
+		>
+			<input type="hidden" name="kind" value={item.kind} />
+			<label class="flex min-h-14 cursor-pointer items-center gap-3 px-4 py-3">
+				<span class="min-w-0 flex-1">
+					<span class="block font-medium">{item.label}</span>
+					<span class="block text-sm text-slate-500">{item.hint}</span>
+				</span>
+				<input
+					type="checkbox"
+					name="on"
+					role="switch"
+					class="peer sr-only"
+					checked={!off.includes(item.kind)}
+					onchange={(e) => e.currentTarget.form?.requestSubmit()}
+				/>
+				<span
+					class="relative h-7 w-12 shrink-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand-600 peer-focus-visible:ring-2 peer-focus-visible:ring-brand-600 peer-focus-visible:ring-offset-2 after:absolute after:top-0.5 after:left-0.5 after:size-6 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5"
+					aria-hidden="true"
+				></span>
+			</label>
+		</form>
+	{/each}
+</div>
+<p class="mb-6 px-1 text-xs text-slate-500">
+	Gilt für alle deine Geräte. Termine, Aufgaben und Kommentare bekommst du nur, wenn du sie sehen
+	darfst.
 </p>

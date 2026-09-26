@@ -615,3 +615,40 @@ export const planningCardSeen = sqliteTable(
 	},
 	(t) => [primaryKey({ columns: [t.cardId, t.userId] })]
 );
+
+/** Kinds of push notifications a member can switch off in the settings. */
+export type NotificationKind =
+	'morning' | 'event' | 'task' | 'evening' | 'comment' | 'meals' | 'receipt';
+
+/** A kind of notification a member switched off. Everything else is on. */
+export const notificationOff = sqliteTable(
+	'notification_off',
+	{
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		kind: text('kind').$type<NotificationKind>().notNull()
+	},
+	(t) => [primaryKey({ columns: [t.userId, t.kind] })]
+);
+
+/**
+ * A member ticking off items on the shopping list, so they can be reminded to photograph the
+ * receipt. Saving a receipt ends the trips of the whole family.
+ */
+export const shoppingTrip = sqliteTable(
+	'shopping_trip',
+	{
+		familyId: text('family_id')
+			.notNull()
+			.references(() => family.id, { onDelete: 'cascade' }),
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		startedAt: integer('started_at', { mode: 'timestamp' }).notNull(),
+		lastCheckAt: integer('last_check_at', { mode: 'timestamp' }).notNull(),
+		/** Items ticked off minus items unticked again; a mistaken tick alone reminds nobody. */
+		checks: integer('checks').notNull().default(0)
+	},
+	(t) => [primaryKey({ columns: [t.familyId, t.userId] })]
+);

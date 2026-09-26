@@ -249,6 +249,7 @@
 <PushSettings
 	publicKey={data.push.publicKey}
 	devices={data.push.devices}
+	off={data.push.off}
 	message={form?.action === 'push' && 'message' in form ? form.message : undefined}
 	success={form?.action === 'push' && 'success' in form ? form.success : undefined}
 />

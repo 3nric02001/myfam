@@ -79,9 +79,9 @@ export const actions: Actions = {
 	},
 
 	toggle: async ({ request, locals }) => {
-		const { family } = requireFamily(locals);
+		const { user, family } = requireFamily(locals);
 		const form = await request.formData();
-		await setDone(db, family.id, field(form, 'id'), field(form, 'done') === 'true');
+		await setDone(db, family.id, field(form, 'id'), field(form, 'done') === 'true', user.id);
 	},
 
 	delete: async ({ request, locals }) => {

@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, gte } from 'drizzle-orm';
 import type { DB } from './db/client';
-import { purchase, purchaseLine, user } from './db/schema';
+import { purchase, purchaseLine, shoppingTrip, user } from './db/schema';
 import { purchaseTotal, type PurchaseLine, type PurchaseSummary } from '$lib/purchases';
 
 // Every query is scoped to a family, like the shopping list itself.
@@ -28,6 +28,8 @@ export async function savePurchase(
 		tx.insert(purchaseLine)
 			.values(input.lines.map((l, position) => ({ ...l, purchaseId: row.id, position })))
 			.run();
+		// The receipt is in, so nobody in the family needs a reminder for this shopping any more.
+		tx.delete(shoppingTrip).where(eq(shoppingTrip.familyId, familyId)).run();
 		return row;
 	});
 }

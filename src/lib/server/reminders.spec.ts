@@ -3,8 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { createUser } from './auth';
 import { checkEvent, createEvent, type EventInput } from './calendar';
 import { acceptInvite, createInvite } from './families';
-import { saveSubscription, type Sender } from './push';
-import { berlinTime, sendDueReminders, whenLabel } from './reminders';
+import { saveSubscription, setNotification, type Sender } from './push';
+import { berlinTime, listLabel, sendDueReminders, whenLabel } from './reminders';
+import { saveMeal } from './meals';
+import { addItem, setDone } from './shopping';
+import { savePurchase } from './purchases';
 import { calendarEvent, task } from './db/schema';
 import { createTask, notifyAssignee, setTaskDone, type TaskInput } from './tasks';
 import { seedFamily, testDb } from './test/setup';
@@ -213,4 +216,202 @@ describe('reminders', () => {
 		).toBe(0);
 		expect(inbox).toHaveLength(1);
 	});
+
+	it('leaves out people who switched a kind of notification off', async () => {
+		const { db, family, anna, ben, inbox, send } = await setup();
+		await setNotification(db, ben.id, 'event', false);
+		await createEvent(
+			db,
+			family.id,
+			anna.id,
+			event({ title: 'Arzt', startTime: '10:00', reminder: 30 })
+		);
+		db.update(calendarEvent)
+			.set({ createdAt: new Date('2026-01-01') })
+			.run();
+		expect(await sendDueReminders(db, berlinTime('2026-10-01', '09:30'), send)).toHaveLength(1);
+		expect(inbox.map((m) => m.to)).toEqual(['anna']);
+		// Switching it on again is enough.
+		await setNotification(db, ben.id, 'event', true);
+		await setNotification(db, ben.id, 'event', true);
+		await createEvent(
+			db,
+			family.id,
+			anna.id,
+			event({ title: 'Zahnarzt', startTime: '11:00', reminder: 30 })
+		);
+		db.update(calendarEvent)
+			.set({ createdAt: new Date('2026-01-01') })
+			.run();
+		await sendDueReminders(db, berlinTime('2026-10-01', '10:30'), send);
+		expect(inbox.map((m) => m.to).sort()).toEqual(['anna', 'anna', 'ben']);
+	});
+
+	it('tells the family on Sunday evening about meals still open next week', async () => {
+		const { db, family, anna, inbox, send } = await setup();
+		// The family plans lunch and dinner, never breakfast.
+		await saveMeal(db, family.id, anna.id, { date: '2026-09-28', slot: 'lunch', name: 'Suppe' });
+		for (const date of ['2026-10-05', '2026-10-06', '2026-10-08', '2026-10-09', '2026-10-10']) {
+			await saveMeal(db, family.id, anna.id, { date, slot: 'dinner', name: 'Brot' });
+			await saveMeal(db, family.id, anna.id, { date, slot: 'lunch', name: 'Nudeln' });
+		}
+		await saveMeal(db, family.id, anna.id, { date: '2026-10-11', slot: 'lunch', name: 'Braten' });
+
+		// 2026-10-04 is a Sunday.
+		expect(await sendDueReminders(db, berlinTime('2026-10-03', '18:00'), send)).toEqual([]);
+		expect(await sendDueReminders(db, berlinTime('2026-10-04', '17:59'), send)).toEqual([]);
+		expect(await sendDueReminders(db, berlinTime('2026-10-04', '18:00'), send)).toEqual([
+			`meals:${family.id}:2026-10-05`
+		]);
+		expect(inbox.map((m) => m.to).sort()).toEqual(['anna', 'ben']);
+		expect(inbox[0]).toMatchObject({
+			title: 'Essensplan für nächste Woche',
+			body: 'Noch 3 Mahlzeiten offen: Mi, So Abend.'
+		});
+		expect(await sendDueReminders(db, berlinTime('2026-10-04', '18:10'), send)).toEqual([]);
+	});
+
+	it('says nothing about meals when the week is planned or the family has no meal plan', async () => {
+		const { db, family, anna, inbox, send } = await setup();
+		expect(await sendDueReminders(db, berlinTime('2026-10-04', '18:00'), send)).toEqual([]);
+		for (let d = 5; d <= 11; d++) {
+			const date = `2026-10-${String(d).padStart(2, '0')}`;
+			await saveMeal(db, family.id, anna.id, { date, slot: 'dinner', name: 'Brot' });
+		}
+		expect(await sendDueReminders(db, berlinTime('2026-10-04', '18:00'), send)).toEqual([]);
+		expect(inbox).toEqual([]);
+	});
+
+	it('reminds whoever ticked off items to photograph the receipt', async () => {
+		const { db, family, anna, ben, inbox, send } = await setup();
+		const [milk, bread, eggs] = await Promise.all(
+			['Milch', 'Brot', 'Eier'].map((name) => addItem(db, family.id, anna.id, { name }))
+		);
+		const at = (time: string) => berlinTime('2026-10-01', time);
+		await setDone(db, family.id, milk.id, true, ben.id, at('10:00'));
+		await setDone(db, family.id, bread.id, true, ben.id, at('10:03'));
+		// Ticking off twice (e.g. from the offline queue) counts once.
+		await setDone(db, family.id, bread.id, true, ben.id, at('10:03'));
+
+		expect(await sendDueReminders(db, at('10:07'), send)).toEqual([]);
+		await setDone(db, family.id, eggs.id, true, ben.id, at('10:07'));
+		expect(await sendDueReminders(db, at('10:11'), send)).toEqual([]);
+		expect(await sendDueReminders(db, at('10:12'), send)).toHaveLength(1);
+		expect(inbox).toEqual([
+			{
+				to: 'ben',
+				title: 'Kassenzettel fotografieren?',
+				body: 'Du hast 3 Sachen abgehakt. Mit einem Foto vom Bon lernt MyFam die Preise.'
+			}
+		]);
+		// One reminder per shopping trip, even when more is ticked off later.
+		await setDone(db, family.id, eggs.id, false, ben.id, at('10:20'));
+		await setDone(db, family.id, eggs.id, true, ben.id, at('10:21'));
+		expect(await sendDueReminders(db, at('10:30'), send)).toEqual([]);
+		expect(inbox).toHaveLength(1);
+	});
+
+	it('does not remind about the receipt once one is saved or after a mistaken tick', async () => {
+		const { db, family, anna, ben, inbox, send } = await setup();
+		const milk = await addItem(db, family.id, anna.id, { name: 'Milch' });
+		const bread = await addItem(db, family.id, anna.id, { name: 'Brot' });
+		const at = (time: string) => berlinTime('2026-10-01', time);
+		await setDone(db, family.id, milk.id, true, ben.id, at('10:00'));
+		// Anna photographs the receipt, so Ben is not reminded.
+		await savePurchase(db, family.id, anna.id, {
+			store: 'Rewe',
+			date: '2026-10-01',
+			lines: [{ name: 'Milch', product: 'MILCH', price: 119, count: 1, weighed: false }]
+		});
+		expect(await sendDueReminders(db, at('10:10'), send)).toEqual([]);
+
+		await setDone(db, family.id, bread.id, true, anna.id, at('11:00'));
+		await setDone(db, family.id, bread.id, false, anna.id, at('11:01'));
+		expect(await sendDueReminders(db, at('11:10'), send)).toEqual([]);
+
+		await setNotification(db, ben.id, 'receipt', false);
+		await setDone(db, family.id, bread.id, true, ben.id, at('12:00'));
+		expect(await sendDueReminders(db, at('12:05'), send)).toHaveLength(1);
+		expect(inbox).toEqual([]);
+	});
+
+	it('sends each member an overview of the day in the morning', async () => {
+		const { db, family, anna, ben, inbox, send } = await setup();
+		await createEvent(db, family.id, anna.id, event({ title: 'Arzt', startTime: '10:00' }));
+		await createEvent(db, family.id, anna.id, event({ title: 'Oma Geburtstag' }));
+		await createEvent(
+			db,
+			family.id,
+			anna.id,
+			event({ title: 'Geheim', startTime: '09:00', visibility: 'private' })
+		);
+		await createTask(db, family.id, anna.id, taskInput({ title: 'Müll', assigneeId: ben.id }));
+		await createTask(
+			db,
+			family.id,
+			anna.id,
+			taskInput({ title: 'Alt', assigneeId: ben.id, dueDate: '2026-09-29' })
+		);
+		await createTask(
+			db,
+			family.id,
+			anna.id,
+			taskInput({ title: 'Später', assigneeId: ben.id, dueDate: '2026-10-05' })
+		);
+		await saveMeal(db, family.id, anna.id, { date: '2026-10-01', slot: 'dinner', name: 'Pizza' });
+
+		expect(await sendDueReminders(db, berlinTime('2026-10-01', '06:59'), send)).toEqual([]);
+		expect(await sendDueReminders(db, berlinTime('2026-10-01', '07:00'), send)).toHaveLength(2);
+		const of = (to: string) => inbox.find((m) => m.to === to);
+		expect(of('anna')).toEqual({
+			to: 'anna',
+			title: 'Heute, Donnerstag, 1. Oktober',
+			body: 'Termine: Oma Geburtstag, 09:00 Geheim, 10:00 Arzt\nEssen: Pizza (Abend)'
+		});
+		expect(of('ben')?.body).toBe(
+			'Termine: Oma Geburtstag, 10:00 Arzt\nAufgaben: Alt, Müll\nEssen: Pizza (Abend)'
+		);
+		expect(await sendDueReminders(db, berlinTime('2026-10-01', '07:10'), send)).toEqual([]);
+	});
+
+	it('skips the morning overview on an empty day', async () => {
+		const { db, inbox, send } = await setup();
+		expect(await sendDueReminders(db, berlinTime('2026-10-01', '07:00'), send)).toEqual([]);
+		expect(inbox).toEqual([]);
+	});
+
+	it('mentions tasks still open in the evening', async () => {
+		const { db, family, anna, ben, inbox, send } = await setup();
+		await createTask(db, family.id, anna.id, taskInput({ title: 'Müll', assigneeId: ben.id }));
+		const done = await createTask(db, family.id, anna.id, taskInput({ title: 'Erledigt' }));
+		await setTaskDone(db, family.id, anna.id, done.id, true);
+		await createTask(
+			db,
+			family.id,
+			anna.id,
+			taskInput({ title: 'Morgen', assigneeId: ben.id, dueDate: '2026-10-02' })
+		);
+
+		expect(await sendDueReminders(db, berlinTime('2026-10-01', '19:59'), send)).toEqual([]);
+		expect(await sendDueReminders(db, berlinTime('2026-10-01', '20:00'), send)).toHaveLength(1);
+		expect(inbox).toEqual([{ to: 'ben', title: 'Noch eine Aufgabe offen', body: 'Müll' }]);
+		expect(await sendDueReminders(db, berlinTime('2026-10-01', '20:15'), send)).toEqual([]);
+	});
+
+	it('shortens long lists', () => {
+		expect(listLabel(['a', 'b', 'c'])).toBe('a, b, c');
+		expect(listLabel(['a', 'b', 'c', 'd', 'e'])).toBe('a, b, c und 2 weitere');
+	});
 });
+
+function taskInput(values: Partial<TaskInput>): TaskInput {
+	return {
+		title: 'Aufgabe',
+		notes: null,
+		dueDate: '2026-10-01',
+		assigneeId: null,
+		visibility: 'family',
+		shareWith: [],
+		...values
+	};
+}
