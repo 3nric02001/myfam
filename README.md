@@ -26,6 +26,7 @@ src/lib/server/
   families.ts    Familien, Mitglieder, Einladungen
   shopping.ts    Einkaufsliste
   calendar.ts    Kalender: Termine, Sichtbarkeit, Freigaben
+  meals.ts       Essensplan, Zutaten auf die Einkaufsliste
   planning.ts    Planung: Ordner, Karten, Inhalte, Bilder
   push.ts        Web Push: VAPID-Schlüssel, Geräte, Versand
   reminders.ts   Erinnerungen: was fällig ist, Scheduler im App-Prozess
@@ -46,6 +47,7 @@ src/routes/
   - Nextcloud: Adresse über Kalender → „…“ neben dem Kalendernamen → **Interne Adresse kopieren**, dazu Benutzername und ein **App-Passwort** (Einstellungen → Sicherheit). Wird die Adresse aller Kalender eingetragen, nennt die App die gefundenen Kalender.
   - Das Passwort wird mit AES-256-GCM verschlüsselt gespeichert. Den Schlüssel legt die App beim ersten Abo als `secret.key` neben der Datenbank an (im Docker-Volume), oder er kommt aus `SECRET_KEY` in der `.env`. Geht der Schlüssel verloren, müssen die Passwörter neu eingegeben werden.
 - **Feiertage:** Die bundesweiten Feiertage werden immer angezeigt. Unter **Familie → Feiertage im Kalender** kann ein Admin das Bundesland wählen, dann kommen die regionalen dazu. Die Berechnung läuft offline (Osterformel), es wird kein externer Dienst gebraucht. Feiertage, die nur in Teilen eines Landes gelten (z. B. Mariä Himmelfahrt in Bayern), werden nicht angezeigt.
+- **Essensplan:** In der Tagesansicht des Kalenders stehen Frühstück, Mittag und Abend als schlanke Zeilen, leere Mahlzeiten als „+“-Knöpfe. „Woche planen“ zeigt die ganze Woche. Frühere Gerichte werden beim Tippen vorgeschlagen und bringen ihre Zutaten mit. Ein Tipp auf den Einkaufswagen setzt die Zutaten auf die Einkaufsliste (Mengen wie „500 g“ werden erkannt, was schon offen auf der Liste steht, wird übersprungen). Der Essensplan ist für die ganze Familie sichtbar und bearbeitbar.
 
 ## Erinnerungen per Push
 

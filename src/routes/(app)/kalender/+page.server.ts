@@ -6,6 +6,7 @@ import { listSubscriptionEvents } from '$lib/server/subscriptions';
 import { holidaysBetween, STATES } from '$lib/holidays';
 import { isMonth, monthGrid, today } from '$lib/dates';
 import { isDate } from '$lib/server/calendar';
+import { listDishes, listMeals } from '$lib/server/meals';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -44,6 +45,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		selected,
 		days,
 		events,
+		meals: await listMeals(db, family.id, from, to),
+		dishes: await listDishes(db, family.id),
 		holidays: holidaysBetween(from, to, state),
 		stateName: state ? STATES[state] : null
 	};
