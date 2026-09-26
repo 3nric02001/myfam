@@ -1,7 +1,7 @@
 import webpush from 'web-push';
 import { and, eq, inArray } from 'drizzle-orm';
 import type { DB } from './db/client';
-import { appSetting, pushSubscription } from './db/schema';
+import { appSetting, notificationOff, pushSubscription, type NotificationKind } from './db/schema';
 
 // Web Push straight from this server to the browser's push service (Google, Apple, Mozilla,
 // Microsoft), signed with our own VAPID key. No third-party account is needed.
@@ -183,16 +183,63 @@ export function webPushSender(keys: VapidKeys, subject: string): Sender {
 		});
 }
 
+export const NOTIFICATION_KINDS: NotificationKind[] = [
+	'event',
+	'task',
+	'comment',
+	'meals',
+	'receipt'
+];
+
+export function isNotificationKind(value: string): value is NotificationKind {
+	return (NOTIFICATION_KINDS as string[]).includes(value);
+}
+
+/** The kinds of notifications the user switched off. */
+export async function notificationsOff(db: DB, userId: string) {
+	const rows = await db
+		.select({ kind: notificationOff.kind })
+		.from(notificationOff)
+		.where(eq(notificationOff.userId, userId));
+	return rows.map((r) => r.kind);
+}
+
+export async function setNotification(db: DB, userId: string, kind: NotificationKind, on: boolean) {
+	if (on) {
+		await db
+			.delete(notificationOff)
+			.where(and(eq(notificationOff.userId, userId), eq(notificationOff.kind, kind)));
+	} else {
+		await db.insert(notificationOff).values({ userId, kind }).onConflictDoNothing();
+	}
+}
+
 /**
- * Sends the message to every device of the given users. Devices the push service no longer
- * knows (404/410, e.g. the app was removed) are deleted. Returns how many devices got it.
+ * Sends the message to every device of the given users. With a kind, users who switched that
+ * kind off are skipped. Devices the push service no longer knows (404/410, e.g. the app was
+ * removed) are deleted. Returns how many devices got it.
  */
-export async function sendToUsers(db: DB, userIds: string[], message: PushMessage, send: Sender) {
-	if (userIds.length === 0) return 0;
+export async function sendToUsers(
+	db: DB,
+	userIds: string[],
+	message: PushMessage,
+	send: Sender,
+	kind?: NotificationKind
+) {
+	let ids = [...new Set(userIds)];
+	if (kind && ids.length) {
+		const off = await db
+			.select({ userId: notificationOff.userId })
+			.from(notificationOff)
+			.where(and(eq(notificationOff.kind, kind), inArray(notificationOff.userId, ids)));
+		const skip = new Set(off.map((r) => r.userId));
+		ids = ids.filter((id) => !skip.has(id));
+	}
+	if (ids.length === 0) return 0;
 	const subs = await db
 		.select()
 		.from(pushSubscription)
-		.where(inArray(pushSubscription.userId, [...new Set(userIds)]));
+		.where(inArray(pushSubscription.userId, ids));
 	const payload = JSON.stringify(message);
 	let delivered = 0;
 	await Promise.all(

@@ -327,6 +327,7 @@ export async function notifyAssignee(
 			url: `/kalender/aufgaben/${t.id}`,
 			tag: `task:${t.id}`
 		},
-		send
+		send,
+		'task'
 	);
 }

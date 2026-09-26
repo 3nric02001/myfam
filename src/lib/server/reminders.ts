@@ -1,8 +1,19 @@
 import { and, eq, gte, isNotNull, isNull, lte, or } from 'drizzle-orm';
 import type { DB } from './db/client';
-import { calendarEvent, calendarEventShare, membership, reminderSent, task } from './db/schema';
+import {
+	calendarEvent,
+	calendarEventShare,
+	meal,
+	membership,
+	reminderSent,
+	shoppingTrip,
+	task,
+	type MealSlot,
+	type NotificationKind
+} from './db/schema';
 import { sendToUsers, type PushMessage, type Sender } from './push';
-import { addDays, dayLabel, today } from '$lib/dates';
+import { addDays, dayLabel, today, weekStart } from '$lib/dates';
+import { mealSlotLabel, mealSlots } from '$lib/meals';
 import { occurrences } from '$lib/repeat';
 
 // Push reminders. Each source lists what is due around `now` together with the users who may
@@ -16,6 +27,8 @@ export type DueReminder = {
 	at: Date;
 	userIds: string[];
 	message: PushMessage;
+	/** Users who switched this kind off in the settings don't get it. */
+	kind: NotificationKind;
 };
 
 export type ReminderSource = (db: DB, now: Date) => Promise<DueReminder[]>;
@@ -131,6 +144,7 @@ export const eventReminders: ReminderSource = async (db, now) => {
 		due.push({
 			key: `event:${event.id}:${at.toISOString()}`,
 			at,
+			kind: 'event',
 			userIds,
 			message: {
 				title: event.title,
@@ -171,6 +185,7 @@ export const taskReminders: ReminderSource = async (db, now) => {
 		due.push({
 			key: `task:${t.id}:${t.dueDate}`,
 			at,
+			kind: 'task',
 			userIds: [to],
 			message: {
 				title: `Heute fällig: ${t.title}`,
@@ -183,7 +198,118 @@ export const taskReminders: ReminderSource = async (db, now) => {
 	return due;
 };
 
-export const sources: ReminderSource[] = [eventReminders, taskReminders];
+/** On Sundays at this time the family hears about meals still open for the coming week. */
+export const MEAL_REMINDER_TIME = '18:00';
+
+const WEEKDAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+
+/** "Mo, Mi Abend, Fr Mittag + Abend": whole days by name, otherwise the open meals. */
+export function openMealsLabel(open: { day: number; slots: MealSlot[] }[], used: MealSlot[]) {
+	return open
+		.map(({ day, slots }) =>
+			slots.length === used.length
+				? WEEKDAYS[day]
+				: `${WEEKDAYS[day]} ${slots.map((slot) => mealSlotLabel[slot]).join(' + ')}`
+		)
+		.join(', ');
+}
+
+/**
+ * Sunday evening: meals of the coming week that are still open, to the whole family. Only the
+ * meals the family plans at all count (e.g. no breakfast if they never plan one), judged by the
+ * last four weeks; a family that doesn't use the meal plan hears nothing.
+ */
+export const mealReminders: ReminderSource = async (db, now) => {
+	const day = today(now);
+	// Sunday, or Monday just after midnight while the grace period of Sunday evening lasts.
+	const sunday = weekStart(day) === day ? addDays(day, -1) : addDays(weekStart(day), 6);
+	const at = berlinTime(sunday, MEAL_REMINDER_TIME);
+	if (at > now || now.getTime() - at.getTime() > GRACE_MS) return [];
+	const monday = addDays(sunday, 1);
+	const rows = await db
+		.select({ familyId: meal.familyId, date: meal.date, slot: meal.slot })
+		.from(meal)
+		.where(and(gte(meal.date, addDays(sunday, -27)), lte(meal.date, addDays(monday, 6))));
+	const byFamily = new Map<string, { date: string; slot: MealSlot }[]>();
+	for (const row of rows) {
+		byFamily.set(row.familyId, [...(byFamily.get(row.familyId) ?? []), row]);
+	}
+	const due: DueReminder[] = [];
+	for (const [familyId, meals] of byFamily) {
+		const used = mealSlots.filter((slot) => meals.some((m) => m.slot === slot));
+		const planned = new Set(meals.map((m) => `${m.date}:${m.slot}`));
+		const open = Array.from({ length: 7 }, (_, i) => ({
+			day: i,
+			slots: used.filter((slot) => !planned.has(`${addDays(monday, i)}:${slot}`))
+		})).filter((d) => d.slots.length > 0);
+		const count = open.reduce((sum, d) => sum + d.slots.length, 0);
+		if (count === 0) continue;
+		const members = await db
+			.select({ userId: membership.userId })
+			.from(membership)
+			.where(eq(membership.familyId, familyId));
+		due.push({
+			key: `meals:${familyId}:${monday}`,
+			at,
+			kind: 'meals',
+			userIds: members.map((m) => m.userId),
+			message: {
+				title: 'Essensplan für nächste Woche',
+				body: `Noch ${count === 1 ? 'eine Mahlzeit' : `${count} Mahlzeiten`} offen: ${openMealsLabel(open, used)}.`,
+				url: `/kalender/essen?woche=${monday}`,
+				tag: `meals:${monday}`
+			}
+		});
+	}
+	return due;
+};
+
+/** This long after the last item was ticked off, the shopping counts as done. */
+export const RECEIPT_DELAY_MS = 5 * 60_000;
+
+/**
+ * A few minutes after someone stopped ticking off items, and no receipt was saved since they
+ * started: a nudge to that person to photograph the receipt.
+ */
+export const receiptReminders: ReminderSource = async (db, now) => {
+	// Trips that are long over are not needed any more.
+	await db
+		.delete(shoppingTrip)
+		.where(lte(shoppingTrip.lastCheckAt, new Date(now.getTime() - 86_400_000)));
+	const trips = await db
+		.select()
+		.from(shoppingTrip)
+		.where(
+			and(
+				gte(shoppingTrip.checks, 1),
+				lte(shoppingTrip.lastCheckAt, new Date(now.getTime() - RECEIPT_DELAY_MS)),
+				gte(shoppingTrip.lastCheckAt, new Date(now.getTime() - RECEIPT_DELAY_MS - GRACE_MS))
+			)
+		);
+	return trips.map((trip) => ({
+		// One reminder per trip, even if more items are ticked off afterwards.
+		key: `receipt:${trip.familyId}:${trip.userId}:${trip.startedAt.toISOString()}`,
+		at: new Date(trip.lastCheckAt.getTime() + RECEIPT_DELAY_MS),
+		kind: 'receipt' as const,
+		userIds: [trip.userId],
+		message: {
+			title: 'Kassenzettel fotografieren?',
+			body:
+				trip.checks === 1
+					? 'Du hast etwas abgehakt. Mit einem Foto vom Bon lernt MyFam die Preise.'
+					: `Du hast ${trip.checks} Sachen abgehakt. Mit einem Foto vom Bon lernt MyFam die Preise.`,
+			url: '/einkauf/kassenzettel',
+			tag: `receipt:${trip.familyId}`
+		}
+	}));
+};
+
+export const sources: ReminderSource[] = [
+	eventReminders,
+	taskReminders,
+	mealReminders,
+	receiptReminders
+];
 
 /** Sends every due reminder that was not sent yet. Returns the keys it sent. */
 export async function sendDueReminders(
@@ -202,7 +328,7 @@ export async function sendDueReminders(
 				.onConflictDoNothing()
 				.run();
 			if (claimed.changes === 0) continue;
-			await sendToUsers(db, reminder.userIds, reminder.message, send);
+			await sendToUsers(db, reminder.userIds, reminder.message, send, reminder.kind);
 			sent.push(reminder.key);
 		}
 	}

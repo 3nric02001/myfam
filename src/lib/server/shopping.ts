@@ -1,6 +1,13 @@
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, ne, sql } from 'drizzle-orm';
 import type { DB } from './db/client';
-import { family, shoppingCategory, shoppingHistory, shoppingItem, user } from './db/schema';
+import {
+	family,
+	shoppingCategory,
+	shoppingHistory,
+	shoppingItem,
+	shoppingTrip,
+	user
+} from './db/schema';
 import { categoryKey, guessCategory, isCategory, type CategoryId } from '$lib/categories';
 
 // Every query is scoped to a family, so one family can never see or change another's items.
@@ -96,11 +103,55 @@ export async function updateItem(
 	return row;
 }
 
-export async function setDone(db: DB, familyId: string, id: string, done: boolean) {
-	await db
+/** A new shopping trip starts when nothing was ticked off for this long. */
+const TRIP_GAP_MS = 3 * 60 * 60_000;
+
+/**
+ * Ticks an entry off or back on. With the user who did it, their shopping trip is tracked for
+ * the reminder to photograph the receipt.
+ */
+export async function setDone(
+	db: DB,
+	familyId: string,
+	id: string,
+	done: boolean,
+	by?: string,
+	now = new Date()
+) {
+	const changed = await db
 		.update(shoppingItem)
 		.set({ done })
-		.where(and(eq(shoppingItem.familyId, familyId), eq(shoppingItem.id, id)));
+		.where(
+			and(eq(shoppingItem.familyId, familyId), eq(shoppingItem.id, id), ne(shoppingItem.done, done))
+		)
+		.returning({ id: shoppingItem.id });
+	// A tick replayed from the offline queue changes nothing and doesn't count twice.
+	if (!by || changed.length === 0) return;
+	const where = and(eq(shoppingTrip.familyId, familyId), eq(shoppingTrip.userId, by));
+	const [trip] = await db.select().from(shoppingTrip).where(where);
+	if (!done) {
+		if (trip && trip.checks > 0) {
+			await db
+				.update(shoppingTrip)
+				.set({ checks: trip.checks - 1 })
+				.where(where);
+		}
+		return;
+	}
+	if (trip && now.getTime() - trip.lastCheckAt.getTime() < TRIP_GAP_MS) {
+		await db
+			.update(shoppingTrip)
+			.set({ lastCheckAt: now, checks: trip.checks + 1 })
+			.where(where);
+	} else {
+		await db
+			.insert(shoppingTrip)
+			.values({ familyId, userId: by, startedAt: now, lastCheckAt: now, checks: 1 })
+			.onConflictDoUpdate({
+				target: [shoppingTrip.familyId, shoppingTrip.userId],
+				set: { startedAt: now, lastCheckAt: now, checks: 1 }
+			});
+	}
 }
 
 /** Deletes an entry and returns it, so it can be put back with restoreItem(). */

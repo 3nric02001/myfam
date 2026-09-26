@@ -10,7 +10,10 @@ import { dev } from '$app/environment';
 import { env } from '$env/dynamic/private';
 import {
 	deleteSubscription,
+	isNotificationKind,
 	listSubscriptions,
+	notificationsOff,
+	setNotification,
 	sendToUsers,
 	vapidKeys,
 	vapidSubject,
@@ -30,7 +33,8 @@ export const load: PageServerLoad = async ({ cookies, locals }) => {
 		textSize: parseTextSize(cookies.get(textSizeCookieName)),
 		push: {
 			publicKey: vapidKeys(db, env).publicKey,
-			devices: await listSubscriptions(db, user.id)
+			devices: await listSubscriptions(db, user.id),
+			off: await notificationsOff(db, user.id)
 		}
 	};
 };
@@ -89,6 +93,15 @@ export const actions: Actions = {
 			success:
 				count === 1 ? 'Testnachricht verschickt.' : `Testnachricht an ${count} Geräte verschickt.`
 		};
+	},
+
+	notification: async ({ request, locals }) => {
+		const { user } = requireUser(locals);
+		const form = await request.formData();
+		const kind = field(form, 'kind');
+		if (!isNotificationKind(kind)) return fail(400, { action: 'notification' as const });
+		await setNotification(db, user.id, kind, form.get('on') === 'on');
+		return { action: 'notification' as const };
 	},
 
 	pushRemove: async ({ request, locals }) => {

@@ -511,7 +511,8 @@ export async function notifyComment(
 			// Newer comments on the same card replace the older notification.
 			tag: `comment:${card.id}`
 		},
-		send
+		send,
+		'comment'
 	);
 }
 
