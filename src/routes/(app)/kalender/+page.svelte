@@ -24,8 +24,6 @@
 
 	let { data }: PageProps = $props();
 
-	let newOpen = $state(false);
-
 	// Picking a day happens in the browser. It survives the regular refresh of the data,
 	// and a new month falls back to the day the server chose.
 	let picked = $state<string | null>(null);
@@ -105,46 +103,6 @@
 
 <div class="mb-3 flex items-center gap-2">
 	<h1 class="flex-1 text-xl font-semibold tracking-tight">{heading}</h1>
-	<div class="relative">
-		<button
-			type="button"
-			class="btn-primary px-3"
-			aria-expanded={newOpen}
-			aria-haspopup="menu"
-			onclick={() => (newOpen = !newOpen)}><Plus size={18} aria-hidden="true" /> Neu</button
-		>
-		{#if newOpen}
-			<!-- Closes the menu when tapping anywhere else. -->
-			<button
-				type="button"
-				class="fixed inset-0 z-20 cursor-default"
-				aria-label="Menü schließen"
-				onclick={() => (newOpen = false)}
-			></button>
-			<div class="card absolute right-0 z-30 mt-2 w-56 overflow-hidden p-1 text-sm" role="menu">
-				<p class="px-3 pt-2 pb-1 text-xs text-slate-500">Für {dayLabel(selected)}</p>
-				<a
-					role="menuitem"
-					href="/kalender/neu?datum={selected}"
-					class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-slate-700 active:bg-slate-100"
-					><CalendarDays size={18} aria-hidden="true" /> Termin</a
-				>
-				<a
-					role="menuitem"
-					href="/kalender/aufgaben/neu?datum={selected}"
-					class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-slate-700 active:bg-slate-100"
-					><ListTodo size={18} aria-hidden="true" /> Aufgabe</a
-				>
-				<a
-					role="menuitem"
-					href="#essen"
-					class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-slate-700 active:bg-slate-100"
-					onclick={() => (newOpen = false)}
-					><UtensilsCrossed size={18} aria-hidden="true" /> Essen</a
-				>
-			</div>
-		{/if}
-	</div>
 </div>
 
 <div class="card px-2 pt-2 pb-1">
