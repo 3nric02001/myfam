@@ -648,26 +648,27 @@
 		<ul class="card px-3 py-1">
 			{#each data.days as date (date)}
 				<li class="flex gap-3 border-b border-slate-100 py-2 last:border-0">
-					<span class="w-8 shrink-0 text-sm font-semibold text-slate-500">{weekdayShort(date)}</span
+					<span class="w-8 shrink-0 text-sm leading-7 font-semibold text-slate-500"
+						>{weekdayShort(date)}</span
 					>
 					<span class="min-w-0 flex-1 space-y-0.5">
 						{#each mealSlots.filter((s) => slotsOf(date).includes(s) || mealAt.has(`${date}:${s}`)) as slot (slot)}
 							{@const m = mealAt.get(`${date}:${slot}`)}
 							<button
 								type="button"
-								class="flex w-full items-baseline gap-2 text-left"
+								class="flex min-h-7 w-full items-center gap-3 text-left text-sm"
 								onclick={() => {
 									active = { date, slot };
 									changing = false;
 								}}
 							>
 								{#if allSlots.length > 1}
-									<span class="w-12 shrink-0 text-xs text-slate-500">{mealSlotLabel[slot]}</span>
+									<span class="w-20 shrink-0 text-slate-500">{mealSlotLabel[slot]}</span>
 								{/if}
 								{#if m}
-									<span class="truncate">{m.name}</span>
+									<span class="min-w-0 truncate font-medium">{m.name}</span>
 								{:else}
-									<span class="text-sm text-slate-500">offen</span>
+									<span class="text-slate-500">offen</span>
 								{/if}
 							</button>
 						{/each}
