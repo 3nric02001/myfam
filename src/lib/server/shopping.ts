@@ -77,6 +77,25 @@ export async function forgetHistory(db: DB, familyId: string, key: string) {
 		.where(and(eq(shoppingHistory.familyId, familyId), eq(shoppingHistory.key, key)));
 }
 
+/** Changes name and quantity of an entry; a new name also goes into the history. */
+export async function updateItem(
+	db: DB,
+	familyId: string,
+	id: string,
+	input: { name: string; quantity?: string | null }
+) {
+	const where = and(eq(shoppingItem.familyId, familyId), eq(shoppingItem.id, id));
+	const [before] = await db.select({ name: shoppingItem.name }).from(shoppingItem).where(where);
+	if (!before) return null;
+	const [row] = await db
+		.update(shoppingItem)
+		.set({ name: input.name.trim(), quantity: input.quantity?.trim() || null })
+		.where(where)
+		.returning();
+	if (historyKey(row.name) !== historyKey(before.name)) await remember(db, familyId, row.name);
+	return row;
+}
+
 export async function setDone(db: DB, familyId: string, id: string, done: boolean) {
 	await db
 		.update(shoppingItem)

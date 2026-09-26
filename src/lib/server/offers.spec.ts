@@ -14,7 +14,7 @@ import {
 	purgeOffers,
 	saveOfferSettings
 } from './offers';
-import { resetKeys, searchMarktguru, toOffers } from './marktguru';
+import { resetKeys, searchMarktguru, slug, toOffers } from './marktguru';
 import { seedFamily, testDb } from './test/setup';
 
 const TODAY = '2026-09-24';
@@ -153,6 +153,7 @@ describe('automatic offers', () => {
 describe('marktguru offers', () => {
 	it('maps one offer to every store that has it and skips expired ones', () => {
 		const raw = {
+			id: 24963108,
 			price: 0.95,
 			oldPrice: 1.15,
 			brand: { name: 'Milbona' },
@@ -169,7 +170,8 @@ describe('marktguru offers', () => {
 				validFrom: '2026-09-22',
 				validUntil: '2026-09-27',
 				source: 'marktguru',
-				url: 'https://www.marktguru.de/'
+				url: 'https://www.marktguru.de/rb/lidl/milbona',
+				image: 'https://mg2de.b-cdn.net/api/v1/offers/24963108/images/default/0/small.webp'
 			},
 			{
 				store: 'penny',
@@ -179,9 +181,29 @@ describe('marktguru offers', () => {
 				validFrom: '2026-09-22',
 				validUntil: '2026-09-27',
 				source: 'marktguru',
-				url: 'https://www.marktguru.de/'
+				url: 'https://www.marktguru.de/rb/penny/milbona',
+				image: 'https://mg2de.b-cdn.net/api/v1/offers/24963108/images/default/0/small.webp'
 			}
 		]);
+		expect(toOffers(raw, '2026-09-28')).toEqual([]);
+	});
+
+	it('links to the offer page it gives, else to the store', () => {
+		const raw = {
+			price: 1.99,
+			product: { name: 'Bio Äpfel' },
+			advertisers: [{ uniqueName: 'rewe' }],
+			validityDates: [{ from: '2026-09-21T22:00:00Z', to: '2026-09-27T21:59:59Z' }]
+		};
+		expect(toOffers(raw, TODAY)[0]).toMatchObject({
+			url: 'https://www.marktguru.de/r/rewe',
+			image: null
+		});
+		expect(toOffers({ ...raw, externalUrl: 'https://www.rewe.de/angebote/' }, TODAY)[0].url).toBe(
+			'https://www.rewe.de/angebote/'
+		);
+		expect(slug('Gut&Günstig')).toBe('gut-guenstig');
+		expect(slug('ja!')).toBe('ja');
 		expect(toOffers(raw, '2026-09-28')).toEqual([]);
 	});
 });

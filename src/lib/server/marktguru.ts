@@ -12,6 +12,7 @@ export const marktguruEnabled = () => env.MARKTGURU_ENABLED === 'true';
 type Fetch = typeof fetch;
 
 type RawOffer = {
+	id?: number | null;
 	price?: number | null;
 	oldPrice?: number | null;
 	description?: string | null;
@@ -56,6 +57,38 @@ function berlinDay(timestamp: string | undefined) {
 	return Number.isNaN(date.getTime()) ? '' : dayOf(date);
 }
 
+/** marktguru's way of writing names in addresses: "Müller" -> mueller, "Gustavo Gusto" -> gustavo-gusto. */
+export function slug(name: string) {
+	return name
+		.toLowerCase()
+		.replace(/ä/g, 'ae')
+		.replace(/ö/g, 'oe')
+		.replace(/ü/g, 'ue')
+		.replace(/ß/g, 'ss')
+		.normalize('NFD')
+		.replace(/[\u0300-\u036f]/g, '')
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-|-$/g, '');
+}
+
+/**
+ * Where to look at the offer on marktguru: the link it gives, else its page for the brand at
+ * that store (e.g. /rb/lidl/milbona), else the store's offers. The API names no page for a
+ * single offer.
+ */
+function offerUrl(raw: RawOffer, store: string) {
+	if (raw.externalUrl?.startsWith('https://')) return raw.externalUrl;
+	const brand = raw.brand?.name ? slug(raw.brand.name) : '';
+	return `https://www.marktguru.de/${brand ? `rb/${store}/${brand}` : `r/${store}`}`;
+}
+
+/** The offer's picture, cut from the leaflet. */
+function offerImage(raw: RawOffer) {
+	return typeof raw.id === 'number' && raw.id > 0
+		? `https://mg2de.b-cdn.net/api/v1/offers/${raw.id}/images/default/0/small.webp`
+		: null;
+}
+
 /** Turns marktguru's offer into ours. Returns one entry per store that has the offer. */
 export function toOffers(raw: RawOffer, today: string): Offer[] {
 	const dates = raw.validityDates ?? [];
@@ -84,7 +117,8 @@ export function toOffers(raw: RawOffer, today: string): Offer[] {
 			validFrom,
 			validUntil,
 			source: 'marktguru' as const,
-			url: raw.externalUrl?.startsWith('https://') ? raw.externalUrl : 'https://www.marktguru.de/'
+			url: offerUrl(raw, store),
+			image: offerImage(raw)
 		}));
 }
 
