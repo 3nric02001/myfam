@@ -196,6 +196,27 @@ export const planningBlock = sqliteTable(
 	(t) => [index('planning_block_card_idx').on(t.cardId)]
 );
 
+/** A comment on a planning card, visible to everyone who can see the card. */
+export const planningComment = sqliteTable(
+	'planning_comment',
+	{
+		id: id(),
+		familyId: text('family_id')
+			.notNull()
+			.references(() => family.id, { onDelete: 'cascade' }),
+		cardId: text('card_id')
+			.notNull()
+			.references(() => planningCard.id, { onDelete: 'cascade' }),
+		// Kept (without a name) when the author's account is deleted.
+		userId: text('user_id').references(() => user.id, { onDelete: 'set null' }),
+		text: text('text').notNull(),
+		createdAt: createdAt(),
+		/** Set when the author changed the comment. */
+		editedAt: integer('edited_at', { mode: 'timestamp' })
+	},
+	(t) => [index('planning_comment_card_idx').on(t.cardId)]
+);
+
 /** An uploaded image. The file lives in the uploads folder next to the database, named by id. */
 export const planningImage = sqliteTable('planning_image', {
 	id: id(),
@@ -263,6 +284,19 @@ export const offerMatchRule = sqliteTable(
 		createdAt: createdAt()
 	},
 	(t) => [primaryKey({ columns: [t.familyId, t.term, t.variant] })]
+);
+
+/** A family's own section for a list entry, overriding the keyword guess. Keyed like categoryKey(). */
+export const shoppingCategory = sqliteTable(
+	'shopping_category',
+	{
+		familyId: text('family_id')
+			.notNull()
+			.references(() => family.id, { onDelete: 'cascade' }),
+		key: text('key').notNull(),
+		category: text('category').notNull()
+	},
+	(t) => [primaryKey({ columns: [t.familyId, t.key] })]
 );
 
 /** Everything a family has put on the shopping list, for suggestions. Keyed by lowercase name. */

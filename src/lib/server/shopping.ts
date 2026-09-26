@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import type { DB } from './db/client';
-import { shoppingHistory, shoppingItem, user } from './db/schema';
+import { shoppingCategory, shoppingHistory, shoppingItem, user } from './db/schema';
+import { categoryKey, guessCategory, isCategory, type CategoryId } from '$lib/categories';
 
 // Every query is scoped to a family, so one family can never see or change another's items.
 
@@ -93,4 +94,45 @@ export async function clearDone(db: DB, familyId: string) {
 	await db
 		.delete(shoppingItem)
 		.where(and(eq(shoppingItem.familyId, familyId), eq(shoppingItem.done, true)));
+}
+
+/** The family's corrected sections, by categoryKey(). */
+async function categoryRules(db: DB, familyId: string) {
+	const rows = await db
+		.select({ key: shoppingCategory.key, category: shoppingCategory.category })
+		.from(shoppingCategory)
+		.where(eq(shoppingCategory.familyId, familyId));
+	return new Map(rows.map((r) => [r.key, r.category as CategoryId]));
+}
+
+/** The list with each entry's section: the family's correction if there is one, else a guess. */
+export async function listItemsWithCategory(db: DB, familyId: string) {
+	const [items, rules] = await Promise.all([listItems(db, familyId), categoryRules(db, familyId)]);
+	return items.map((item) => {
+		const category = rules.get(categoryKey(item.name));
+		return {
+			...item,
+			category: category && isCategory(category) ? category : guessCategory(item.name)
+		};
+	});
+}
+
+/** Remembers the section for this entry, so it lands there every time it is added again. */
+export async function setCategory(db: DB, familyId: string, name: string, category: CategoryId) {
+	const key = categoryKey(name);
+	if (!key) return;
+	if (category === guessCategory(name)) {
+		// Matches the guess anyway; no need to keep a correction around.
+		await db
+			.delete(shoppingCategory)
+			.where(and(eq(shoppingCategory.familyId, familyId), eq(shoppingCategory.key, key)));
+		return;
+	}
+	await db
+		.insert(shoppingCategory)
+		.values({ familyId, key, category })
+		.onConflictDoUpdate({
+			target: [shoppingCategory.familyId, shoppingCategory.key],
+			set: { category }
+		});
 }

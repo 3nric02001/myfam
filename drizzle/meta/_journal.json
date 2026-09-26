@@ -40,8 +40,22 @@
     {
       "idx": 5,
       "version": "6",
-      "when": 1790421221538,
-      "tag": "0005_caldav",
+      "when": 1790420943773,
+      "tag": "0005_shopping_categories",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1790421492705,
+      "tag": "0006_planning_comments",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1790421927598,
+      "tag": "0007_caldav",
       "breakpoints": true
     }
   ]

@@ -49,6 +49,7 @@ src/routes/
 - **Ordner** kann jedes Mitglied anlegen. Die Sichtbarkeit funktioniert wie beim Kalender: ganze Familie (Standard), bestimmte Personen oder nur ich. Nur wer den Ordner angelegt hat, kann das ändern. Admins dürfen Ordner der ganzen Familie umbenennen oder löschen.
 - **Karten** liegen in einem Ordner und erben dessen Sichtbarkeit. Wer den Ordner sieht, kann die Karten darin anlegen und bearbeiten.
 - **Detailansicht:** Eine Karte besteht aus Inhalten, die man frei hinzufügen, bearbeiten, verschieben und löschen kann: Text mit einfacher Formatierung (`**fett**`, `*kursiv*`, `# Überschrift`, `- Liste`, `- [ ] Aufgabe`), Tabellen, Links und Bilder.
+- **Kommentare:** Unter jeder Karte können alle, die die Karte sehen, Kommentare schreiben. Eigene Kommentare lassen sich bearbeiten und löschen. Die Kartenübersicht zeigt, wie viele Kommentare eine Karte hat.
 - **Bilder** werden im Browser auf höchstens 2000 px verkleinert (dabei fallen auch GPS-Daten weg) und dürfen bis 10 MB groß sein. Erlaubt sind JPEG, PNG, WebP und GIF, geprüft wird der Dateiinhalt. Sie liegen im Ordner `uploads/` neben der Datenbank (im Docker-Volume unter `/data/uploads`) und werden nur an Personen ausgeliefert, die die Karte sehen dürfen. Mit `UPLOAD_DIR` lässt sich ein anderer Ordner wählen.
 
 ## Design
@@ -110,6 +111,10 @@ Danach unter `https://<deine Domain>/registrieren` die erste Familie anlegen und
 - **Backup:** Die Datenbank liegt im Volume `app-data` (`/data/myfam.db`), z. B.
   `docker compose exec app node -e "require('better-sqlite3')('/data/myfam.db').backup('/data/backup.db')"` und dann `docker compose cp app:/data/backup.db .`
   Die Bilder aus der Planung liegen im selben Volume unter `/data/uploads` und gehören mit ins Backup: `docker compose cp app:/data/uploads ./uploads`. Ebenso `/data/secret.key` (Schlüssel für die Passwörter der Kalender-Abos).
+
+## Bereiche in der Einkaufsliste
+
+Die offenen Einträge sind nach Supermarkt-Bereichen gruppiert (Obst & Gemüse, Brot, Milch/Käse/Eier, Fleisch/Fisch, Vorrat, Süßes, Getränke, Tiefkühl, Drogerie, Haushalt, Baby & Tier, Sonstiges). Die App rät den Bereich anhand einer Stichwortliste (`src/lib/categories.ts`), ganz ohne Internet. Liegt sie daneben, lässt sich der Bereich über **Bereiche ändern** korrigieren; die Familie behält die Korrektur für diesen Artikel.
 
 ## Angebote in der Einkaufsliste
 
