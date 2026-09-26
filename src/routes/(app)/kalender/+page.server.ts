@@ -19,6 +19,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const selected =
 		isDate(day) && day.startsWith(month) ? day : now.startsWith(month) ? now : `${month}-01`;
 
+	// The week of the selected day is shown; the whole month only when expanded.
+	const expanded = url.searchParams.get('ansicht') === 'monat';
 	const days = monthGrid(month);
 	const from = days[0];
 	const to = days[days.length - 1];
@@ -44,6 +46,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		month,
 		today: now,
 		selected,
+		expanded,
 		days,
 		events,
 		meals: await listMeals(db, family.id, from, to),
