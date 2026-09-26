@@ -149,12 +149,11 @@ export const actions: Actions = {
 		const { viewer } = requireViewer(locals);
 		const checked = checkComment(field(await request.formData(), 'text'));
 		if ('error' in checked) return fail(400, { commentError: checked.error, commentId: null });
-		if (!(await addComment(db, viewer, params.cardId, checked.text))) {
-			error(404, 'Karte nicht gefunden.');
-		}
+		const added = await addComment(db, viewer, params.cardId, checked.text);
+		if (!added) error(404, 'Karte nicht gefunden.');
 		// Don't make the author wait for the push services.
-		notifyComment(db, viewer, params.cardId, checked.text, pushSender(db, env)).catch((err) =>
-			console.error('Kommentar-Benachrichtigung fehlgeschlagen:', err)
+		notifyComment(db, viewer, params.cardId, checked.text, pushSender(db, env), added.id).catch(
+			(err) => console.error('Kommentar-Benachrichtigung fehlgeschlagen:', err)
 		);
 		return { commented: true };
 	},

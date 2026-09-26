@@ -133,3 +133,30 @@ export function answerPrompt() {
 		// Private mode: the prompt just comes back next time.
 	}
 }
+
+/**
+ * Opens the page of a tapped notification. The service worker either tells the running app
+ * directly or keeps the page until the app asks, e.g. after iOS started it at its start page.
+ * Returns a function that stops listening.
+ */
+export function openNotificationPages(open: (url: string) => void) {
+	if (!('serviceWorker' in navigator)) return () => {};
+	const container = navigator.serviceWorker;
+	const onMessage = (event: MessageEvent) => {
+		const data = event.data as { type?: string; url?: unknown } | null;
+		if (data?.type !== 'open' || typeof data.url !== 'string' || !data.url.startsWith('/')) return;
+		container.ready.then((reg) => reg.active?.postMessage({ type: 'opened' }));
+		open(data.url);
+	};
+	const ask = () => {
+		if (document.visibilityState !== 'visible') return;
+		container.ready.then((reg) => reg.active?.postMessage({ type: 'pending-page' }));
+	};
+	container.addEventListener('message', onMessage);
+	document.addEventListener('visibilitychange', ask);
+	ask();
+	return () => {
+		container.removeEventListener('message', onMessage);
+		document.removeEventListener('visibilitychange', ask);
+	};
+}
