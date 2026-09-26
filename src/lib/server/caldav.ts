@@ -158,7 +158,10 @@ const isIcs = (text: string) => text.trimStart().startsWith('BEGIN:VCALENDAR');
  * Returns the calendar as iCalendar texts. Tries CalDAV first and falls back to downloading
  * the link as an ICS file, so Nextcloud calendars and public links both work.
  */
-export async function fetchCalendar(source: Source, fetchFn: Fetch = calendarFetch): Promise<string[]> {
+export async function fetchCalendar(
+	source: Source,
+	fetchFn: Fetch = calendarFetch
+): Promise<string[]> {
 	const report = await request(fetchFn, source.url, {
 		method: 'REPORT',
 		headers: headers(source, { Depth: '1', 'Content-Type': 'application/xml; charset=utf-8' }),

@@ -14,6 +14,15 @@ export const load: PageServerLoad = ({ locals }) => {
 	return { registrationOpen: registrationOpen(db, env) };
 };
 
+/** The client's address, or null if the proxy did not send it. */
+function clientAddress(event: { getClientAddress(): string }) {
+	try {
+		return event.getClientAddress();
+	} catch {
+		return null;
+	}
+}
+
 export const actions: Actions = {
 	default: async (event) => {
 		const form = await event.request.formData();
@@ -22,7 +31,7 @@ export const actions: Actions = {
 
 		// Behind a reverse proxy every request comes from the proxy, unless it passes the
 		// client's address along (ADDRESS_HEADER), so only then does the IP count.
-		const keys = loginKeys(email, env.ADDRESS_HEADER ? event.getClientAddress() : null);
+		const keys = loginKeys(email, env.ADDRESS_HEADER ? clientAddress(event) : null);
 		const wait = loginLimiter.retryAfter(keys);
 		if (wait > 0) {
 			return fail(429, {

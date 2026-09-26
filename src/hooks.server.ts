@@ -8,11 +8,13 @@ import { startCalendarSync } from '$lib/server/calendar-sync';
 import { parseTheme, themeColor, themeCookieName } from '$lib/theme';
 import { vapidKeys, vapidSubject, webPushSender } from '$lib/server/push';
 import { startReminderScheduler } from '$lib/server/reminders';
+import { startCleanup } from '$lib/server/cleanup';
 
 export const init: ServerInit = () => {
 	if (env.ORIGIN) console.log(`MyFam erwartet Aufrufe über ${env.ORIGIN}`);
 	startReminderScheduler(db, webPushSender(vapidKeys(db, env), vapidSubject(env)));
 	startCalendarSync();
+	startCleanup(db);
 };
 
 // Sent with every response, in addition to the content security policy in vite.config.ts.

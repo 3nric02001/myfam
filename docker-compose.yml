@@ -16,6 +16,13 @@ services:
       VAPID_SUBJECT: ${VAPID_SUBJECT:-}
       # Key for the passwords of calendar subscriptions. Without it, /data/secret.key is created.
       SECRET_KEY: ${SECRET_KEY:-}
+      # New accounts only through invite links, except for the very first one. true = anyone may register.
+      ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-false}
+      # Real client address from the reverse proxy, so failed logins are also counted per IP.
+      ADDRESS_HEADER: ${ADDRESS_HEADER:-}
+      XFF_DEPTH: ${XFF_DEPTH:-1}
+      # Calendar subscriptions may only reach public addresses; list LAN hosts here (comma-separated).
+      CALDAV_ALLOW_HOSTS: ${CALDAV_ALLOW_HOSTS:-}
     ports:
       # Only reachable from this host by default; set BIND=0.0.0.0 if the proxy runs elsewhere.
       - '${BIND:-127.0.0.1}:${PORT:-3000}:3000'

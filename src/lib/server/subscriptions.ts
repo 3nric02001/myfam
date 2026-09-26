@@ -215,7 +215,12 @@ export async function syncSubscription(
 }
 
 /** Syncs all subscriptions (of all families) not fetched within the interval. */
-export async function syncDue(db: DB, key: Buffer, fetchFn: Fetch = calendarFetch, now = new Date()) {
+export async function syncDue(
+	db: DB,
+	key: Buffer,
+	fetchFn: Fetch = calendarFetch,
+	now = new Date()
+) {
 	const due = await db
 		.select()
 		.from(calendarSubscription)

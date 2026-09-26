@@ -75,6 +75,20 @@ export const invite = sqliteTable('invite', {
 	createdAt: createdAt()
 });
 
+/**
+ * One-time link an admin creates when a member forgot the password. The id is the SHA-256 hash
+ * of the token in the link, like for invites.
+ */
+export const passwordReset = sqliteTable('password_reset', {
+	id: text('id').primaryKey(),
+	userId: text('user_id')
+		.notNull()
+		.references(() => user.id, { onDelete: 'cascade' }),
+	createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+	expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
+	createdAt: createdAt()
+});
+
 export const shoppingItem = sqliteTable(
 	'shopping_item',
 	{
