@@ -1,6 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
+import { env } from '$env/dynamic/private';
 import { db } from '$lib/server/db';
-import { createSession, createUser, findUserByEmail } from '$lib/server/auth';
+import { createSession, createUser, findUserByEmail, registrationOpen } from '$lib/server/auth';
 import { setSessionCookie } from '$lib/server/cookies';
 import { createFamily } from '$lib/server/families';
 import { checkAccount, field, rawField } from '$lib/server/validation';
@@ -8,10 +9,14 @@ import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ locals }) => {
 	if (locals.user) redirect(303, '/');
+	return { open: registrationOpen(db, env) };
 };
 
 export const actions: Actions = {
 	default: async (event) => {
+		if (!registrationOpen(db, env)) {
+			return fail(403, { message: 'Neue Konten gibt es nur über einen Einladungslink.' });
+		}
 		const form = await event.request.formData();
 		const input = {
 			name: field(form, 'name'),
