@@ -39,9 +39,9 @@ export type Offer = {
 	/** Last valid day, 'YYYY-MM-DD'. */
 	validUntil: string;
 	source: 'manual' | 'marktguru';
-	/** Where to see it: the leaflet link someone entered, or the source website. */
+	/** A link that came with the offer; not shown. */
 	url?: string | null;
-	/** The brand, when the source names it: marktguru has a page per brand and store. */
+	/** The brand, when the source names it. */
 	brand?: string | null;
 	/** A picture of the offer from the leaflet. */
 	image?: string | null;
@@ -50,45 +50,6 @@ export type Offer = {
 };
 
 export type Item = { id: string; name: string };
-
-/** How marktguru writes names in its addresses: "Müller" -> mueller, "Gut&Günstig" -> gut-guenstig. */
-export function slug(name: string) {
-	return name
-		.toLowerCase()
-		.replace(/ä/g, 'ae')
-		.replace(/ö/g, 'oe')
-		.replace(/ü/g, 'ue')
-		.replace(/ß/g, 'ss')
-		.normalize('NFD')
-		.replace(/[\u0300-\u036f]/g, '')
-		.replace(/[^a-z0-9]+/g, '-')
-		.replace(/^-|-$/g, '');
-}
-
-/**
- * Where to look at an offer. A leaflet or shop page someone gave wins. Otherwise marktguru's
- * page of the brand at that store (e.g. /rb/lidl/galbani), or of the store's offers: marktguru
- * has no public page for a single offer.
- */
-export function offerLink(offer: Pick<Offer, 'store' | 'source' | 'url' | 'brand'>) {
-	if (offer.url && !/^https:\/\/([a-z0-9-]+\.)*marktguru\.de(\/|$)/i.test(offer.url)) {
-		return {
-			href: offer.url,
-			label: offer.source === 'manual' ? 'Prospekt öffnen' : 'Beim Markt ansehen'
-		};
-	}
-	const store = storeLabel(offer.store);
-	const brand = offer.brand ? slug(offer.brand) : '';
-	return brand
-		? {
-				href: `https://www.marktguru.de/rb/${offer.store}/${brand}`,
-				label: `${offer.brand} bei ${store} auf marktguru`
-			}
-		: {
-				href: `https://www.marktguru.de/r/${offer.store}`,
-				label: `${store}-Angebote auf marktguru`
-			};
-}
 
 /** Lowercase, umlauts spelled out, only letters and digits, split into words. */
 export function words(text: string) {
