@@ -48,13 +48,21 @@ export type DishStats = {
 	weekdays: number[];
 	/** How often per meal. */
 	slots: Partial<Record<MealSlot, number>>;
+	/** On the family's list of ideas. */
+	idea: boolean;
 };
 
 /** Meals of a family outside the planned week, one row per planned dish. */
 export type PastMeal = { date: string; slot: MealSlot; name: string; ingredients: string | null };
 
-/** Groups earlier meals by dish (ignoring case), newest spelling and ingredients win. */
-export function dishStats(meals: PastMeal[]): DishStats[] {
+/**
+ * Groups meals by dish (ignoring case), newest spelling and ingredients win. Ideas that were
+ * never planned come along with a count of 0.
+ */
+export function dishStats(
+	meals: PastMeal[],
+	ideas: { name: string; ingredients: string | null }[] = []
+): DishStats[] {
 	const byKey = new Map<string, DishStats>();
 	for (const m of [...meals].sort((a, b) => b.date.localeCompare(a.date))) {
 		const key = m.name.trim().toLowerCase();
@@ -68,7 +76,8 @@ export function dishStats(meals: PastMeal[]): DishStats[] {
 				first: m.date,
 				last: m.date,
 				weekdays: [0, 0, 0, 0, 0, 0, 0],
-				slots: {}
+				slots: {},
+				idea: false
 			};
 			byKey.set(key, dish);
 		}
@@ -77,6 +86,25 @@ export function dishStats(meals: PastMeal[]): DishStats[] {
 		dish.weekdays[weekdayOf(m.date)]++;
 		dish.slots[m.slot] = (dish.slots[m.slot] ?? 0) + 1;
 		if (!dish.ingredients && m.ingredients) dish.ingredients = m.ingredients;
+	}
+	for (const idea of ideas) {
+		const key = idea.name.trim().toLowerCase();
+		const dish = byKey.get(key);
+		if (dish) {
+			dish.idea = true;
+			dish.ingredients ??= idea.ingredients;
+			continue;
+		}
+		byKey.set(key, {
+			name: idea.name.trim(),
+			ingredients: idea.ingredients,
+			count: 0,
+			first: '',
+			last: '',
+			weekdays: [0, 0, 0, 0, 0, 0, 0],
+			slots: {},
+			idea: true
+		});
 	}
 	return [...byKey.values()];
 }
@@ -107,8 +135,8 @@ const NEW_DAYS = 21;
  * Earlier dishes for one meal of the planned week, best first. Dishes already planned for this
  * week, and those eaten last week, are left out, unless the family has them on that weekday
  * regularly (pizza on Fridays). What they often have on that weekday comes first, then dishes
- * that are new in the family's kitchen, then favourites they haven't had for a while, then the
- * rest.
+ * that are new in the family's kitchen and ideas not tried yet, then favourites they haven't had
+ * for a while, then the rest.
  */
 export function suggestDishes(
 	dishes: DishStats[],
@@ -119,19 +147,23 @@ export function suggestDishes(
 	const weekday = weekdayOf(date);
 	const monday = addDays(date, -weekday);
 	const planned = new Set((opts.planned ?? []).map((n) => n.trim().toLowerCase()));
-	// Only dishes of this meal, unless the family never planned it before.
-	const forSlot = dishes.filter((d) => d.slots[slot]);
-	const pool = forSlot.length ? forSlot : dishes;
+	// Only dishes of this meal, unless the family never planned it before; ideas fit any meal.
+	const forSlot = dishes.filter((d) => d.slots[slot] || d.count === 0);
+	const pool = forSlot.some((d) => d.count > 0) ? forSlot : dishes;
 	const scored = pool
 		.filter((d) => !planned.has(d.name.toLowerCase()))
 		.map((d) => {
 			const onDay = d.weekdays[weekday];
 			const habit = onDay >= 2 && onDay / d.count >= 0.4;
 			const isNew = d.count <= 2 && d.first >= addDays(monday, -NEW_DAYS);
-			const weeks = weeksBetween(weekStart(d.last), monday);
+			const weeks = d.count ? weeksBetween(weekStart(d.last), monday) : 0;
 			let reason: string;
 			let score = Math.log2(1 + d.count);
-			if (habit) {
+			if (d.count === 0) {
+				// On the list of ideas, not tried yet.
+				reason = 'Aus der Ideenliste';
+				score += 5;
+			} else if (habit) {
 				reason = `Oft am ${WEEKDAY_NAMES[weekday]}`;
 				score += 4 + onDay;
 			} else if (isNew) {

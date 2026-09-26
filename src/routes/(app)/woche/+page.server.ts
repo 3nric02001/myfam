@@ -3,7 +3,16 @@ import { db } from '$lib/server/db';
 import { checkEvent, createEvent, isDate } from '$lib/server/calendar';
 import { getFamilyState, listMembers } from '$lib/server/families';
 import { requireFamily } from '$lib/server/guards';
-import { addMealsToList, deleteMeal, isMealSlot, listMeals, saveMeal } from '$lib/server/meals';
+import {
+	addMealsToList,
+	deleteIdea,
+	deleteMeal,
+	isMealSlot,
+	listIdeas,
+	listMeals,
+	saveIdea,
+	saveMeal
+} from '$lib/server/meals';
 import { cancelPlan, getPlan, isTripDay, planTrip, tipFor, tripText } from '$lib/server/plan';
 import { listItems } from '$lib/server/shopping';
 import { listSubscriptionEvents } from '$lib/server/subscriptions';
@@ -65,6 +74,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	);
 
 	const history = await otherMeals(db, family.id, week);
+	const ideas = await listIdeas(db, family.id);
 	const meals = await listMeals(db, family.id, week, end);
 	const items = (await listItems(db, family.id)).filter((i) => !i.done);
 	const done = await isWeekDone(db, family.id, week);
@@ -83,9 +93,14 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		members: members.map(({ id, name }) => ({ id, name })),
 		meals,
 		slots: usedSlots([...history, ...meals], week),
-		dishes: dishStats(history)
-			.sort((a, b) => b.count - a.count || b.last.localeCompare(a.last))
-			.slice(0, 200),
+		ideas,
+		// Ideas always, and the dishes planned most often.
+		dishes: dishStats(history, ideas)
+			.sort(
+				(a, b) =>
+					Number(b.idea) - Number(a.idea) || b.count - a.count || b.last.localeCompare(a.last)
+			)
+			.slice(0, 200 + ideas.length),
 		shopping: { open: items.length, plan: (await getPlan(db, family.id, now))?.date ?? null },
 		done: done
 			? {
@@ -158,6 +173,27 @@ export const actions: Actions = {
 			return fail(400, { step: 'essen', message: 'Der Eintrag ist zu lang.' });
 		}
 		await saveMeal(db, family.id, user.id, { date, slot, name, ingredients });
+		return { step: 'essen' };
+	},
+
+	/** Puts a dish on the family's list of ideas, without planning it. */
+	idea: async ({ request, locals }) => {
+		const { user, family } = requireFamily(locals);
+		const form = await request.formData();
+		const name = field(form, 'name');
+		const ingredients = field(form, 'ingredients');
+		if (name.length > 100 || ingredients.length > 2000) {
+			return fail(400, { step: 'essen', message: 'Der Eintrag ist zu lang.' });
+		}
+		if (!(await saveIdea(db, family.id, user.id, { name, ingredients }))) {
+			return fail(400, { step: 'essen', message: 'Welches Gericht?' });
+		}
+		return { step: 'essen', idea: name };
+	},
+
+	deleteIdea: async ({ request, locals }) => {
+		const { family } = requireFamily(locals);
+		await deleteIdea(db, family.id, field(await request.formData(), 'id'));
 		return { step: 'essen' };
 	},
 

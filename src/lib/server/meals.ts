@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 import type { DB } from './db/client';
-import { meal, type MealSlot } from './db/schema';
+import { dishIdea, meal, type MealSlot } from './db/schema';
 import { addItem, listItems } from './shopping';
 
 // The meal plan belongs to the whole family: everyone sees and edits it.
@@ -47,7 +47,9 @@ export async function listDishes(db: DB, familyId: string, limit = 100) {
 		.groupBy(sql`lower(${meal.name})`)
 		.orderBy(desc(sql`count(*)`), desc(sql`max(${meal.date})`))
 		.limit(limit);
-	if (rows.length === 0) return [];
+	if (rows.length === 0) {
+		return (await listIdeas(db, familyId)).map(({ name, ingredients }) => ({ name, ingredients }));
+	}
 	const latest = await db
 		.select({ name: meal.name, ingredients: meal.ingredients, date: meal.date })
 		.from(meal)
@@ -67,10 +69,14 @@ export async function listDishes(db: DB, familyId: string, limit = 100) {
 		// Newest first; keep the newest plan that had ingredients.
 		if (!ingredientsOf.get(key) && r.ingredients) ingredientsOf.set(key, r.ingredients);
 	}
-	return rows.map((r) => ({
+	const dishes = rows.map((r) => ({
 		name: r.name,
 		ingredients: ingredientsOf.get(r.name.toLowerCase()) ?? null
 	}));
+	// Ideas that were never planned come last.
+	const known = new Set(dishes.map((d) => d.name.toLowerCase()));
+	const ideas = (await listIdeas(db, familyId)).filter((i) => !known.has(i.name.toLowerCase()));
+	return [...dishes, ...ideas.map(({ name, ingredients }) => ({ name, ingredients }))];
 }
 
 export type MealInput = { date: string; slot: MealSlot; name: string; ingredients?: string | null };
@@ -155,4 +161,46 @@ export async function addMealsToList(db: DB, familyId: string, userId: string, i
 		.set({ addedToList: true })
 		.where(and(eq(meal.familyId, familyId), inArray(meal.id, ids)));
 	return added;
+}
+
+/** The family's list of dish ideas, by name. */
+export async function listIdeas(db: DB, familyId: string) {
+	return db
+		.select({ id: dishIdea.id, name: dishIdea.name, ingredients: dishIdea.ingredients })
+		.from(dishIdea)
+		.where(eq(dishIdea.familyId, familyId))
+		.orderBy(sql`${dishIdea.name} collate nocase`);
+}
+
+/**
+ * Keeps a dish in mind without planning it. The same name (ignoring case) is stored once; adding
+ * it again updates the ingredients. Returns false for an empty name.
+ */
+export async function saveIdea(
+	db: DB,
+	familyId: string,
+	createdBy: string,
+	input: { name: string; ingredients?: string | null }
+) {
+	const name = input.name.trim();
+	if (!name) return false;
+	const ingredients = cleanIngredients(input.ingredients);
+	const [existing] = await db
+		.select()
+		.from(dishIdea)
+		.where(
+			and(eq(dishIdea.familyId, familyId), sql`lower(${dishIdea.name}) = ${name.toLowerCase()}`)
+		);
+	if (existing) {
+		if (ingredients) {
+			await db.update(dishIdea).set({ ingredients }).where(eq(dishIdea.id, existing.id));
+		}
+		return true;
+	}
+	await db.insert(dishIdea).values({ familyId, createdBy, name, ingredients });
+	return true;
+}
+
+export async function deleteIdea(db: DB, familyId: string, id: string) {
+	await db.delete(dishIdea).where(and(eq(dishIdea.familyId, familyId), eq(dishIdea.id, id)));
 }

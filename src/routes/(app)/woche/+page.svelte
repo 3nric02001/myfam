@@ -8,6 +8,7 @@
 		CalendarSync,
 		Check,
 		ChefHat,
+		Lightbulb,
 		ListTodo,
 		PartyPopper,
 		Plus,
@@ -73,6 +74,10 @@
 	let message = $derived(
 		form && 'message' in form && form.step === data.step ? (form.message as string) : null
 	);
+	let ideaSaved = $derived(
+		form && 'idea' in form && form.step === data.step ? (form.idea as string) : null
+	);
+	let ideaName = $state('');
 	let added = $derived(
 		form && 'added' in form && form.step === data.step ? (form.added as string) : null
 	);
@@ -670,6 +675,71 @@
 				</li>
 			{/each}
 		</ul>
+
+		<h2 class="section-title mt-5">
+			<span class="flex items-center gap-1.5"
+				><Lightbulb size={18} class="text-accent-600" aria-hidden="true" /> Ideenliste</span
+			>
+		</h2>
+		<div class="card p-4">
+			<p class="text-sm text-slate-500">
+				Gerichte, die ihr mal ausprobieren wollt, ohne sie schon für einen Tag einzuplanen. Sie
+				tauchen oben bei den Vorschlägen auf.
+			</p>
+			{#if data.ideas.length}
+				<ul class="mt-3 flex flex-wrap gap-1.5">
+					{#each data.ideas as idea (idea.id)}
+						<li
+							class="flex items-center gap-0.5 rounded-full bg-accent-50 py-0.5 pr-0.5 pl-3 text-sm text-accent-900"
+						>
+							<span class="max-w-48 truncate">{idea.name}</span>
+							<form method="POST" action="?/deleteIdea" use:enhance>
+								<input type="hidden" name="id" value={idea.id} />
+								<button
+									class="flex size-7 items-center justify-center rounded-full text-accent-700 active:bg-accent-100"
+									aria-label="{idea.name} von der Ideenliste nehmen"><X size={14} /></button
+								>
+							</form>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+			{#if ideaSaved}<p class="success mt-3">„{ideaSaved}“ steht auf der Ideenliste.</p>{/if}
+			<form
+				method="POST"
+				action="?/idea"
+				use:enhance={() =>
+					async ({ update }) => {
+						await update();
+						ideaName = '';
+					}}
+				class="mt-3 space-y-2"
+			>
+				<div class="flex gap-2">
+					<input
+						name="name"
+						required
+						maxlength="100"
+						autocomplete="off"
+						placeholder="z. B. Shakshuka"
+						aria-label="Neues Gericht für die Ideenliste"
+						bind:value={ideaName}
+					/>
+					<button class="btn-secondary shrink-0" disabled={!ideaName.trim()}
+						><Plus size={18} aria-hidden="true" /> Merken</button
+					>
+				</div>
+				{#if ideaName.trim()}
+					<textarea
+						name="ingredients"
+						rows="2"
+						maxlength="2000"
+						class="w-full text-sm"
+						aria-label="Zutaten (optional)"
+						placeholder="Zutaten (optional), eine pro Zeile"></textarea>
+				{/if}
+			</form>
+		</div>
 	{:else if data.step === 'einkauf'}
 		{#if form && 'listMessage' in form}<p class="success mb-3">{form.listMessage}</p>{/if}
 		<h2 class="section-title">Zutaten</h2>

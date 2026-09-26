@@ -667,3 +667,20 @@ export const weekPlan = sqliteTable(
 	},
 	(t) => [primaryKey({ columns: [t.familyId, t.week] })]
 );
+
+/** A dish the family wants to try or keep in mind, without planning it for a day yet. */
+export const dishIdea = sqliteTable(
+	'dish_idea',
+	{
+		id: id(),
+		familyId: text('family_id')
+			.notNull()
+			.references(() => family.id, { onDelete: 'cascade' }),
+		name: text('name').notNull(),
+		/** One ingredient per line, like meals. */
+		ingredients: text('ingredients'),
+		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+		createdAt: createdAt()
+	},
+	(t) => [index('dish_idea_family_idx').on(t.familyId)]
+);

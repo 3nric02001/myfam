@@ -86,6 +86,25 @@ describe('weekly planning', () => {
 		]);
 	});
 
+	it('suggests ideas that were never planned, for any meal', () => {
+		const dishes = dishStats(
+			[dinner('2026-06-01', 'Suppe'), dinner('2026-09-01', 'Suppe')],
+			[
+				{ name: 'Ramen', ingredients: 'Nudeln' },
+				// Planned before: an ordinary dish, the ingredients come from the idea.
+				{ name: 'suppe', ingredients: 'Brühe' }
+			]
+		);
+		expect(dishes.find((d) => d.name === 'Suppe')).toMatchObject({ idea: true, count: 2 });
+		expect(suggestDishes(dishes, '2026-10-06', 'dinner')).toEqual([
+			{ name: 'Ramen', ingredients: 'Nudeln', reason: 'Aus der Ideenliste' },
+			{ name: 'Suppe', ingredients: 'Brühe', reason: 'Lange nicht gegessen · vor 5 Wochen' }
+		]);
+		expect(suggestDishes(dishes, '2026-10-06', 'lunch', { planned: ['Ramen'] })).toEqual([
+			{ name: 'Suppe', ingredients: 'Brühe', reason: 'Lange nicht gegessen · vor 5 Wochen' }
+		]);
+	});
+
 	it('suggests dishes of the same meal, any dish when the meal is new', () => {
 		const dishes = dishStats([
 			{ date: '2026-09-01', slot: 'breakfast', name: 'Müsli', ingredients: null },
