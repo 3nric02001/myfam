@@ -2,12 +2,21 @@
 	import { Check, ChevronRight, Plus, ShoppingBasket, Tag, X } from '@lucide/svelte';
 	import { enhance } from '$app/forms';
 	import { formatPrice, storeLabel } from '$lib/offers';
+	import { CATEGORIES } from '$lib/categories';
+	import CategoryIcon from '$lib/components/CategoryIcon.svelte';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
 
 	let open = $derived(data.items.filter((i) => !i.done));
 	let editHistory = $state(false);
+	let editCategories = $state(false);
+	// Open items by section, sections in supermarket order, empty ones left out.
+	let groups = $derived(
+		CATEGORIES.map((c) => ({ ...c, items: open.filter((i) => i.category === c.id) })).filter(
+			(g) => g.items.length
+		)
+	);
 	let suggestions = $derived(data.history.slice(0, 12));
 	let done = $derived(data.items.filter((i) => i.done));
 </script>
@@ -185,6 +194,20 @@
 				</span>
 			</button>
 		</form>
+		{#if editCategories && !item.done}
+			<form method="POST" action="?/category" use:enhance>
+				<input type="hidden" name="name" value={item.name} />
+				<select
+					name="category"
+					class="w-40 shrink-0 py-1 text-sm"
+					aria-label="Bereich für {item.name}"
+					value={item.category}
+					onchange={(e) => e.currentTarget.form?.requestSubmit()}
+				>
+					{#each CATEGORIES as c (c.id)}<option value={c.id}>{c.label}</option>{/each}
+				</select>
+			</form>
+		{/if}
 		<form method="POST" action="?/delete" use:enhance>
 			<input type="hidden" name="id" value={item.id} />
 			<button class="icon-btn" aria-label="{item.name} löschen"
@@ -195,9 +218,28 @@
 {/snippet}
 
 {#if open.length}
-	<ul class="card px-3">
-		{#each open as item (item.id)}{@render row(item)}{/each}
-	</ul>
+	<div class="mb-2 flex justify-end">
+		<button
+			class="text-sm text-slate-500 underline"
+			onclick={() => (editCategories = !editCategories)}
+		>
+			{editCategories ? 'Fertig' : 'Bereiche ändern'}
+		</button>
+	</div>
+	<div class="space-y-4">
+		{#each groups as group (group.id)}
+			<section aria-label={group.label}>
+				<h2 class="mb-1.5 flex items-center gap-1.5 px-1 text-sm font-semibold text-slate-500">
+					<CategoryIcon category={group.id} />
+					{group.label}
+					<span class="font-normal">({group.items.length})</span>
+				</h2>
+				<ul class="card px-3">
+					{#each group.items as item (item.id)}{@render row(item)}{/each}
+				</ul>
+			</section>
+		{/each}
+	</div>
 {/if}
 
 {#if done.length}

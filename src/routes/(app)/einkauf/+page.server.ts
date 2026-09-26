@@ -8,9 +8,11 @@ import {
 	deleteItem,
 	forgetHistory,
 	listHistory,
-	listItems,
+	listItemsWithCategory,
+	setCategory,
 	setDone
 } from '$lib/server/shopping';
+import { isCategory } from '$lib/categories';
 import { marktguruEnabled } from '$lib/server/marktguru';
 import { offersForList, purgeOffers } from '$lib/server/offers';
 import { field } from '$lib/server/validation';
@@ -18,7 +20,7 @@ import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const { family } = requireFamily(locals);
-	const items = await listItems(db, family.id);
+	const items = await listItemsWithCategory(db, family.id);
 	const day = today();
 	const open = items.filter((i) => !i.done).map(({ id, name }) => ({ id, name }));
 	// Streamed, so the list shows at once even when fetching offers takes a moment.
@@ -58,6 +60,14 @@ export const actions: Actions = {
 		const { family } = requireFamily(locals);
 		const form = await request.formData();
 		await deleteItem(db, family.id, field(form, 'id'));
+	},
+
+	category: async ({ request, locals }) => {
+		const { family } = requireFamily(locals);
+		const form = await request.formData();
+		const category = field(form, 'category');
+		if (!isCategory(category)) return fail(400);
+		await setCategory(db, family.id, field(form, 'name'), category);
 	},
 
 	forget: async ({ request, locals }) => {
