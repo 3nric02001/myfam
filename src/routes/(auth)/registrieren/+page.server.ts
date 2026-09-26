@@ -37,6 +37,6 @@ export const actions: Actions = {
 		const newFamily = await createFamily(db, input.familyName, newUser.id);
 		const { token, expiresAt } = await createSession(db, newUser.id, newFamily.id);
 		setSessionCookie(event, token, expiresAt);
-		redirect(303, '/einkauf');
+		redirect(303, '/dashboard');
 	}
 };

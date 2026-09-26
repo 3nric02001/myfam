@@ -516,3 +516,21 @@ export type Family = typeof family.$inferSelect;
 export type ShoppingItem = typeof shoppingItem.$inferSelect;
 export type CalendarEvent = typeof calendarEvent.$inferSelect;
 export type CalendarSubscription = typeof calendarSubscription.$inferSelect;
+
+/**
+ * When a member last opened a planning card, so the dashboard can show what changed since.
+ * Comments and edits after `seen_at` by others count as unseen.
+ */
+export const planningCardSeen = sqliteTable(
+	'planning_card_seen',
+	{
+		cardId: text('card_id')
+			.notNull()
+			.references(() => planningCard.id, { onDelete: 'cascade' }),
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		seenAt: integer('seen_at', { mode: 'timestamp' }).notNull()
+	},
+	(t) => [primaryKey({ columns: [t.cardId, t.userId] })]
+);
