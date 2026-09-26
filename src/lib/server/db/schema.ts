@@ -270,6 +270,8 @@ export const offer = sqliteTable(
 		price: integer('price'),
 		/** First day the offer is valid, 'YYYY-MM-DD'. */
 		validFrom: text('valid_from'),
+		/** Where it was seen, e.g. the online leaflet. */
+		url: text('url'),
 		/** Last day the offer is valid, 'YYYY-MM-DD'. */
 		validUntil: text('valid_until').notNull(),
 		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
@@ -296,6 +298,28 @@ export const offerMatchRule = sqliteTable(
 		createdAt: createdAt()
 	},
 	(t) => [primaryKey({ columns: [t.familyId, t.term, t.variant] })]
+);
+
+/**
+ * A normal shelf price the family has paid or looked up, per list entry (key as categoryKey())
+ * and store. Used to estimate the total and to spot cheaper alternatives to offers.
+ */
+export const knownPrice = sqliteTable(
+	'known_price',
+	{
+		id: id(),
+		familyId: text('family_id')
+			.notNull()
+			.references(() => family.id, { onDelete: 'cascade' }),
+		key: text('key').notNull(),
+		store: text('store').notNull(),
+		/** The exact product, e.g. "Gut&Günstig Mozzarella"; the entry's name if not given. */
+		product: text('product').notNull(),
+		price: integer('price').notNull(),
+		seenOn: text('seen_on').notNull(),
+		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' })
+	},
+	(t) => [index('known_price_family_key_idx').on(t.familyId, t.key)]
 );
 
 /** A family's own section for a list entry, overriding the keyword guess. Keyed like categoryKey(). */

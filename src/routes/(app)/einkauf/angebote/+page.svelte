@@ -198,6 +198,10 @@
 				<input type="date" name="validUntil" required min={data.today} value={data.defaultUntil} />
 			</label>
 		</div>
+		<label class="block">
+			<span class="label">Link zum Prospekt (optional)</span>
+			<input name="url" type="url" maxlength="500" placeholder="https://…" />
+		</label>
 		<button class="btn-primary w-full">Eintragen</button>
 	</form>
 
