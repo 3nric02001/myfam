@@ -39,6 +39,10 @@ export type Offer = {
 	/** Last valid day, 'YYYY-MM-DD'. */
 	validUntil: string;
 	source: 'manual' | 'marktguru';
+	/** Where to see it: the leaflet link someone entered, or the source website. */
+	url?: string | null;
+	/** Who entered it by hand. */
+	by?: string | null;
 };
 
 export type Item = { id: string; name: string };

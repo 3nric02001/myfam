@@ -76,7 +76,18 @@ export const actions: Actions = {
 		if (!isDay(validFrom) || validFrom > validUntil) {
 			return fail(400, { message: '„Gültig ab“ muss vor „Gültig bis“ liegen.' });
 		}
-		await addManualOffer(db, family.id, user.id, { store, product, price, validFrom, validUntil });
+		const url = field(form, 'url');
+		if (url && (!/^https?:\/\/\S+$/.test(url) || url.length > 500)) {
+			return fail(400, { message: 'Der Link muss mit https:// beginnen.' });
+		}
+		await addManualOffer(db, family.id, user.id, {
+			url: url || null,
+			store,
+			product,
+			price,
+			validFrom,
+			validUntil
+		});
 		return { added: true };
 	},
 

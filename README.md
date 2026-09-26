@@ -140,6 +140,8 @@ Unter **Einkauf → Tipp / Angebote** wählt jede Familie ihre Märkte (und die 
 
 Ein Angebot zählt sicher, wenn der Artikel als eigenes Wort im Produktnamen steht („Milch“ in „Frische Milch“). Ist er nur das Ende eines längeren Worts („Vollmilch“, „Müllermilch“) oder nennt das Angebot eine andere Produktart („Schokolade“, „Drink“), fragt die App einmal nach, ob das zählt, und merkt sich die Antwort für die Familie. Mitten im Wort („Vollmilchschokolade“, „Milchreis“) passt es nie. Oben auf der Angebote-Seite lässt sich zwischen dieser und der nächsten Woche umschalten.
 
+**Preise:** Beim Abhaken lässt sich über das €-Symbol eintragen, was ein Artikel gekostet hat (Markt, Preis, optional das genaue Produkt wie „Gut&Günstig Mozzarella“). Daraus und aus den Angeboten schätzt die App den Gesamtpreis der offenen Liste. Ist ein gemerkter Preis niedriger als das beste Angebot, zeigt die Liste die günstigere Alternative. Ein Tipp auf das Angebot öffnet ein Fenster mit allen Angeboten, ihrer Quelle (mit Link zum Prospekt, falls eingetragen) und den gemerkten Preisen. Eine freie Quelle für normale Regalpreise gibt es nicht, deshalb lernt die App sie beim Einkaufen.
+
 Angebote kommen aus zwei Quellen:
 
 - **Von Hand eingetragen** (z. B. aus dem Prospekt). Funktioniert immer; abgelaufene Angebote verschwinden von selbst.

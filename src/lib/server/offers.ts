@@ -49,6 +49,7 @@ export async function listManualOffers(db: DB, familyId: string, today: string) 
 			price: offer.price,
 			validFrom: offer.validFrom,
 			validUntil: offer.validUntil,
+			url: offer.url,
 			createdBy: user.name
 		})
 		.from(offer)
@@ -67,6 +68,7 @@ export async function addManualOffer(
 		price: number | null;
 		validFrom?: string | null;
 		validUntil: string;
+		url?: string | null;
 	}
 ) {
 	const [row] = await db
@@ -198,7 +200,9 @@ export async function offersForList(
 		oldPrice: null,
 		validFrom: o.validFrom,
 		validUntil: o.validUntil,
-		source: 'manual'
+		source: 'manual',
+		url: o.url,
+		by: o.createdBy
 	}));
 
 	let auto: Offer[] = [];
@@ -212,6 +216,7 @@ export async function offersForList(
 	const offers = [...manual, ...auto].filter((o) => runsDuring(o, range));
 	return {
 		configured: settings.stores.length > 0,
+		preferred: settings.stores,
 		failed,
 		range,
 		...recommend(items, offers, settings.stores, await getRules(db, familyId))

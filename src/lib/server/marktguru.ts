@@ -19,6 +19,7 @@ type RawOffer = {
 	product?: { name?: string } | null;
 	advertisers?: { uniqueName?: string }[];
 	validityDates?: { from?: string; to?: string }[];
+	externalUrl?: string | null;
 };
 
 const API = 'https://api.marktguru.de/api/v1';
@@ -82,7 +83,8 @@ export function toOffers(raw: RawOffer, today: string): Offer[] {
 			oldPrice: cents(raw.oldPrice),
 			validFrom,
 			validUntil,
-			source: 'marktguru' as const
+			source: 'marktguru' as const,
+			url: raw.externalUrl?.startsWith('https://') ? raw.externalUrl : 'https://www.marktguru.de/'
 		}));
 }
 

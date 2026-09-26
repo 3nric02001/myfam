@@ -168,7 +168,8 @@ describe('marktguru offers', () => {
 				oldPrice: 115,
 				validFrom: '2026-09-22',
 				validUntil: '2026-09-27',
-				source: 'marktguru'
+				source: 'marktguru',
+				url: 'https://www.marktguru.de/'
 			},
 			{
 				store: 'penny',
@@ -177,7 +178,8 @@ describe('marktguru offers', () => {
 				oldPrice: 115,
 				validFrom: '2026-09-22',
 				validUntil: '2026-09-27',
-				source: 'marktguru'
+				source: 'marktguru',
+				url: 'https://www.marktguru.de/'
 			}
 		]);
 		expect(toOffers(raw, '2026-09-28')).toEqual([]);
