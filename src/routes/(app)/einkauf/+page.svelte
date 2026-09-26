@@ -16,12 +16,12 @@
 	} from '@lucide/svelte';
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { flushQueue, readQueue, sendOrQueue, type QueuedChange } from '$lib/offline-queue';
 	import PersonDot from '$lib/components/PersonDot.svelte';
 	import { formatPrice, STORES, storeLabel } from '$lib/offers';
 	import { pricesFor } from '$lib/prices';
-	import { addDays, dayLabel, shortDate } from '$lib/dates';
+	import { addDays, shortDate, shortDayLabel } from '$lib/dates';
 	import { CATEGORIES, guessCategory, orderedCategories, type CategoryId } from '$lib/categories';
 	import CategoryIcon from '$lib/components/CategoryIcon.svelte';
 	import type { PageProps } from './$types';
@@ -188,8 +188,9 @@
 		failed: boolean;
 	};
 
+	// The trip card shows one line; tapping it opens offers and planning.
+	let tripOpen = $state(false);
 	// Planning a trip: the tip for the chosen day shows before it is saved.
-	let planning = $state(false);
 	let pickedDay = $state('');
 	let preview = $state<Tip | null>(null);
 	let loadingTip = $state(false);
@@ -208,10 +209,9 @@
 			if (pickedDay === date) loadingTip = false;
 		}
 	}
-	function togglePlanning() {
-		planning = !planning;
-		if (planning) loadTip(data.plan?.date ?? suggestedDay);
-	}
+	$effect(() => {
+		if (tripOpen) untrack(() => loadTip(data.plan?.date ?? suggestedDay));
+	});
 	const storeList = (stores: string[]) => stores.map(storeLabel).join(' + ');
 	// Most families shop on Saturday: suggest the next one.
 	let suggestedDay = $derived.by(() => {
@@ -237,10 +237,16 @@
 <svelte:head><title>Einkauf · MyFam</title></svelte:head>
 
 <div class="mb-4 flex items-center gap-2">
-	<h1 class="flex-1 text-xl font-semibold tracking-tight">Einkaufsliste</h1>
+	<h1 class="min-w-0 flex-1 truncate text-xl font-semibold tracking-tight">Einkauf</h1>
+	<a
+		href="/einkauf/kassenzettel"
+		class="flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-slate-300 px-3 text-sm font-medium whitespace-nowrap text-slate-700"
+		><ReceiptText size={16} aria-hidden="true" />
+		<span class="max-[379px]:sr-only">Kassenzettel</span></a
+	>
 	<button
 		type="button"
-		class="flex min-h-10 items-center gap-1.5 rounded-full px-3 text-sm font-medium {shopMode
+		class="flex min-h-10 shrink-0 items-center gap-1.5 rounded-full px-3 text-sm font-medium whitespace-nowrap {shopMode
 			? 'bg-brand-600 text-white'
 			: 'border border-slate-300 text-slate-700'}"
 		aria-pressed={shopMode}
@@ -252,6 +258,44 @@
 	<p class="mb-4 rounded-xl bg-brand-50 px-3 py-2 text-sm text-brand-800">
 		Einkaufsmodus: Abhaken per Tipp, der Bildschirm bleibt an.
 	</p>
+{/if}
+
+{#if !shopMode}{@render tripCard()}{/if}
+
+{#if suggestions.length && !shopMode}
+	<section class="mb-5" aria-label="Oft gekauft">
+		<div class="mb-2 flex items-center justify-between">
+			<h2 class="text-sm font-semibold text-slate-500">Oft gekauft</h2>
+			<button class="text-sm text-slate-500 underline" onclick={() => (editHistory = !editHistory)}>
+				{editHistory ? 'Fertig' : 'Bearbeiten'}
+			</button>
+		</div>
+		<ul class="flex flex-wrap gap-2">
+			{#each suggestions as h (h.key)}
+				<li>
+					{#if editHistory}
+						<form method="POST" action="?/forget" use:enhance>
+							<input type="hidden" name="key" value={h.key} />
+							<button
+								class="flex min-h-9 items-center gap-1 rounded-full border border-slate-300 bg-white py-1 pr-2 pl-3 text-sm text-slate-500"
+								aria-label="{h.name} aus dem Verlauf entfernen"
+								>{h.name}<X size={14} aria-hidden="true" /></button
+							>
+						</form>
+					{:else}
+						<form method="POST" action="?/add" use:enhance>
+							<input type="hidden" name="name" value={h.name} />
+							<button
+								class="flex min-h-9 items-center gap-1 rounded-full border border-slate-300 bg-white py-1 pr-3 pl-2 text-sm"
+								aria-label="{h.name} hinzufügen"
+								><Plus size={14} aria-hidden="true" />{h.name}</button
+							>
+						</form>
+					{/if}
+				</li>
+			{/each}
+		</ul>
+	</section>
 {/if}
 
 <form
@@ -294,44 +338,6 @@
 	>
 </form>
 {#if form?.message}<p class="error mb-4">{form.message}</p>{/if}
-
-{#if !shopMode}{@render tripCard()}{/if}
-
-{#if suggestions.length && !shopMode}
-	<section class="mb-5" aria-label="Oft gekauft">
-		<div class="mb-2 flex items-center justify-between">
-			<h2 class="text-sm font-semibold text-slate-500">Oft gekauft</h2>
-			<button class="text-sm text-slate-500 underline" onclick={() => (editHistory = !editHistory)}>
-				{editHistory ? 'Fertig' : 'Bearbeiten'}
-			</button>
-		</div>
-		<ul class="flex flex-wrap gap-2">
-			{#each suggestions as h (h.key)}
-				<li>
-					{#if editHistory}
-						<form method="POST" action="?/forget" use:enhance>
-							<input type="hidden" name="key" value={h.key} />
-							<button
-								class="flex min-h-9 items-center gap-1 rounded-full border border-slate-300 bg-white py-1 pr-2 pl-3 text-sm text-slate-500"
-								aria-label="{h.name} aus dem Verlauf entfernen"
-								>{h.name}<X size={14} aria-hidden="true" /></button
-							>
-						</form>
-					{:else}
-						<form method="POST" action="?/add" use:enhance>
-							<input type="hidden" name="name" value={h.name} />
-							<button
-								class="flex min-h-9 items-center gap-1 rounded-full border border-slate-300 bg-white py-1 pr-3 pl-2 text-sm"
-								aria-label="{h.name} hinzufügen"
-								><Plus size={14} aria-hidden="true" />{h.name}</button
-							>
-						</form>
-					{/if}
-				</li>
-			{/each}
-		</ul>
-	</section>
-{/if}
 
 {#if data.items.length === 0 && !pendingAdds.length}
 	<div class="flex flex-col items-center py-10 text-center text-slate-500">
@@ -445,142 +451,150 @@
 {/snippet}
 
 {#snippet tripCard()}
-	<section class="card mb-5 p-3 text-sm" aria-label="Einkauf">
-		<div class="flex items-center gap-3">
+	<section class="card mb-5 text-sm" aria-label="Einkauf">
+		<button
+			type="button"
+			class="flex w-full items-center gap-3 p-3 text-left"
+			aria-expanded={tripOpen}
+			onclick={() => (tripOpen = !tripOpen)}
+		>
 			<span
-				class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-50 text-accent-600"
-				aria-hidden="true"><CalendarDays size={20} strokeWidth={1.75} /></span
+				class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-accent-50 text-accent-600"
+				aria-hidden="true"><CalendarDays size={18} strokeWidth={1.75} /></span
 			>
-			<span class="min-w-0 flex-1">
-				<span class="block font-medium">
-					{data.plan ? `Einkauf am ${dayLabel(data.plan.date)}` : 'Kein Einkauf geplant'}
-				</span>
-				<span class="block text-slate-500">
-					{data.plan ? 'Angebote für diesen Tag' : 'Angebote dieser Woche'}
-				</span>
+			<span class="min-w-0 flex-1 font-medium">
+				{#if data.plan}Einkauf am {shortDayLabel(data.plan.date)}{:else}Kein Einkauf geplant{/if}{#if open.length}{#await data.offers then offers}{#if offers.best}{data.plan
+								? ' im '
+								: ' · Tipp: '}{storeList(offers.best.stores)}{/if}{/await}{/if}
 			</span>
-			<button class="btn-secondary shrink-0 px-3" aria-expanded={planning} onclick={togglePlanning}>
-				{planning ? 'Schließen' : data.plan ? 'Ändern' : 'Einkauf planen'}
-			</button>
-		</div>
-
-		{#if planning}
-			<div class="mt-3 rounded-xl bg-slate-50 p-3">
-				<form
-					method="POST"
-					action="?/plan"
-					class="flex items-end gap-2"
-					use:enhance={() =>
-						async ({ result, update }) => {
-							await update();
-							if (result.type === 'success') planning = false;
-						}}
-				>
-					<label class="flex-1">
-						<span class="label">Wann wird eingekauft?</span>
-						<input
-							type="date"
-							name="date"
-							required
-							min={data.today}
-							max={addDays(data.today, 60)}
-							value={pickedDay}
-							onchange={(e) => loadTip(e.currentTarget.value)}
-							class="w-full"
-						/>
-					</label>
-					<button class="btn-primary">{data.plan ? 'Verschieben' : 'Planen'}</button>
-				</form>
-				<p class="mt-2" aria-live="polite">
-					{#if loadingTip}
-						<span class="text-slate-500">Suche den passenden Markt …</span>
-					{:else if preview?.stores.length}
-						Vorschlag für {shortDate(preview.date)}:
-						<strong>{storeList(preview.stores)}</strong>
-						<span class="text-slate-500"
-							>({preview.covered} von {preview.open} im Angebot{#if preview.priced}, ≈ {formatPrice(
-									preview.total
-								)}{/if})</span
+			{#if open.length}
+				{#await data.offers then offers}
+					{#if offers.questions.length}
+						<span
+							class="rounded-full bg-accent-50 px-2 py-0.5 text-xs font-medium text-accent-700"
+							aria-label="{offers.questions.length} Rückfragen">{offers.questions.length}</span
 						>
-					{:else if preview && !preview.configured}
-						<span class="text-slate-500">Wähle deine Märkte unter „Alle Angebote“.</span>
-					{:else if preview}
-						<span class="text-slate-500">Keine passenden Angebote an diesem Tag.</span>
 					{/if}
-				</p>
-				<p class="mt-1 text-xs text-slate-500">Alle sehen den Einkauf als Aufgabe im Kalender.</p>
-				{#if data.plan}
+				{/await}
+			{/if}
+			<ChevronRight
+				size={18}
+				class="shrink-0 text-slate-400 transition-transform {tripOpen ? 'rotate-90' : ''}"
+				aria-hidden="true"
+			/>
+		</button>
+
+		{#if tripOpen}
+			<div class="space-y-3 border-t border-slate-100 p-3">
+				{#if open.length}
+					{#await data.offers}
+						<p class="flex items-center gap-2 text-slate-500">
+							<Tag size={16} aria-hidden="true" /> Suche Angebote …
+						</p>
+					{:then offers}
+						<div>
+							{#if !offers.configured}
+								<p class="font-medium">Wo kaufst du ein?</p>
+								<p class="text-slate-500">Märkte wählen, um passende Angebote zu sehen</p>
+							{:else if offers.best}
+								<p>
+									<Tag size={14} class="mr-1 inline text-accent-600" aria-hidden="true" />
+									{offers.best.covered} von {open.length}
+									{open.length === 1 ? 'Artikel' : 'Artikeln'} bei {storeList(offers.best.stores)}
+									im Angebot{data.plan ? '' : ' (diese Woche)'}
+								</p>
+							{:else}
+								<p class="font-medium">
+									Keine passenden Angebote {data.plan ? 'an diesem Tag' : 'diese Woche'}
+								</p>
+								<p class="text-slate-500">Angebot eintragen oder Märkte ändern</p>
+							{/if}
+							{#if offers.configured && offers.next && !data.plan}
+								<p class="mt-1 text-xs text-slate-500">
+									Nächste Woche: {storeList(offers.next.stores)} ({offers.next.covered} von {open.length})
+								</p>
+							{/if}
+							{#if offers.questions.length}
+								<p class="mt-1 text-xs font-medium text-accent-700">
+									{offers.questions.length}
+									{offers.questions.length === 1 ? 'Rückfrage' : 'Rückfragen'}: Was meinst du genau?
+								</p>
+							{/if}
+							{#if offers.failed}
+								<p class="mt-1 text-xs text-accent-700">
+									Automatische Angebote gerade nicht erreichbar.
+								</p>
+							{/if}
+						</div>
+					{:catch}
+						<p class="text-slate-500">Angebote konnten nicht geladen werden.</p>
+					{/await}
+				{/if}
+
+				<div class="rounded-xl bg-slate-50 p-3">
 					<form
 						method="POST"
-						action="?/unplan"
+						action="?/plan"
+						class="flex items-end gap-2"
 						use:enhance={() =>
-							async ({ update }) => {
-								await update();
-								planning = false;
+							async ({ result, update }) => {
+								await update({ reset: false });
+								if (result.type === 'success') preview = null;
 							}}
 					>
-						<button class="mt-2 text-sm text-slate-500 underline">Einkauf absagen</button>
+						<label class="min-w-0 flex-1">
+							<span class="label"
+								>{data.plan ? 'Einkauf verschieben' : 'Wann wird eingekauft?'}</span
+							>
+							<input
+								type="date"
+								name="date"
+								required
+								min={data.today}
+								max={addDays(data.today, 60)}
+								value={pickedDay}
+								onchange={(e) => loadTip(e.currentTarget.value)}
+								class="w-full"
+							/>
+						</label>
+						<button class="btn-primary">{data.plan ? 'Verschieben' : 'Planen'}</button>
 					</form>
-				{/if}
-			</div>
-		{/if}
-
-		{#if open.length}
-			<div class="mt-3 border-t border-slate-100 pt-3">
-				{#await data.offers}
-					<p class="flex items-center gap-2 text-slate-500">
-						<Tag size={16} aria-hidden="true" /> Suche Angebote …
+					<p class="mt-2" aria-live="polite">
+						{#if loadingTip}
+							<span class="text-slate-500">Suche den passenden Markt …</span>
+						{:else if preview && preview.date !== data.plan?.date}
+							{#if preview.stores.length}
+								Vorschlag für {shortDate(preview.date)}:
+								<strong>{storeList(preview.stores)}</strong>
+								<span class="text-slate-500"
+									>({preview.covered} von {preview.open} im Angebot{#if preview.priced}, ≈ {formatPrice(
+											preview.total
+										)}{/if})</span
+								>
+							{:else if !preview.configured}
+								{#if !open.length}<span class="text-slate-500"
+										>Wähle deine Märkte unter „Alle Angebote“.</span
+									>{/if}
+							{:else}
+								<span class="text-slate-500">Keine passenden Angebote an diesem Tag.</span>
+							{/if}
+						{/if}
 					</p>
-				{:then offers}
-					{#if !offers.configured}
-						<p class="font-medium">Wo kaufst du ein?</p>
-						<p class="text-slate-500">Märkte wählen, um passende Angebote zu sehen</p>
-					{:else if offers.best}
-						<p class="font-medium">
-							<Tag size={14} class="mr-1 inline text-accent-600" aria-hidden="true" />Tipp: {storeList(
-								offers.best.stores
-							)}
-						</p>
-						<p class="text-slate-500">
-							{offers.best.covered} von {open.length}
-							{open.length === 1 ? 'Artikel' : 'Artikeln'} im Angebot
-						</p>
-					{:else}
-						<p class="font-medium">
-							Keine passenden Angebote {data.plan ? 'an diesem Tag' : 'diese Woche'}
-						</p>
-						<p class="text-slate-500">Angebot eintragen oder Märkte ändern</p>
+					<p class="mt-1 text-xs text-slate-500">Alle sehen den Einkauf als Aufgabe im Kalender.</p>
+					{#if data.plan}
+						<form method="POST" action="?/unplan" use:enhance>
+							<button class="mt-2 text-sm text-slate-500 underline">Einkauf absagen</button>
+						</form>
 					{/if}
-					{#if offers.configured && offers.next && !data.plan}
-						<p class="mt-1 text-xs text-slate-500">
-							Nächste Woche: {storeList(offers.next.stores)} ({offers.next.covered} von {open.length})
-						</p>
-					{/if}
-					{#if offers.questions.length}
-						<p class="mt-1 text-xs font-medium text-accent-700">
-							{offers.questions.length}
-							{offers.questions.length === 1 ? 'Rückfrage' : 'Rückfragen'}: Was meinst du genau?
-						</p>
-					{/if}
-					{#if offers.failed}
-						<p class="mt-1 text-xs text-accent-700">
-							Automatische Angebote gerade nicht erreichbar.
-						</p>
-					{/if}
-				{:catch}
-					<p class="text-slate-500">Angebote konnten nicht geladen werden.</p>
-				{/await}
+				</div>
+
+				<a
+					href="/einkauf/angebote"
+					class="flex min-h-9 items-center justify-end gap-1 font-medium text-brand-700"
+					>Alle Angebote <ChevronRight size={16} aria-hidden="true" /></a
+				>
 			</div>
 		{/if}
-
-		<div class="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
-			<a href="/einkauf/kassenzettel" class="flex min-h-9 items-center gap-1.5 text-slate-600"
-				><ReceiptText size={16} aria-hidden="true" /> Kassenzettel</a
-			>
-			<a href="/einkauf/angebote" class="flex min-h-9 items-center gap-1 font-medium text-brand-700"
-				>Alle Angebote <ChevronRight size={16} aria-hidden="true" /></a
-			>
-		</div>
 	</section>
 {/snippet}
 
