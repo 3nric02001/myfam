@@ -105,11 +105,13 @@ export function deviceLabel(userAgent: string | null) {
 
 /**
  * Stores a device for the user. A device that belonged to someone else before (another person
- * signed in on the same phone) now belongs to this user.
+ * signed in on the same phone) now belongs to this user. The device is tied to the session, so
+ * signing out (or a password change signing out other devices) stops its notifications.
  */
 export async function saveSubscription(
 	db: DB,
 	userId: string,
+	sessionId: string | null,
 	sub: SubscriptionInput,
 	device: string | null
 ) {
@@ -117,6 +119,7 @@ export async function saveSubscription(
 		.insert(pushSubscription)
 		.values({
 			userId,
+			sessionId,
 			endpoint: sub.endpoint,
 			p256dh: sub.keys.p256dh,
 			auth: sub.keys.auth,
@@ -124,7 +127,7 @@ export async function saveSubscription(
 		})
 		.onConflictDoUpdate({
 			target: pushSubscription.endpoint,
-			set: { userId, p256dh: sub.keys.p256dh, auth: sub.keys.auth, device }
+			set: { userId, sessionId, p256dh: sub.keys.p256dh, auth: sub.keys.auth, device }
 		});
 }
 

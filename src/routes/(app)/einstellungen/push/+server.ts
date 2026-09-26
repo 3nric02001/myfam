@@ -26,7 +26,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	if (typeof data.replaces === 'string' && data.replaces !== sub.endpoint) {
 		await deleteSubscription(db, locals.user.id, { endpoint: data.replaces });
 	}
-	await saveSubscription(db, locals.user.id, sub, deviceLabel(request.headers.get('user-agent')));
+	await saveSubscription(
+		db,
+		locals.user.id,
+		locals.sessionId,
+		sub,
+		deviceLabel(request.headers.get('user-agent'))
+	);
 	return json({ ok: true });
 };
 

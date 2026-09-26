@@ -1,6 +1,6 @@
-import { and, eq, ne } from 'drizzle-orm';
+import { and, eq, isNull, ne, or } from 'drizzle-orm';
 import type { DB } from './db/client';
-import { session, user } from './db/schema';
+import { pushSubscription, session, user } from './db/schema';
 import { findUserByEmail, hashPassword, normalizeEmail, verifyPassword } from './auth';
 import { checkEmail, checkName, checkPassword } from './validation';
 
@@ -42,7 +42,10 @@ export async function changeEmail(
 	return { ok: true };
 }
 
-/** Changes the password and signs the user out everywhere except in the current session. */
+/**
+ * Changes the password and signs the user out everywhere except in the current session, including
+ * the push notifications of the other devices.
+ */
 export async function changePassword(
 	db: DB,
 	userId: string,
@@ -58,6 +61,10 @@ export async function changePassword(
 		.update(user)
 		.set({ passwordHash: await hashPassword(input.newPassword) })
 		.where(eq(user.id, userId));
+	// Deleting the sessions also removes their push devices; older devices without a session too.
 	await db.delete(session).where(and(eq(session.userId, userId), ne(session.id, currentSessionId)));
+	await db
+		.delete(pushSubscription)
+		.where(and(eq(pushSubscription.userId, userId), isNull(pushSubscription.sessionId)));
 	return { ok: true };
 }

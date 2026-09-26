@@ -379,6 +379,8 @@ export const pushSubscription = sqliteTable(
 		userId: text('user_id')
 			.notNull()
 			.references(() => user.id, { onDelete: 'cascade' }),
+		/** The sign-in the device was registered with. Signing out removes the device. */
+		sessionId: text('session_id').references(() => session.id, { onDelete: 'cascade' }),
 		endpoint: text('endpoint').notNull().unique(),
 		p256dh: text('p256dh').notNull(),
 		auth: text('auth').notNull(),
