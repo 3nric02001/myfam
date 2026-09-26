@@ -9,8 +9,9 @@ Ein gemeinsamer Ort für die ganze Familie: Einkaufsliste, Termine und Planung. 
 | Konto, Login, Abmelden            | fertig                                                     |
 | Familien, Rollen, Einladungslinks | fertig                                                     |
 | Einkaufsliste                     | fertig (hinzufügen, abhaken, löschen, Erledigte löschen)   |
-| Kalender                          | fertig (Termine mit Sichtbarkeit, deutsche Feiertage)      |
+| Kalender                          | fertig (Termine mit Sichtbarkeit, Feiertage, CalDAV-Abos)  |
 | Planung                           | fertig (Ordner, Karten mit Text, Tabellen, Links, Bildern) |
+| Erinnerungen per Push             | fertig für Termine                                         |
 
 ## Technik
 
@@ -27,6 +28,8 @@ src/lib/server/
   calendar.ts    Kalender: Termine, Sichtbarkeit, Freigaben
   meals.ts       Essensplan, Zutaten auf die Einkaufsliste
   planning.ts    Planung: Ordner, Karten, Inhalte, Bilder
+  push.ts        Web Push: VAPID-Schlüssel, Geräte, Versand
+  reminders.ts   Erinnerungen: was fällig ist, Scheduler im App-Prozess
   visibility.ts  Gemeinsames Sichtbarkeitsmodell (Familie / bestimmte Personen / nur ich)
   uploads.ts     Hochgeladene Bilder im Dateisystem
   db/schema.ts   Datenbankschema
@@ -40,8 +43,21 @@ src/routes/
 
 - **Sichtbarkeit pro Termin:** ganze Familie (Standard), bestimmte Personen oder nur ich. Wer einen Termin nicht sehen darf, bekommt ihn auch über den direkten Link nicht (404).
 - **Bearbeiten:** Die Person, die den Termin angelegt hat. Admins dürfen zusätzlich Termine der ganzen Familie ändern oder löschen, aber deren Sichtbarkeit nicht ändern. Private und geteilte Termine bleiben allein bei ihrer Person.
+- **Kalender-Abos:** Unter **Kalender → Kalender-Abos** (oder **Familie → Kalender-Abos**) kann ein Admin CalDAV-Kalender (z. B. Nextcloud) oder öffentliche ICS-Links (auch `webcal://`) einbinden. Die Termine sieht die ganze Familie, mit dem Namen des Abos als Quelle und einer eigenen Farbe. Sie sind nur lesbar. Abgleich alle 15 Minuten und per Knopf. Wiederkehrende Termine (inkl. Ausnahmen und verschobener Termine) werden ein Jahr zurück und zwei Jahre voraus berechnet. Termine, die in Nextcloud als privat oder vertraulich markiert sind, erscheinen nur als „Privat“ ohne Details.
+  - Nextcloud: Adresse über Kalender → „…“ neben dem Kalendernamen → **Interne Adresse kopieren**, dazu Benutzername und ein **App-Passwort** (Einstellungen → Sicherheit). Wird die Adresse aller Kalender eingetragen, nennt die App die gefundenen Kalender.
+  - Das Passwort wird mit AES-256-GCM verschlüsselt gespeichert. Den Schlüssel legt die App beim ersten Abo als `secret.key` neben der Datenbank an (im Docker-Volume), oder er kommt aus `SECRET_KEY` in der `.env`. Geht der Schlüssel verloren, müssen die Passwörter neu eingegeben werden.
 - **Feiertage:** Die bundesweiten Feiertage werden immer angezeigt. Unter **Familie → Feiertage im Kalender** kann ein Admin das Bundesland wählen, dann kommen die regionalen dazu. Die Berechnung läuft offline (Osterformel), es wird kein externer Dienst gebraucht. Feiertage, die nur in Teilen eines Landes gelten (z. B. Mariä Himmelfahrt in Bayern), werden nicht angezeigt.
 - **Essensplan:** In der Tagesansicht des Kalenders stehen Frühstück, Mittag und Abend als schlanke Zeilen, leere Mahlzeiten als „+“-Knöpfe. „Woche planen“ zeigt die ganze Woche. Frühere Gerichte werden beim Tippen vorgeschlagen und bringen ihre Zutaten mit. Ein Tipp auf den Einkaufswagen setzt die Zutaten auf die Einkaufsliste (Mengen wie „500 g“ werden erkannt, was schon offen auf der Liste steht, wird übersprungen). Der Essensplan ist für die ganze Familie sichtbar und bearbeitbar.
+
+## Erinnerungen per Push
+
+- **Standardmäßig an:** Browser erlauben Benachrichtigungen nur nach einem Tippen. Deshalb fragt MyFam auf jedem neuen Gerät einmal oben in der App nach („Einschalten“ oder „Später“). Hat das Gerät die Erlaubnis schon, wird es ohne Nachfrage angemeldet. Nach „Später“ oder dem Ausschalten in den Einstellungen fragt die App auf diesem Gerät nicht mehr.
+- **Einschalten** geht jederzeit auch pro Gerät unter **Einstellungen → Benachrichtigungen**. Wer mehrere Geräte nutzt, schaltet es auf jedem ein. Dort gibt es auch eine Testnachricht und die Liste der eigenen Geräte.
+- **iPhone/iPad:** nur ab iOS 16.4 und nur, wenn MyFam über „Teilen → Zum Home-Bildschirm“ als App installiert ist. Die Einstellungsseite erklärt das.
+- **Pro Termin** wählt man die Erinnerung im Terminformular: bei Terminen mit Uhrzeit standardmäßig 30 Minuten vorher, bei ganztägigen am Vortag um 18 Uhr (oder „Keine“). Die Erinnerung geht an alle, die den Termin sehen dürfen und Benachrichtigungen eingeschaltet haben. Termine, die vor diesem Update angelegt wurden, haben keine Erinnerung.
+- **Technik:** Web Push mit eigenem VAPID-Schlüssel, ohne Konto bei einem Drittanbieter. Der Server schickt die verschlüsselte Nachricht direkt an den Push-Dienst des Browsers (Google, Apple, Mozilla, Microsoft), der Container braucht dafür ausgehendes HTTPS. Der Schlüssel wird beim ersten Start erzeugt und in der Datenbank gespeichert. Alternativ `VAPID_PUBLIC_KEY` und `VAPID_PRIVATE_KEY` setzen (`npx web-push generate-vapid-keys`); ändert sich der Schlüssel, muss jedes Gerät neu eingeschaltet werden.
+- **Zeitplan:** Ein Timer im App-Prozess prüft jede Minute, was fällig ist (deutsche Zeit, auch über die Zeitumstellung). War der Server kurz weg, werden bis zu 30 Minuten alte Erinnerungen nachgeholt, jede genau einmal. Weitere Arten (z. B. Aufgaben) hängen sich als eigene Quelle in `src/lib/server/reminders.ts` ein.
+- Der Service Worker (`src/service-worker.ts`) zeigt nur Benachrichtigungen an und speichert keine Seiten zwischen.
 
 ## Planung
 
@@ -100,6 +116,7 @@ location / {
 
 - `PUBLIC_URL` muss genau die Adresse sein, die im Browser steht. SvelteKit prüft damit die Herkunft von Formularen (CSRF-Schutz), und die Einladungslinks werden daraus gebaut.
 - `PORT` ändert den Port auf dem Host. `BIND=0.0.0.0` macht ihn im Netzwerk erreichbar, falls der Proxy auf einem anderen Rechner läuft.
+- `SECRET_KEY` (optional, beliebiger langer Text) verschlüsselt die Passwörter der Kalender-Abos. Ohne Angabe wird `/data/secret.key` erzeugt.
 - `MARKTGURU_ENABLED=true` schaltet automatische Angebote für die Einkaufsliste ein (siehe unten). Standardmäßig aus.
 - Läuft der Proxy selbst in Docker, kannst du den Container stattdessen in dasselbe Docker-Netzwerk hängen und `app:3000` als Ziel nehmen.
 
@@ -108,7 +125,7 @@ Danach unter `https://<deine Domain>/registrieren` die erste Familie anlegen und
 - **Update:** `git pull && docker compose up -d --build`
 - **Backup:** Die Datenbank liegt im Volume `app-data` (`/data/myfam.db`), z. B.
   `docker compose exec app node -e "require('better-sqlite3')('/data/myfam.db').backup('/data/backup.db')"` und dann `docker compose cp app:/data/backup.db .`
-  Die Bilder aus der Planung liegen im selben Volume unter `/data/uploads` und gehören mit ins Backup: `docker compose cp app:/data/uploads ./uploads`
+  Die Bilder aus der Planung liegen im selben Volume unter `/data/uploads` und gehören mit ins Backup: `docker compose cp app:/data/uploads ./uploads`. Ebenso `/data/secret.key` (Schlüssel für die Passwörter der Kalender-Abos).
 
 ## Bereiche in der Einkaufsliste
 

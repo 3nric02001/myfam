@@ -109,6 +109,11 @@ export const calendarEvent = sqliteTable(
 		endDate: text('end_date').notNull(),
 		endTime: text('end_time'),
 		visibility: text('visibility').$type<Visibility>().notNull().default('family'),
+		/**
+		 * Minutes before the start to send a push reminder; null means none. All-day events start
+		 * at 00:00, so 360 is 18:00 the day before and -480 is 08:00 on the day.
+		 */
+		reminder: integer('reminder'),
 		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
 		createdAt: createdAt()
 	},
@@ -336,6 +341,92 @@ export const offerSearchCache = sqliteTable(
 	(t) => [primaryKey({ columns: [t.zip, t.query] })]
 );
 
+/** Key/value settings of the installation, e.g. the generated VAPID keys for push. */
+export const appSetting = sqliteTable('app_setting', {
+	key: text('key').primaryKey(),
+	value: text('value').notNull()
+});
+
+/** One device (browser) of a user that receives push notifications. */
+export const pushSubscription = sqliteTable(
+	'push_subscription',
+	{
+		id: id(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		endpoint: text('endpoint').notNull().unique(),
+		p256dh: text('p256dh').notNull(),
+		auth: text('auth').notNull(),
+		/** Short device description shown in the settings, e.g. "iPhone · Safari". */
+		device: text('device'),
+		createdAt: createdAt()
+	},
+	(t) => [index('push_subscription_user_idx').on(t.userId)]
+);
+
+/**
+ * Reminders already sent, so a restart or the next scheduler run doesn't send them twice.
+ * The key includes the time the reminder was due, so moving an event reminds again.
+ */
+export const reminderSent = sqliteTable('reminder_sent', {
+	key: text('key').primaryKey(),
+	sentAt: integer('sent_at', { mode: 'timestamp' }).notNull()
+});
+/**
+ * A calendar the family follows: a CalDAV calendar (e.g. Nextcloud) or a public ICS link.
+ * Read only. The password is stored encrypted (see server/secrets.ts).
+ */
+export const calendarSubscription = sqliteTable(
+	'calendar_subscription',
+	{
+		id: id(),
+		familyId: text('family_id')
+			.notNull()
+			.references(() => family.id, { onDelete: 'cascade' }),
+		name: text('name').notNull(),
+		url: text('url').notNull(),
+		username: text('username'),
+		password: text('password'),
+		color: text('color').notNull().default('blue'),
+		syncedAt: integer('synced_at', { mode: 'timestamp' }),
+		/** Message of the last failed sync, cleared by the next successful one. */
+		error: text('error'),
+		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+		createdAt: createdAt()
+	},
+	(t) => [index('calendar_subscription_family_idx').on(t.familyId)]
+);
+
+/**
+ * Occurrences of subscribed events, replaced on every sync. Repeating events are expanded
+ * (see server/ical.ts), so each row is one day range like a calendar_event.
+ */
+export const subscriptionEvent = sqliteTable(
+	'subscription_event',
+	{
+		/** Derived from subscription, UID and start, so it stays the same across syncs. */
+		id: text('id').primaryKey(),
+		subscriptionId: text('subscription_id')
+			.notNull()
+			.references(() => calendarSubscription.id, { onDelete: 'cascade' }),
+		familyId: text('family_id')
+			.notNull()
+			.references(() => family.id, { onDelete: 'cascade' }),
+		title: text('title').notNull(),
+		location: text('location'),
+		notes: text('notes'),
+		startDate: text('start_date').notNull(),
+		startTime: text('start_time'),
+		endDate: text('end_date').notNull(),
+		endTime: text('end_time')
+	},
+	(t) => [
+		index('subscription_event_family_idx').on(t.familyId, t.startDate),
+		index('subscription_event_subscription_idx').on(t.subscriptionId)
+	]
+);
+
 export type MealSlot = 'breakfast' | 'lunch' | 'dinner';
 
 /** The family's meal plan: at most one dish per day and meal. Everyone in the family sees it. */
@@ -364,3 +455,4 @@ export type User = typeof user.$inferSelect;
 export type Family = typeof family.$inferSelect;
 export type ShoppingItem = typeof shoppingItem.$inferSelect;
 export type CalendarEvent = typeof calendarEvent.$inferSelect;
+export type CalendarSubscription = typeof calendarSubscription.$inferSelect;

@@ -1,7 +1,15 @@
 <script lang="ts">
-	import { ChevronLeft, ChevronRight, PartyPopper, Plus, UtensilsCrossed } from '@lucide/svelte';
+	import {
+		CalendarSync,
+		ChevronLeft,
+		ChevronRight,
+		PartyPopper,
+		Plus,
+		UtensilsCrossed
+	} from '@lucide/svelte';
 	import { addMonths, dayLabel, monthLabel, shortDate, weekStart } from '$lib/dates';
 	import { visibilityLabel } from '$lib/visibility';
+	import { colorOf } from '$lib/subscriptions';
 	import VisibilityIcon from '$lib/components/VisibilityIcon.svelte';
 	import MealDay from '$lib/components/MealDay.svelte';
 	import MealDishes from '$lib/components/MealDishes.svelte';
@@ -71,7 +79,8 @@
 		{#each data.days as date (date)}
 			{@const inMonth = date.startsWith(data.month)}
 			{@const holiday = holidayByDate.get(date)}
-			{@const count = eventsOn(date).length}
+			{@const dayEvents = eventsOn(date)}
+			{@const count = dayEvents.length}
 			{@const isSelected = date === selected}
 			{@const isToday = date === data.today}
 			<button
@@ -93,8 +102,14 @@
 					>{Number(date.slice(8))}</span
 				>
 				<span class="flex h-1.5 gap-0.5" aria-hidden="true">
-					{#each [0, 1, 2].slice(0, count) as i (i)}
-						<span class="size-1.5 rounded-full {isSelected ? 'bg-white' : 'bg-brand-600'}"></span>
+					{#each dayEvents.slice(0, 3) as e (e.id)}
+						<span
+							class="size-1.5 rounded-full {isSelected
+								? 'bg-white'
+								: e.color
+									? colorOf(e.color).dot
+									: 'bg-brand-600'}"
+						></span>
 					{/each}
 				</span>
 			</button>
@@ -141,7 +156,7 @@
 		<ul class="card px-3">
 			{#each selectedEvents as event (event.id)}
 				<li class="border-b border-slate-100 last:border-0">
-					<a href="/kalender/{event.id}" class="flex min-h-14 items-center gap-3 py-2">
+					<a href={event.href} class="flex min-h-14 items-center gap-3 py-2">
 						<span class="w-20 shrink-0 text-sm text-slate-500">{timeOf(event, selected)}</span>
 						<span class="flex-1">
 							<span class="block">{event.title}</span>
@@ -149,15 +164,23 @@
 								{#if event.startDate !== event.endDate}
 									{shortDate(event.startDate)}–{shortDate(event.endDate)} ·
 								{/if}
-								{event.createdBy ?? 'Unbekannt'}
+								{event.source ?? event.createdBy ?? 'Unbekannt'}
 							</span>
 						</span>
-						<span
-							class="text-slate-400"
-							title={visibilityLabel[event.visibility]}
-							aria-label={visibilityLabel[event.visibility]}
-							><VisibilityIcon visibility={event.visibility} /></span
-						>
+						{#if event.source}
+							<span
+								class={colorOf(event.color ?? '').text}
+								title="Abo „{event.source}“"
+								aria-label="Abo „{event.source}“"><CalendarSync size={20} /></span
+							>
+						{:else}
+							<span
+								class="text-slate-400"
+								title={visibilityLabel[event.visibility]}
+								aria-label={visibilityLabel[event.visibility]}
+								><VisibilityIcon visibility={event.visibility} /></span
+							>
+						{/if}
 					</a>
 				</li>
 			{/each}
@@ -169,5 +192,6 @@
 
 <p class="mt-6 text-center text-xs text-slate-400">
 	Feiertage: {data.stateName ?? 'nur bundesweite'} ·
-	<a href="/familie#feiertage" class="underline">ändern</a>
+	<a href="/familie#feiertage" class="underline">ändern</a> ·
+	<a href="/kalender/abos" class="underline">Kalender-Abos</a>
 </p>

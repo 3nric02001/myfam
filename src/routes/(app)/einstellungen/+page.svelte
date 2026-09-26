@@ -11,6 +11,7 @@
 	} from '@lucide/svelte';
 	import { enhance } from '$app/forms';
 	import { themeColor, type Theme } from '$lib/theme';
+	import PushSettings from './PushSettings.svelte';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
@@ -48,7 +49,7 @@
 	// A section with an error stays open so the message and the entered values are visible.
 	let open = $state<Section | null>(null);
 	$effect(() => {
-		if (form?.action && form.action !== 'theme')
+		if (form?.action && form.action !== 'theme' && form.action !== 'push')
 			open = form.message ? (form.action as Section) : null;
 	});
 
@@ -82,7 +83,7 @@
 	</div>
 </section>
 
-{#if form?.action && form.action !== 'theme' && 'success' in form && form.success}
+{#if form?.action && form.action !== 'theme' && form.action !== 'push' && 'success' in form && form.success}
 	<p class="success mb-4" role="status">{form.success}</p>
 {/if}
 
@@ -123,6 +124,16 @@
 		Gilt für dieses Gerät. „Automatisch“ folgt der Einstellung des Handys.
 	</p>
 </form>
+
+<h2 class="mb-2 px-1 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+	Benachrichtigungen
+</h2>
+<PushSettings
+	publicKey={data.push.publicKey}
+	devices={data.push.devices}
+	message={form?.action === 'push' && 'message' in form ? form.message : undefined}
+	success={form?.action === 'push' && 'success' in form ? form.success : undefined}
+/>
 
 <h2 class="mb-2 px-1 text-xs font-semibold tracking-wide text-slate-500 uppercase">Konto</h2>
 

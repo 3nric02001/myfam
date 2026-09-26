@@ -67,6 +67,11 @@ describe('calendar', () => {
 				visibility: 'family'
 			})
 		).toEqual({ error: 'Das Ende liegt vor dem Beginn.' });
+		expect(
+			checkEvent({ title: 'x', startDate: '2026-10-01', visibility: 'family', reminder: 30 })
+		).toEqual({ error: 'Bitte wähle eine gültige Erinnerung.' });
+		expect(valid({ startTime: '10:00', reminder: 30 }).reminder).toBe(30);
+		expect(valid({ reminder: 360 }).reminder).toBe(360);
 		expect(checkEvent({ title: 'x', startDate: '2026-10-01', visibility: 'shared' })).toEqual({
 			error: 'Wähle mindestens eine Person aus, mit der du den Termin teilen willst.'
 		});

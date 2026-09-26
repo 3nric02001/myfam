@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { ChevronLeft } from '@lucide/svelte';
+	import { Bell, ChevronLeft } from '@lucide/svelte';
+	import { reminderLabel } from '$lib/reminders';
 	import { enhance } from '$app/forms';
 	import { dayLabel } from '$lib/dates';
 	import EventForm from '../EventForm.svelte';
@@ -65,6 +66,12 @@
 				? `: ${sharedNames.join(', ')}`
 				: ''}
 		</p>
+		{#if event.reminder !== null}
+			<p class="text-sm text-slate-500">
+				<Bell size={16} class="inline align-[-3px]" aria-hidden="true" />
+				Erinnerung: {reminderLabel(event.reminder, !event.startTime)}
+			</p>
+		{/if}
 		<p class="text-sm text-slate-500">Angelegt von {data.creator ?? 'einem früheren Mitglied'}</p>
 	</div>
 {/if}
