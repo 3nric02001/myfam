@@ -2,7 +2,13 @@ import { and, eq } from 'drizzle-orm';
 import type { DB } from './db/client';
 import { shoppingPlan, task } from './db/schema';
 import { createTask } from './tasks';
+import { addDays } from '$lib/dates';
 import { formatPrice, storeLabel } from '$lib/offers';
+import { estimate } from '$lib/prices';
+import { marktguruEnabled } from './marktguru';
+import { offersForList } from './offers';
+import { listKnownPrices } from './prices';
+import { listItemsWithCategory } from './shopping';
 
 // The next planned shopping trip. It shows up for everyone as a task in the calendar, and the
 // shopping list compares the offers of that day.
@@ -18,6 +24,33 @@ export async function getPlan(db: DB, familyId: string, today: string) {
 		return null;
 	}
 	return plan;
+}
+
+/** A day a trip can be planned for: from today up to two months ahead. */
+export function isTripDay(date: string, today: string) {
+	return /^\d{4}-\d{2}-\d{2}$/.test(date) && date >= today && date <= addDays(today, 60);
+}
+
+/** The recommendation for shopping on that day: which stores, how many offers, what it costs. */
+export async function tipFor(db: DB, familyId: string, date: string, today: string) {
+	const items = (await listItemsWithCategory(db, familyId)).filter((i) => !i.done);
+	const offers = await offersForList(db, familyId, items, today, {
+		auto: marktguruEnabled(),
+		on: date
+	}).catch(() => null);
+	const cost = offers
+		? estimate(items, offers.byItem, await listKnownPrices(db, familyId), offers.preferred)
+		: null;
+	return {
+		date,
+		stores: offers?.best?.stores ?? [],
+		covered: offers?.best?.covered ?? 0,
+		open: items.length,
+		total: cost?.total ?? 0,
+		priced: cost?.priced ?? 0,
+		configured: offers?.configured ?? false,
+		failed: !offers || offers.failed
+	};
 }
 
 /** Title and notes of the calendar task, from the recommendation for that day. */

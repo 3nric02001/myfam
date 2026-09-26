@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import { createUser } from './auth';
 import { task } from './db/schema';
 import { acceptInvite, createInvite } from './families';
-import { cancelPlan, getPlan, planTrip, tripText } from './plan';
+import { cancelPlan, getPlan, isTripDay, planTrip, tripText } from './plan';
 import { getTask, setTaskDone } from './tasks';
 import { seedFamily, testDb } from './test/setup';
 
@@ -70,5 +70,13 @@ describe('planned shopping trip', () => {
 			title: 'Einkaufen',
 			notes: '1 Artikel auf der Einkaufsliste.'
 		});
+	});
+
+	it('accepts days from today up to two months ahead', () => {
+		expect(isTripDay('2026-09-26', TODAY)).toBe(true);
+		expect(isTripDay('2026-11-25', TODAY)).toBe(true);
+		expect(isTripDay('2026-11-26', TODAY)).toBe(false);
+		expect(isTripDay('2026-09-25', TODAY)).toBe(false);
+		expect(isTripDay('morgen', TODAY)).toBe(false);
 	});
 });

@@ -1,5 +1,5 @@
 import { fail } from '@sveltejs/kit';
-import { addDays, today } from '$lib/dates';
+import { today } from '$lib/dates';
 import { db } from '$lib/server/db';
 import { requireFamily } from '$lib/server/guards';
 import {
@@ -17,7 +17,7 @@ import { isCategory } from '$lib/categories';
 import { marktguruEnabled } from '$lib/server/marktguru';
 import { offersForList, purgeOffers } from '$lib/server/offers';
 import { deleteKnownPrice, listKnownPrices, recordPrice } from '$lib/server/prices';
-import { cancelPlan, getPlan, planTrip, tripText } from '$lib/server/plan';
+import { cancelPlan, getPlan, isTripDay, planTrip, tipFor, tripText } from '$lib/server/plan';
 import { field } from '$lib/server/validation';
 import { estimate } from '$lib/prices';
 import { isStore, parsePrice } from '$lib/offers';
@@ -116,24 +116,11 @@ export const actions: Actions = {
 		const { user, family } = requireFamily(locals);
 		const date = field(await request.formData(), 'date');
 		const day = today();
-		if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < day || date > addDays(day, 60)) {
+		if (!isTripDay(date, day)) {
 			return fail(400, { message: 'Bitte wähle einen Tag in den nächsten zwei Monaten.' });
 		}
-		const items = (await listItemsWithCategory(db, family.id)).filter((i) => !i.done);
-		const offers = await offersForList(db, family.id, items, day, {
-			auto: marktguruEnabled(),
-			on: date
-		}).catch(() => null);
-		const known = await listKnownPrices(db, family.id);
-		const cost = offers ? estimate(items, offers.byItem, known, offers.preferred) : null;
-		const text = tripText({
-			stores: offers?.best?.stores ?? [],
-			covered: offers?.best?.covered ?? 0,
-			open: items.length,
-			total: cost?.total ?? 0,
-			priced: cost?.priced ?? 0
-		});
-		await planTrip(db, family.id, user.id, { date, ...text });
+		const tip = await tipFor(db, family.id, date, day);
+		await planTrip(db, family.id, user.id, { date, ...tripText(tip) });
 		return { planned: date };
 	},
 
