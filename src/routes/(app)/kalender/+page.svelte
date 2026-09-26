@@ -1,14 +1,19 @@
 <script lang="ts">
 	import {
+		CalendarDays,
 		CalendarSync,
+		ChevronDown,
 		ChevronLeft,
 		ChevronRight,
+		ChevronUp,
 		ListTodo,
 		PartyPopper,
 		Plus,
 		UtensilsCrossed
 	} from '@lucide/svelte';
-	import { addMonths, dayLabel, monthLabel, shortDate, weekStart } from '$lib/dates';
+	import { replaceState } from '$app/navigation';
+	import { page } from '$app/state';
+	import { addDays, addMonths, dayLabel, monthLabel, shortDate, weekStart } from '$lib/dates';
 	import { visibilityLabel } from '$lib/visibility';
 	import { colorOf } from '$lib/subscriptions';
 	import VisibilityIcon from '$lib/components/VisibilityIcon.svelte';
@@ -19,10 +24,48 @@
 
 	let { data }: PageProps = $props();
 
+	let newOpen = $state(false);
+
 	// Picking a day happens in the browser. It survives the regular refresh of the data,
 	// and a new month falls back to the day the server chose.
 	let picked = $state<string | null>(null);
-	let selected = $derived(picked?.startsWith(data.month) ? picked : data.selected);
+	let selected = $derived(picked && data.days.includes(picked) ? picked : data.selected);
+
+	// Only the selected week is shown until the month is expanded; kept in the URL.
+	let expandedLocal = $state<boolean | null>(null);
+	let expanded = $derived(expandedLocal ?? data.expanded);
+	let week = $derived(
+		data.days.slice(
+			data.days.indexOf(weekStart(selected)),
+			data.days.indexOf(weekStart(selected)) + 7
+		)
+	);
+	let visibleDays = $derived(expanded ? data.days : week);
+	let viewParam = $derived(expanded ? '&ansicht=monat' : '');
+
+	function toggleMonth() {
+		expandedLocal = !expanded;
+		const url = new URL(page.url);
+		url.searchParams.set('tag', selected);
+		url.searchParams.delete('monat');
+		if (expandedLocal) url.searchParams.set('ansicht', 'monat');
+		else url.searchParams.delete('ansicht');
+		replaceState(url, page.state);
+	}
+
+	let showsToday = $derived(visibleDays.includes(data.today));
+	let heading = $derived(expanded ? monthLabel(data.month) : weekHeading(week));
+
+	function weekHeading(days: string[]) {
+		const first = days[0].slice(0, 7);
+		const last = days[6].slice(0, 7);
+		if (first === last) return monthLabel(first);
+		const short = (m: string) =>
+			new Intl.DateTimeFormat('de-DE', { month: 'short', timeZone: 'UTC' }).format(
+				new Date(`${m}-01T00:00:00Z`)
+			);
+		return `${short(first)} – ${monthLabel(last)}`;
+	}
 
 	const weekdays = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
@@ -61,35 +104,74 @@
 <MealDishes id="dishes" dishes={data.dishes} />
 
 <div class="mb-3 flex items-center gap-2">
-	<h1 class="flex-1 text-xl font-semibold tracking-tight">{monthLabel(data.month)}</h1>
-	<a
-		href="?monat={addMonths(data.month, -1)}"
-		class="btn-secondary flex w-11 items-center justify-center px-0"
-		aria-label="Vorheriger Monat"
-		data-sveltekit-noscroll><ChevronLeft size={20} aria-hidden="true" /></a
-	>
-	{#if !data.today.startsWith(data.month)}
-		<a
-			href="?monat={data.today.slice(0, 7)}"
-			class="btn-secondary px-3 text-sm"
-			data-sveltekit-noscroll>Heute</a
+	<h1 class="flex-1 text-xl font-semibold tracking-tight">{heading}</h1>
+	<div class="relative">
+		<button
+			type="button"
+			class="btn-primary px-3"
+			aria-expanded={newOpen}
+			aria-haspopup="menu"
+			onclick={() => (newOpen = !newOpen)}><Plus size={18} aria-hidden="true" /> Neu</button
 		>
-	{/if}
-	<a
-		href="?monat={addMonths(data.month, 1)}"
-		class="btn-secondary flex w-11 items-center justify-center px-0"
-		aria-label="Nächster Monat"
-		data-sveltekit-noscroll><ChevronRight size={20} aria-hidden="true" /></a
-	>
+		{#if newOpen}
+			<!-- Closes the menu when tapping anywhere else. -->
+			<button
+				type="button"
+				class="fixed inset-0 z-20 cursor-default"
+				aria-label="Menü schließen"
+				onclick={() => (newOpen = false)}
+			></button>
+			<div class="card absolute right-0 z-30 mt-2 w-56 overflow-hidden p-1 text-sm" role="menu">
+				<p class="px-3 pt-2 pb-1 text-xs text-slate-500">Für {dayLabel(selected)}</p>
+				<a
+					role="menuitem"
+					href="/kalender/neu?datum={selected}"
+					class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-slate-700 active:bg-slate-100"
+					><CalendarDays size={18} aria-hidden="true" /> Termin</a
+				>
+				<a
+					role="menuitem"
+					href="/kalender/aufgaben/neu?datum={selected}"
+					class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-slate-700 active:bg-slate-100"
+					><ListTodo size={18} aria-hidden="true" /> Aufgabe</a
+				>
+				<a
+					role="menuitem"
+					href="#essen"
+					class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-slate-700 active:bg-slate-100"
+					onclick={() => (newOpen = false)}
+					><UtensilsCrossed size={18} aria-hidden="true" /> Essen</a
+				>
+			</div>
+		{/if}
+	</div>
 </div>
 
-<div class="card p-2">
-	<div class="grid grid-cols-7 text-center text-xs font-medium text-slate-500">
-		{#each weekdays as w (w)}<div class="py-1">{w}</div>{/each}
+<div class="card px-2 pt-2 pb-1">
+	<div class="mb-1 flex items-center gap-1">
+		<a
+			href={expanded
+				? `?monat=${addMonths(data.month, -1)}${viewParam}`
+				: `?tag=${addDays(selected, -7)}`}
+			class="icon-btn"
+			aria-label={expanded ? 'Vorheriger Monat' : 'Vorherige Woche'}
+			data-sveltekit-noscroll><ChevronLeft size={20} /></a
+		>
+		<div class="grid flex-1 grid-cols-7 text-center text-xs font-medium text-slate-500">
+			{#each weekdays as w (w)}<div>{w}</div>{/each}
+		</div>
+		<a
+			href={expanded
+				? `?monat=${addMonths(data.month, 1)}${viewParam}`
+				: `?tag=${addDays(selected, 7)}`}
+			class="icon-btn"
+			aria-label={expanded ? 'Nächster Monat' : 'Nächste Woche'}
+			data-sveltekit-noscroll><ChevronRight size={20} /></a
+		>
 	</div>
-	<div class="grid grid-cols-7">
-		{#each data.days as date (date)}
-			{@const inMonth = date.startsWith(data.month)}
+	<div class="mx-11 grid grid-cols-7">
+		{#each visibleDays as date (date)}
+			{@const inMonth = !expanded || date.startsWith(data.month)}
 			{@const holiday = holidayByDate.get(date)}
 			{@const dayEvents = eventsOn(date)}
 			{@const dayTasks = openTasksOn(date)}
@@ -136,68 +218,59 @@
 			</button>
 		{/each}
 	</div>
+	<div class="flex items-center justify-center gap-4 text-sm">
+		{#if !showsToday || selected !== data.today}
+			<a
+				href="?tag={data.today}{viewParam}"
+				class="py-2 text-brand-700"
+				data-sveltekit-noscroll
+				onclick={() => (picked = null)}>Heute</a
+			>
+		{/if}
+		<button
+			type="button"
+			class="flex items-center gap-1 py-2 text-slate-500"
+			aria-expanded={expanded}
+			onclick={toggleMonth}
+		>
+			{#if expanded}
+				<ChevronUp size={16} aria-hidden="true" /> Nur Woche
+			{:else}
+				<ChevronDown size={16} aria-hidden="true" /> Ganzer Monat
+			{/if}
+		</button>
+	</div>
 </div>
 
-<section class="mt-5">
-	<div class="mb-2 flex items-center justify-between">
-		<h2 class="font-semibold">{dayLabel(selected)}</h2>
-		<a href="/kalender/neu?datum={selected}" class="btn-primary px-3 py-1 text-sm"
-			><Plus size={18} aria-hidden="true" /> Termin</a
+<h2 class="mt-6 flex items-center gap-2 text-lg font-semibold">
+	{dayLabel(selected)}
+</h2>
+{#if holidayByDate.get(selected)}
+	<p class="mt-2 flex items-center gap-2 rounded-xl bg-accent-50 px-3 py-2 text-sm text-accent-700">
+		<PartyPopper size={18} aria-hidden="true" />
+		{holidayByDate.get(selected)} (Feiertag)
+	</p>
+{/if}
+
+{#snippet sectionHead(Icon: typeof CalendarDays, title: string, count: number)}
+	<h3 class="flex flex-1 items-center gap-2 font-semibold">
+		<span class="flex size-8 items-center justify-center rounded-full bg-brand-50 text-brand-700"
+			><Icon size={17} aria-hidden="true" /></span
+		>
+		{title}
+		{#if count}<span class="text-sm font-normal text-slate-400">{count}</span>{/if}
+	</h3>
+{/snippet}
+
+<section class="mt-4" aria-label="Termine">
+	<div class="mb-2 flex items-center gap-2">
+		{@render sectionHead(CalendarDays, 'Termine', selectedEvents.length)}
+		<a
+			href="/kalender/neu?datum={selected}"
+			class="icon-btn size-9 text-brand-700"
+			aria-label="Termin für diesen Tag"><Plus size={20} /></a
 		>
 	</div>
-
-	{#if holidayByDate.get(selected)}
-		<p
-			class="mb-2 flex items-center gap-2 rounded-xl bg-accent-50 px-3 py-2 text-sm text-accent-700"
-		>
-			<PartyPopper size={18} aria-hidden="true" />
-			{holidayByDate.get(selected)} (Feiertag)
-		</p>
-	{/if}
-
-	<div class="card mb-3 px-2 pt-2">
-		<div class="flex items-center justify-between px-1">
-			<h3 class="flex items-center gap-1.5 text-sm font-semibold text-slate-600">
-				<ListTodo size={16} aria-hidden="true" /> Aufgaben
-			</h3>
-			<span class="flex items-center gap-3 text-sm">
-				<a href="/kalender/aufgaben" class="text-brand-700">Alle</a>
-				<a
-					href="/kalender/aufgaben/neu?datum={selected}"
-					class="icon-btn size-8 text-brand-700"
-					aria-label="Aufgabe für diesen Tag"><Plus size={18} /></a
-				>
-			</span>
-		</div>
-		{#if selectedTasks.length}
-			<ul>
-				{#each selectedTasks as task (task.id)}
-					<TaskRow {task} today={data.today} />
-				{/each}
-			</ul>
-		{:else}
-			<p class="px-1 pb-3 text-sm text-slate-400">Nichts zu erledigen.</p>
-		{/if}
-	</div>
-
-	<div class="card mb-3 px-3 pt-2">
-		<div class="flex items-center justify-between">
-			<h3 class="flex items-center gap-1.5 text-sm font-semibold text-slate-600">
-				<UtensilsCrossed size={16} aria-hidden="true" /> Essen
-			</h3>
-			<a href="/kalender/essen?woche={weekStart(selected)}" class="text-sm text-brand-700"
-				>Woche planen</a
-			>
-		</div>
-		{#key selected}
-			<MealDay
-				date={selected}
-				meals={data.meals.filter((m) => m.date === selected)}
-				datalistId="dishes"
-			/>
-		{/key}
-	</div>
-
 	{#if selectedEvents.length}
 		<ul class="card px-3">
 			{#each selectedEvents as event (event.id)}
@@ -231,12 +304,51 @@
 				</li>
 			{/each}
 		</ul>
-	{:else if !holidayByDate.get(selected)}
-		<p class="py-6 text-center text-sm text-slate-500">Keine Termine an diesem Tag.</p>
+	{:else}
+		<p class="card px-4 py-3 text-sm text-slate-400">Keine Termine.</p>
 	{/if}
 </section>
 
-<p class="mt-6 text-center text-xs text-slate-400">
+<section class="mt-6" aria-label="Aufgaben">
+	<div class="mb-2 flex items-center gap-2">
+		{@render sectionHead(ListTodo, 'Aufgaben', selectedTasks.filter((t) => !t.done).length)}
+		<a href="/kalender/aufgaben" class="text-sm text-brand-700">Alle</a>
+		<a
+			href="/kalender/aufgaben/neu?datum={selected}"
+			class="icon-btn size-9 text-brand-700"
+			aria-label="Aufgabe für diesen Tag"><Plus size={20} /></a
+		>
+	</div>
+	{#if selectedTasks.length}
+		<ul class="card px-2">
+			{#each selectedTasks as task (task.id)}
+				<TaskRow {task} today={data.today} />
+			{/each}
+		</ul>
+	{:else}
+		<p class="card px-4 py-3 text-sm text-slate-400">Nichts zu erledigen.</p>
+	{/if}
+</section>
+
+<section id="essen" class="mt-6 scroll-mt-20" aria-label="Essen">
+	<div class="mb-2 flex items-center gap-2">
+		{@render sectionHead(UtensilsCrossed, 'Essen', 0)}
+		<a href="/kalender/essen?woche={weekStart(selected)}" class="text-sm text-brand-700"
+			>Woche planen</a
+		>
+	</div>
+	<div class="card px-3 pt-1">
+		{#key selected}
+			<MealDay
+				date={selected}
+				meals={data.meals.filter((m) => m.date === selected)}
+				datalistId="dishes"
+			/>
+		{/key}
+	</div>
+</section>
+
+<p class="mt-8 text-center text-xs text-slate-400">
 	Feiertage: {data.stateName ?? 'nur bundesweite'} ·
 	<a href="/familie#feiertage" class="underline">ändern</a> ·
 	<a href="/kalender/abos" class="underline">Kalender-Abos</a>
