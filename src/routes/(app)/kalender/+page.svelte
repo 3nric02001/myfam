@@ -3,6 +3,7 @@
 		CalendarSync,
 		ChevronLeft,
 		ChevronRight,
+		ListTodo,
 		PartyPopper,
 		Plus,
 		UtensilsCrossed
@@ -13,6 +14,7 @@
 	import VisibilityIcon from '$lib/components/VisibilityIcon.svelte';
 	import MealDay from '$lib/components/MealDay.svelte';
 	import MealDishes from '$lib/components/MealDishes.svelte';
+	import TaskRow from '$lib/components/TaskRow.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -42,6 +44,16 @@
 	}
 
 	let selectedEvents = $derived(eventsOn(selected));
+
+	function openTasksOn(date: string) {
+		return data.tasks.filter((t) => t.dueDate === date && !t.done);
+	}
+
+	// Today also lists what is still open from earlier days.
+	let selectedTasks = $derived([
+		...(selected === data.today ? data.overdue : []),
+		...data.tasks.filter((t) => t.dueDate === selected)
+	]);
 </script>
 
 <svelte:head><title>Kalender · MyFam</title></svelte:head>
@@ -80,7 +92,8 @@
 			{@const inMonth = date.startsWith(data.month)}
 			{@const holiday = holidayByDate.get(date)}
 			{@const dayEvents = eventsOn(date)}
-			{@const count = dayEvents.length}
+			{@const dayTasks = openTasksOn(date)}
+			{@const count = dayEvents.length + dayTasks.length}
 			{@const isSelected = date === selected}
 			{@const isToday = date === data.today}
 			<button
@@ -91,7 +104,7 @@
 					: ''} {!inMonth && !isSelected ? 'text-slate-300' : ''}"
 				aria-pressed={isSelected}
 				aria-label="{dayLabel(date)}{holiday ? `, ${holiday}` : ''}{count
-					? `, ${count} Termin${count === 1 ? '' : 'e'}`
+					? `, ${count} Eintr${count === 1 ? 'ag' : 'äge'}`
 					: ''}"
 			>
 				<span
@@ -109,6 +122,14 @@
 								: e.color
 									? colorOf(e.color).dot
 									: 'bg-brand-600'}"
+						></span>
+					{/each}
+					<!-- Open tasks are hollow dots, after the events. -->
+					{#each dayTasks.slice(0, Math.max(0, 3 - dayEvents.length)) as t (t.id)}
+						<span
+							class="size-1.5 rounded-full border {isSelected
+								? 'border-white'
+								: 'border-brand-600'}"
 						></span>
 					{/each}
 				</span>
@@ -133,6 +154,31 @@
 			{holidayByDate.get(selected)} (Feiertag)
 		</p>
 	{/if}
+
+	<div class="card mb-3 px-2 pt-2">
+		<div class="flex items-center justify-between px-1">
+			<h3 class="flex items-center gap-1.5 text-sm font-semibold text-slate-600">
+				<ListTodo size={16} aria-hidden="true" /> Aufgaben
+			</h3>
+			<span class="flex items-center gap-3 text-sm">
+				<a href="/kalender/aufgaben" class="text-brand-700">Alle</a>
+				<a
+					href="/kalender/aufgaben/neu?datum={selected}"
+					class="icon-btn size-8 text-brand-700"
+					aria-label="Aufgabe für diesen Tag"><Plus size={18} /></a
+				>
+			</span>
+		</div>
+		{#if selectedTasks.length}
+			<ul>
+				{#each selectedTasks as task (task.id)}
+					<TaskRow {task} today={data.today} />
+				{/each}
+			</ul>
+		{:else}
+			<p class="px-1 pb-3 text-sm text-slate-400">Nichts zu erledigen.</p>
+		{/if}
+	</div>
 
 	<div class="card mb-3 px-3 pt-2">
 		<div class="flex items-center justify-between">

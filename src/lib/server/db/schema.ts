@@ -451,6 +451,42 @@ export const meal = sqliteTable(
 	(t) => [uniqueIndex('meal_family_day_slot_idx').on(t.familyId, t.date, t.slot)]
 );
 
+/** To-dos of the family, due on a day and optionally assigned to one member. */
+export const task = sqliteTable(
+	'task',
+	{
+		id: id(),
+		familyId: text('family_id')
+			.notNull()
+			.references(() => family.id, { onDelete: 'cascade' }),
+		title: text('title').notNull(),
+		notes: text('notes'),
+		/** Local 'YYYY-MM-DD', like calendar events. */
+		dueDate: text('due_date').notNull(),
+		assigneeId: text('assignee_id').references(() => user.id, { onDelete: 'set null' }),
+		visibility: text('visibility').$type<Visibility>().notNull().default('family'),
+		doneAt: integer('done_at', { mode: 'timestamp' }),
+		doneBy: text('done_by').references(() => user.id, { onDelete: 'set null' }),
+		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+		createdAt: createdAt()
+	},
+	(t) => [index('task_family_due_idx').on(t.familyId, t.dueDate)]
+);
+
+/** Members a task with visibility 'shared' is shared with. */
+export const taskShare = sqliteTable(
+	'task_share',
+	{
+		taskId: text('task_id')
+			.notNull()
+			.references(() => task.id, { onDelete: 'cascade' }),
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' })
+	},
+	(t) => [primaryKey({ columns: [t.taskId, t.userId] })]
+);
+
 export type User = typeof user.$inferSelect;
 export type Family = typeof family.$inferSelect;
 export type ShoppingItem = typeof shoppingItem.$inferSelect;

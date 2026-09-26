@@ -5,7 +5,8 @@ import { checkEvent, createEvent, type EventInput } from './calendar';
 import { acceptInvite, createInvite } from './families';
 import { saveSubscription, type Sender } from './push';
 import { berlinTime, sendDueReminders, whenLabel } from './reminders';
-import { calendarEvent } from './db/schema';
+import { calendarEvent, task } from './db/schema';
+import { createTask, notifyAssignee, setTaskDone, type TaskInput } from './tasks';
 import { seedFamily, testDb } from './test/setup';
 
 function event(input: Partial<EventInput>) {
@@ -165,5 +166,50 @@ describe('reminders', () => {
 		db.update(calendarEvent).set({ startTime: '11:00' }).run();
 		const sent = await sendDueReminders(db, berlinTime('2026-10-01', '11:00'), send);
 		expect(sent).toEqual([`event:${e.id}:2026-10-01T09:00:00.000Z`]);
+	});
+
+	it('reminds open tasks in the morning of the due day, to the assignee or the creator', async () => {
+		const { db, family, anna, ben, inbox, send } = await setup();
+		const input = (values: Partial<TaskInput>): TaskInput => ({
+			title: 'Aufgabe',
+			notes: null,
+			dueDate: '2026-10-01',
+			assigneeId: null,
+			visibility: 'family',
+			shareWith: [],
+			...values
+		});
+		await createTask(db, family.id, anna.id, input({ title: 'Müll', assigneeId: ben.id }));
+		await createTask(db, family.id, anna.id, input({ title: 'Einkaufen' }));
+		const done = await createTask(db, family.id, anna.id, input({ title: 'Erledigt' }));
+		await setTaskDone(db, family.id, anna.id, done.id, true);
+		await createTask(db, family.id, anna.id, input({ title: 'Morgen', dueDate: '2026-10-02' }));
+		db.update(task)
+			.set({ createdAt: new Date('2026-01-01') })
+			.run();
+
+		expect(await sendDueReminders(db, berlinTime('2026-10-01', '07:59'), send)).toEqual([]);
+		expect(await sendDueReminders(db, berlinTime('2026-10-01', '08:00'), send)).toHaveLength(2);
+		expect(inbox.map((m) => `${m.to}:${m.title}`).sort()).toEqual([
+			'anna:Heute fällig: Einkaufen',
+			'ben:Heute fällig: Müll'
+		]);
+		expect(await sendDueReminders(db, berlinTime('2026-10-01', '08:05'), send)).toEqual([]);
+	});
+
+	it('tells the assignee about a new task someone else gave them', async () => {
+		const { db, anna, ben, inbox, send } = await setup();
+		const t = { id: 'x', title: 'Müll', dueDate: '2026-10-01', assigneeId: ben.id };
+		expect(await notifyAssignee(db, send, t, { id: anna.id, name: 'Anna' })).toBe(1);
+		expect(inbox).toEqual([
+			{ to: 'ben', title: 'Neue Aufgabe von Anna', body: expect.stringMatching(/^Müll · fällig /) }
+		]);
+		// Not for tasks you take yourself, nor again when the assignee stays the same.
+		expect(await notifyAssignee(db, send, t, { id: ben.id, name: 'Ben' })).toBe(0);
+		expect(await notifyAssignee(db, send, t, { id: anna.id, name: 'Anna' }, ben.id)).toBe(0);
+		expect(
+			await notifyAssignee(db, send, { ...t, assigneeId: null }, { id: anna.id, name: 'Anna' })
+		).toBe(0);
+		expect(inbox).toHaveLength(1);
 	});
 });
