@@ -35,13 +35,14 @@ export const WEEKDAY_NAMES = [
 	'Sonntag'
 ];
 
-/** One dish the family planned before, with how and when they planned it. */
+/** One dish the family planned before (or ahead), with how and when they planned it. */
 export type DishStats = {
 	name: string;
 	ingredients: string | null;
 	/** How often it was planned. */
 	count: number;
-	/** The last day it was planned. */
+	/** The first and the last day it was planned. */
+	first: string;
 	last: string;
 	/** How often per weekday, Monday first. */
 	weekdays: number[];
@@ -49,7 +50,7 @@ export type DishStats = {
 	slots: Partial<Record<MealSlot, number>>;
 };
 
-/** Earlier meals of a family, one row per planned dish. */
+/** Meals of a family outside the planned week, one row per planned dish. */
 export type PastMeal = { date: string; slot: MealSlot; name: string; ingredients: string | null };
 
 /** Groups earlier meals by dish (ignoring case), newest spelling and ingredients win. */
@@ -64,6 +65,7 @@ export function dishStats(meals: PastMeal[]): DishStats[] {
 				name: m.name.trim(),
 				ingredients: null,
 				count: 0,
+				first: m.date,
 				last: m.date,
 				weekdays: [0, 0, 0, 0, 0, 0, 0],
 				slots: {}
@@ -71,6 +73,7 @@ export function dishStats(meals: PastMeal[]): DishStats[] {
 			byKey.set(key, dish);
 		}
 		dish.count++;
+		dish.first = m.date;
 		dish.weekdays[weekdayOf(m.date)]++;
 		dish.slots[m.slot] = (dish.slots[m.slot] ?? 0) + 1;
 		if (!dish.ingredients && m.ingredients) dish.ingredients = m.ingredients;
@@ -97,11 +100,15 @@ function weeksBetween(from: string, to: string) {
 	return Math.floor(days / 7);
 }
 
+/** A dish first planned this many days before the planned week (or later) counts as new. */
+const NEW_DAYS = 21;
+
 /**
  * Earlier dishes for one meal of the planned week, best first. Dishes already planned for this
  * week, and those eaten last week, are left out, unless the family has them on that weekday
- * regularly (pizza on Fridays). What they often have on that weekday comes first, then
- * favourites they haven't had for a while, then the rest.
+ * regularly (pizza on Fridays). What they often have on that weekday comes first, then dishes
+ * that are new in the family's kitchen, then favourites they haven't had for a while, then the
+ * rest.
  */
 export function suggestDishes(
 	dishes: DishStats[],
@@ -116,17 +123,23 @@ export function suggestDishes(
 	const forSlot = dishes.filter((d) => d.slots[slot]);
 	const pool = forSlot.length ? forSlot : dishes;
 	const scored = pool
-		.filter((d) => !planned.has(d.name.toLowerCase()) && d.last < monday)
+		.filter((d) => !planned.has(d.name.toLowerCase()))
 		.map((d) => {
 			const onDay = d.weekdays[weekday];
 			const habit = onDay >= 2 && onDay / d.count >= 0.4;
+			const isNew = d.count <= 2 && d.first >= addDays(monday, -NEW_DAYS);
 			const weeks = weeksBetween(weekStart(d.last), monday);
 			let reason: string;
 			let score = Math.log2(1 + d.count);
 			if (habit) {
 				reason = `Oft am ${WEEKDAY_NAMES[weekday]}`;
 				score += 4 + onDay;
+			} else if (isNew) {
+				// Just tried, or entered for a later week: worth keeping in mind.
+				reason = d.first >= monday ? 'Neu · schon vorgemerkt' : 'Neu dazugekommen';
+				score += 4;
 			} else if (weeks < 2) {
+				// Eaten last week, or already planned for a later week.
 				return null;
 			} else if (d.count >= 2 && weeks >= 4) {
 				reason = `Lange nicht gegessen · vor ${weeks} Wochen`;

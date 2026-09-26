@@ -18,7 +18,7 @@ import {
 import { appSender } from '$lib/server/app-sender';
 import { listEvents } from '$lib/server/calendar';
 import { field } from '$lib/server/validation';
-import { isWeekDone, markWeekDone, pastMeals, usedSlots } from '$lib/server/week';
+import { isWeekDone, markWeekDone, otherMeals, usedSlots } from '$lib/server/week';
 import { addDays, today, weekStart } from '$lib/dates';
 import { holidaysBetween } from '$lib/holidays';
 import { dishStats, isWeekStep, nextWeek, type WeekStep } from '$lib/week';
@@ -64,7 +64,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		)
 	);
 
-	const history = await pastMeals(db, family.id, week);
+	const history = await otherMeals(db, family.id, week);
 	const meals = await listMeals(db, family.id, week, end);
 	const items = (await listItems(db, family.id)).filter((i) => !i.done);
 	const done = await isWeekDone(db, family.id, week);

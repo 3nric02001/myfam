@@ -43,8 +43,10 @@ describe('weekly planning', () => {
 			dinner('2026-07-01', 'Lasagne', '500 g Hack'),
 			dinner('2026-08-05', 'Lasagne'),
 			// Had last week, so it waits.
+			dinner('2026-06-03', 'Curry'),
 			dinner('2026-09-30', 'Curry'),
-			// Two weeks ago.
+			// Two weeks ago, first in June.
+			dinner('2026-06-04', 'Suppe'),
 			dinner('2026-09-22', 'Suppe'),
 			// Already planned for the week.
 			dinner('2026-08-01', 'Chili')
@@ -65,6 +67,22 @@ describe('weekly planning', () => {
 			// Once each: the more recent first.
 			'Suppe',
 			'Chili'
+		]);
+	});
+
+	it('suggests new dishes right away, also those entered for a later week', () => {
+		const dishes = dishStats([
+			dinner('2026-06-01', 'Suppe'),
+			dinner('2026-09-01', 'Suppe'),
+			// Tried for the first time last week.
+			dinner('2026-10-01', 'Shakshuka', '6 Eier'),
+			// Entered for the week after the planned one.
+			dinner('2026-10-14', 'Ramen')
+		]);
+		expect(suggestDishes(dishes, '2026-10-06', 'dinner')).toEqual([
+			{ name: 'Ramen', ingredients: null, reason: 'Neu · schon vorgemerkt' },
+			{ name: 'Shakshuka', ingredients: '6 Eier', reason: 'Neu dazugekommen' },
+			{ name: 'Suppe', ingredients: null, reason: 'Lange nicht gegessen · vor 5 Wochen' }
 		]);
 	});
 

@@ -1,4 +1,4 @@
-import { and, eq, gte, lt } from 'drizzle-orm';
+import { and, eq, gt, gte, lt, or } from 'drizzle-orm';
 import type { DB } from './db/client';
 import { meal, weekPlan, type MealSlot } from './db/schema';
 import { addDays } from '$lib/dates';
@@ -11,16 +11,20 @@ import { weekdayOf, type PastMeal } from '$lib/week';
 /** How far back earlier dishes are suggested from. */
 const HISTORY_DAYS = 365;
 
-/** The family's meals of the last year before `before`, for suggestions. */
-export async function pastMeals(db: DB, familyId: string, before: string): Promise<PastMeal[]> {
+/**
+ * The family's meals of the last year and everything planned ahead, except the week being
+ * planned, for suggestions. Dishes planned for later weeks count too, so a new dish is in the
+ * pool as soon as someone enters it.
+ */
+export async function otherMeals(db: DB, familyId: string, week: string): Promise<PastMeal[]> {
 	return db
 		.select({ date: meal.date, slot: meal.slot, name: meal.name, ingredients: meal.ingredients })
 		.from(meal)
 		.where(
 			and(
 				eq(meal.familyId, familyId),
-				gte(meal.date, addDays(before, -HISTORY_DAYS)),
-				lt(meal.date, before)
+				gte(meal.date, addDays(week, -HISTORY_DAYS)),
+				or(lt(meal.date, week), gt(meal.date, addDays(week, 6)))
 			)
 		);
 }

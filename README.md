@@ -88,7 +88,7 @@ Der Service Worker speichert jede Seite, die einmal geladen wurde, auf dem Gerä
 
 Unter **Menü → Wochenplanung** (`/woche`) führt ein Assistent in vier Fragen durch die kommende Woche: Termine eintragen, Aufgaben verteilen, Essen planen, Einkauf vorbereiten. Von Samstag bis Montag steht auf dem Dashboard eine Kachel dafür, bis jemand die Woche abgeschlossen hat; montags geht es um die laufende Woche.
 
-- **Essen** fragt Mahlzeit für Mahlzeit („Was gibt es am Freitag zum Abendessen?“) und schlägt Gerichte aus dem Essensplan des letzten Jahres vor: zuerst was es an diesem Wochentag oft gibt („Oft am Freitag“), dann Lieblingsgerichte, die lange nicht dran waren, dann weitere. Was letzte Woche auf dem Tisch stand oder schon eingeplant ist, fehlt. Ein Tipp übernimmt das Gericht samt Zutaten und springt zur nächsten offenen Mahlzeit.
+- **Essen** fragt Mahlzeit für Mahlzeit („Was gibt es am Freitag zum Abendessen?“) und schlägt Gerichte aus dem Essensplan des letzten Jahres vor: zuerst was es an diesem Wochentag oft gibt („Oft am Freitag“), dann neue Gerichte (in den letzten drei Wochen zum ersten Mal geplant oder schon für eine spätere Woche eingetragen), dann Lieblingsgerichte, die lange nicht dran waren, dann weitere. Was letzte Woche auf dem Tisch stand oder schon eingeplant ist, fehlt. Ein Tipp übernimmt das Gericht samt Zutaten und springt zur nächsten offenen Mahlzeit.
 - **Einkauf** setzt die Zutaten auf die Einkaufsliste und plant den Einkaufstag (wie „Einkauf planen“ auf der Einkaufsseite).
 - **Abschließen** gilt für die ganze Familie: die Erinnerungen am Sonntag fallen dann für diese Woche aus.
 
