@@ -49,7 +49,8 @@ src/routes/
 
 ## Erinnerungen per Push
 
-- **Einschalten** pro Gerät unter **Einstellungen → Benachrichtigungen**. Wer mehrere Geräte nutzt, schaltet es auf jedem ein. Dort gibt es auch eine Testnachricht und die Liste der eigenen Geräte.
+- **Standardmäßig an:** Browser erlauben Benachrichtigungen nur nach einem Tippen. Deshalb fragt MyFam auf jedem neuen Gerät einmal oben in der App nach („Einschalten“ oder „Später“). Hat das Gerät die Erlaubnis schon, wird es ohne Nachfrage angemeldet. Nach „Später“ oder dem Ausschalten in den Einstellungen fragt die App auf diesem Gerät nicht mehr.
+- **Einschalten** geht jederzeit auch pro Gerät unter **Einstellungen → Benachrichtigungen**. Wer mehrere Geräte nutzt, schaltet es auf jedem ein. Dort gibt es auch eine Testnachricht und die Liste der eigenen Geräte.
 - **iPhone/iPad:** nur ab iOS 16.4 und nur, wenn MyFam über „Teilen → Zum Home-Bildschirm“ als App installiert ist. Die Einstellungsseite erklärt das.
 - **Pro Termin** wählt man die Erinnerung im Terminformular: bei Terminen mit Uhrzeit standardmäßig 30 Minuten vorher, bei ganztägigen am Vortag um 18 Uhr (oder „Keine“). Die Erinnerung geht an alle, die den Termin sehen dürfen und Benachrichtigungen eingeschaltet haben. Termine, die vor diesem Update angelegt wurden, haben keine Erinnerung.
 - **Technik:** Web Push mit eigenem VAPID-Schlüssel, ohne Konto bei einem Drittanbieter. Der Server schickt die verschlüsselte Nachricht direkt an den Push-Dienst des Browsers (Google, Apple, Mozilla, Microsoft), der Container braucht dafür ausgehendes HTTPS. Der Schlüssel wird beim ersten Start erzeugt und in der Datenbank gespeichert. Alternativ `VAPID_PUBLIC_KEY` und `VAPID_PRIVATE_KEY` setzen (`npx web-push generate-vapid-keys`); ändert sich der Schlüssel, muss jedes Gerät neu eingeschaltet werden.

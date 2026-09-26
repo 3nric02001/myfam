@@ -3,6 +3,14 @@
 	import { Bell, BellOff, BellRing, Send, Share, Smartphone, Trash2 } from '@lucide/svelte';
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
+	import {
+		answerPrompt,
+		checkPush,
+		disablePush,
+		enablePush,
+		syncPush,
+		type PushStatus
+	} from '$lib/push-client';
 
 	let {
 		publicKey,
@@ -16,115 +24,37 @@
 		success?: string;
 	} = $props();
 
-	type Status = 'loading' | 'insecure' | 'ios' | 'unsupported' | 'denied' | 'off' | 'on';
-	let status = $state<Status>('loading');
+	let status = $state<PushStatus | 'loading'>('loading');
 	let busy = $state(false);
 	let problem = $state('');
 	/** The subscription of this browser, to mark it in the device list. */
 	let endpoint = $state<string | null>(null);
 
-	function keyBytes(base64url: string) {
-		const base64 = (base64url + '='.repeat((4 - (base64url.length % 4)) % 4))
-			.replace(/-/g, '+')
-			.replace(/_/g, '/');
-		return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-	}
-
-	/** A subscription made with an older server key can't receive our messages any more. */
-	function usesOurKey(sub: PushSubscription) {
-		const key = sub.options.applicationServerKey;
-		if (!key) return false;
-		const a = new Uint8Array(key);
-		const b = keyBytes(publicKey);
-		return a.length === b.length && a.every((v, i) => v === b[i]);
-	}
-
-	async function registration() {
-		// The service worker is registered by SvelteKit; don't wait forever if that failed.
-		return Promise.race([
-			navigator.serviceWorker.ready,
-			new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000))
-		]);
-	}
-
-	async function store(sub: PushSubscription) {
-		const res = await fetch('/einstellungen/push', {
-			method: 'POST',
-			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({ subscription: sub.toJSON() })
-		});
-		if (!res.ok) throw new Error('Das Gerät konnte nicht gespeichert werden.');
-	}
-
 	onMount(async () => {
-		const ios =
-			/iPad|iPhone|iPod/.test(navigator.userAgent) ||
-			(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-		const installed =
-			matchMedia('(display-mode: standalone)').matches ||
-			(navigator as { standalone?: boolean }).standalone === true;
-		if (!isSecureContext) return (status = 'insecure');
-		if (ios && !installed) return (status = 'ios');
-		if (
-			!('serviceWorker' in navigator) ||
-			!('PushManager' in window) ||
-			!('Notification' in window)
-		)
-			return (status = 'unsupported');
-		if (Notification.permission === 'denied') return (status = 'denied');
-		const reg = await registration();
-		if (!reg) return (status = 'unsupported');
-		const sub = await reg.pushManager.getSubscription();
-		if (sub && usesOurKey(sub) && Notification.permission === 'granted') {
-			endpoint = sub.endpoint;
-			status = 'on';
-			// Links this device to whoever is signed in now, e.g. after someone else used it.
-			if (!devices.some((d) => d.endpoint === sub.endpoint)) {
-				await store(sub).catch(() => {});
-				await invalidateAll();
-			}
-		} else status = 'off';
+		const result = await checkPush(publicKey);
+		status = result.status;
+		endpoint = result.sub?.endpoint ?? null;
+		// Links this device to whoever is signed in now, e.g. after someone else used it.
+		if (result.sub && !devices.some((d) => d.endpoint === result.sub!.endpoint)) {
+			await syncPush(result.sub);
+			await invalidateAll();
+		}
 	});
 
 	async function enable() {
 		busy = true;
 		problem = '';
 		try {
-			const permission = await Notification.requestPermission();
-			if (permission !== 'granted') {
-				status = permission === 'denied' ? 'denied' : 'off';
-				return;
+			const result = await enablePush(publicKey);
+			answerPrompt();
+			if (typeof result === 'string') status = result;
+			else {
+				endpoint = result.endpoint;
+				status = 'on';
+				await invalidateAll();
 			}
-			const reg = await registration();
-			if (!reg) throw new Error('Der Browser hat den Hintergrunddienst nicht gestartet.');
-			let sub = await reg.pushManager.getSubscription();
-			if (sub && !usesOurKey(sub)) {
-				await sub.unsubscribe();
-				sub = null;
-			}
-			// Without a connection to the push service the browser may never answer.
-			sub ??= await Promise.race([
-				reg.pushManager.subscribe({
-					userVisibleOnly: true,
-					applicationServerKey: keyBytes(publicKey)
-				}),
-				new Promise<never>((_, reject) =>
-					setTimeout(
-						() => reject(new Error('Der Push-Dienst des Browsers antwortet nicht.')),
-						20_000
-					)
-				)
-			]);
-			await store(sub);
-			endpoint = sub.endpoint;
-			status = 'on';
-			await invalidateAll();
 		} catch (err) {
-			// Browser errors (DOMException) are English and technical, so only show our own.
-			problem =
-				err instanceof Error && !(err instanceof DOMException)
-					? err.message
-					: 'Benachrichtigungen konnten nicht eingeschaltet werden.';
+			problem = (err as Error).message;
 		} finally {
 			busy = false;
 		}
@@ -134,16 +64,9 @@
 		busy = true;
 		problem = '';
 		try {
-			const reg = await registration();
-			const sub = await reg?.pushManager.getSubscription();
-			if (sub) {
-				await fetch('/einstellungen/push', {
-					method: 'DELETE',
-					headers: { 'content-type': 'application/json' },
-					body: JSON.stringify({ endpoint: sub.endpoint })
-				});
-				await sub.unsubscribe();
-			}
+			await disablePush();
+			// Switched off on purpose, so the app doesn't ask again.
+			answerPrompt();
 			endpoint = null;
 			status = 'off';
 			await invalidateAll();
