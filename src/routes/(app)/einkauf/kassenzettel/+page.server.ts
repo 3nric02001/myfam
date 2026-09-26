@@ -31,7 +31,10 @@ async function entryNames(familyId: string) {
 export const actions: Actions = {
 	read: async ({ request, locals }) => {
 		const { family } = requireFamily(locals);
-		const photo = (await request.formData()).get('photo');
+		// Camera and gallery are two inputs; only the one that was used holds a file.
+		const photo = (await request.formData())
+			.getAll('photo')
+			.find((p) => p instanceof File && p.size);
 		if (!(photo instanceof File) || !photo.size) {
 			return fail(400, { message: 'Bitte fotografiere den Kassenzettel.' });
 		}
