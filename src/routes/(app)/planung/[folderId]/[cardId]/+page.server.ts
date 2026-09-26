@@ -4,6 +4,11 @@ import { requireViewer } from '$lib/server/guards';
 import {
 	LIMITS,
 	addBlock,
+	addComment,
+	checkComment,
+	deleteComment,
+	listComments,
+	updateComment,
 	addImage,
 	deleteBlock,
 	deleteCard,
@@ -30,7 +35,11 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	const { viewer } = requireViewer(locals);
 	const card = await getCard(db, viewer, params.cardId);
 	if (!card || card.folderId !== params.folderId) error(404, 'Karte nicht gefunden.');
-	return { card, blocks: await listBlocks(db, viewer, card.id) };
+	return {
+		card,
+		blocks: await listBlocks(db, viewer, card.id),
+		comments: await listComments(db, viewer, card.id)
+	};
 };
 
 export const actions: Actions = {
@@ -128,5 +137,41 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const direction = field(form, 'direction') === 'up' ? -1 : 1;
 		await moveBlock(db, viewer, params.cardId, field(form, 'blockId'), direction);
+	},
+
+	comment: async ({ request, locals, params }) => {
+		const { viewer } = requireViewer(locals);
+		const checked = checkComment(field(await request.formData(), 'text'));
+		if ('error' in checked) return fail(400, { commentError: checked.error, commentId: null });
+		if (!(await addComment(db, viewer, params.cardId, checked.text))) {
+			error(404, 'Karte nicht gefunden.');
+		}
+		return { commented: true };
+	},
+
+	editComment: async ({ request, locals, params }) => {
+		const { viewer } = requireViewer(locals);
+		const form = await request.formData();
+		const commentId = field(form, 'commentId');
+		const checked = checkComment(field(form, 'text'));
+		if ('error' in checked) return fail(400, { commentError: checked.error, commentId });
+		if (!(await updateComment(db, viewer, params.cardId, commentId, checked.text))) {
+			return fail(403, {
+				commentError: 'Nur eigene Kommentare können geändert werden.',
+				commentId
+			});
+		}
+		return { commented: true };
+	},
+
+	deleteComment: async ({ request, locals, params }) => {
+		const { viewer } = requireViewer(locals);
+		const commentId = field(await request.formData(), 'commentId');
+		if (!(await deleteComment(db, viewer, params.cardId, commentId))) {
+			return fail(403, {
+				commentError: 'Nur eigene Kommentare können gelöscht werden.',
+				commentId
+			});
+		}
 	}
 };
