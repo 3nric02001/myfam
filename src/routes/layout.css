@@ -7,6 +7,7 @@
  *   accent  – highlights such as holidays
  *   slate   – neutral grays for text, borders and backgrounds
  *   surface – background of cards, header and navigation
+ *   cal-*   – colors to tell subscribed calendars apart (see $lib/subscriptions.ts)
  * Dark mode swaps the scales, so `bg-slate-50` stays the page background and `text-slate-900`
  * stays the main text color without any `dark:` classes.
  */
@@ -47,6 +48,11 @@
 	--color-accent-900: #5c2f14;
 	--color-accent-950: #341708;
 	--color-surface: #ffffff;
+	/* Mid tones that read on light and dark backgrounds alike. */
+	--color-cal-blue: #4a78b5;
+	--color-cal-plum: #8a5a9e;
+	--color-cal-rose: #c0607a;
+	--color-cal-olive: #7d8a3a;
 }
 
 /* Dark colors: when the device is dark (unless light was chosen) or when dark was chosen. */

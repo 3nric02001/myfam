@@ -36,6 +36,13 @@
       "when": 1790377837721,
       "tag": "0004_offers_matching",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1790421221538,
+      "tag": "0005_caldav",
+      "breakpoints": true
     }
   ]
 }

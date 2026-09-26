@@ -10,6 +10,8 @@ services:
       ORIGIN: ${PUBLIC_URL:-http://localhost:${PORT:-3000}}
       # Automatic supermarket offers via marktguru.de (see README). Off unless set to true.
       MARKTGURU_ENABLED: ${MARKTGURU_ENABLED:-false}
+      # Key for the passwords of calendar subscriptions. Without it, /data/secret.key is created.
+      SECRET_KEY: ${SECRET_KEY:-}
     ports:
       # Only reachable from this host by default; set BIND=0.0.0.0 if the proxy runs elsewhere.
       - '${BIND:-127.0.0.1}:${PORT:-3000}:3000'

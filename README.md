@@ -9,7 +9,7 @@ Ein gemeinsamer Ort für die ganze Familie: Einkaufsliste, Termine und Planung. 
 | Konto, Login, Abmelden            | fertig                                                     |
 | Familien, Rollen, Einladungslinks | fertig                                                     |
 | Einkaufsliste                     | fertig (hinzufügen, abhaken, löschen, Erledigte löschen)   |
-| Kalender                          | fertig (Termine mit Sichtbarkeit, deutsche Feiertage)      |
+| Kalender                          | fertig (Termine mit Sichtbarkeit, Feiertage, CalDAV-Abos)  |
 | Planung                           | fertig (Ordner, Karten mit Text, Tabellen, Links, Bildern) |
 
 ## Technik
@@ -39,6 +39,9 @@ src/routes/
 
 - **Sichtbarkeit pro Termin:** ganze Familie (Standard), bestimmte Personen oder nur ich. Wer einen Termin nicht sehen darf, bekommt ihn auch über den direkten Link nicht (404).
 - **Bearbeiten:** Die Person, die den Termin angelegt hat. Admins dürfen zusätzlich Termine der ganzen Familie ändern oder löschen, aber deren Sichtbarkeit nicht ändern. Private und geteilte Termine bleiben allein bei ihrer Person.
+- **Kalender-Abos:** Unter **Kalender → Kalender-Abos** (oder **Familie → Kalender-Abos**) kann ein Admin CalDAV-Kalender (z. B. Nextcloud) oder öffentliche ICS-Links (auch `webcal://`) einbinden. Die Termine sieht die ganze Familie, mit dem Namen des Abos als Quelle und einer eigenen Farbe. Sie sind nur lesbar. Abgleich alle 15 Minuten und per Knopf. Wiederkehrende Termine (inkl. Ausnahmen und verschobener Termine) werden ein Jahr zurück und zwei Jahre voraus berechnet. Termine, die in Nextcloud als privat oder vertraulich markiert sind, erscheinen nur als „Privat“ ohne Details.
+  - Nextcloud: Adresse über Kalender → „…“ neben dem Kalendernamen → **Interne Adresse kopieren**, dazu Benutzername und ein **App-Passwort** (Einstellungen → Sicherheit). Wird die Adresse aller Kalender eingetragen, nennt die App die gefundenen Kalender.
+  - Das Passwort wird mit AES-256-GCM verschlüsselt gespeichert. Den Schlüssel legt die App beim ersten Abo als `secret.key` neben der Datenbank an (im Docker-Volume), oder er kommt aus `SECRET_KEY` in der `.env`. Geht der Schlüssel verloren, müssen die Passwörter neu eingegeben werden.
 - **Feiertage:** Die bundesweiten Feiertage werden immer angezeigt. Unter **Familie → Feiertage im Kalender** kann ein Admin das Bundesland wählen, dann kommen die regionalen dazu. Die Berechnung läuft offline (Osterformel), es wird kein externer Dienst gebraucht. Feiertage, die nur in Teilen eines Landes gelten (z. B. Mariä Himmelfahrt in Bayern), werden nicht angezeigt.
 
 ## Planung
@@ -97,6 +100,7 @@ location / {
 
 - `PUBLIC_URL` muss genau die Adresse sein, die im Browser steht. SvelteKit prüft damit die Herkunft von Formularen (CSRF-Schutz), und die Einladungslinks werden daraus gebaut.
 - `PORT` ändert den Port auf dem Host. `BIND=0.0.0.0` macht ihn im Netzwerk erreichbar, falls der Proxy auf einem anderen Rechner läuft.
+- `SECRET_KEY` (optional, beliebiger langer Text) verschlüsselt die Passwörter der Kalender-Abos. Ohne Angabe wird `/data/secret.key` erzeugt.
 - `MARKTGURU_ENABLED=true` schaltet automatische Angebote für die Einkaufsliste ein (siehe unten). Standardmäßig aus.
 - Läuft der Proxy selbst in Docker, kannst du den Container stattdessen in dasselbe Docker-Netzwerk hängen und `app:3000` als Ziel nehmen.
 
@@ -105,7 +109,7 @@ Danach unter `https://<deine Domain>/registrieren` die erste Familie anlegen und
 - **Update:** `git pull && docker compose up -d --build`
 - **Backup:** Die Datenbank liegt im Volume `app-data` (`/data/myfam.db`), z. B.
   `docker compose exec app node -e "require('better-sqlite3')('/data/myfam.db').backup('/data/backup.db')"` und dann `docker compose cp app:/data/backup.db .`
-  Die Bilder aus der Planung liegen im selben Volume unter `/data/uploads` und gehören mit ins Backup: `docker compose cp app:/data/uploads ./uploads`
+  Die Bilder aus der Planung liegen im selben Volume unter `/data/uploads` und gehören mit ins Backup: `docker compose cp app:/data/uploads ./uploads`. Ebenso `/data/secret.key` (Schlüssel für die Passwörter der Kalender-Abos).
 
 ## Angebote in der Einkaufsliste
 
