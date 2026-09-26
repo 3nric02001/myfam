@@ -12,7 +12,9 @@ import { getOfferSettings } from '$lib/server/offers';
 import { listSubscriptions } from '$lib/server/push';
 import { listMemberColors } from '$lib/server/families';
 import { field } from '$lib/server/validation';
+import { isWeekDone } from '$lib/server/week';
 import { holidaysBetween } from '$lib/holidays';
+import { nextWeek, weekdayOf } from '$lib/week';
 import { addDays, today } from '$lib/dates';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -71,8 +73,14 @@ export const load: PageServerLoad = async ({ locals }) => {
 		stores: (await getOfferSettings(db, family.id)).stores.length > 0
 	};
 
+	// From Saturday to Monday the dashboard invites to plan the (coming) week, until someone did.
+	const week = nextWeek(now);
+	const weekPlanDue =
+		[5, 6, 0].includes(weekdayOf(now)) && !(await isWeekDone(db, family.id, week));
+
 	return {
 		today: now,
+		weekPlan: weekPlanDue ? week : null,
 		userName: user.name,
 		shopping: { open: items.filter((i) => !i.done).length, planned: plan?.date ?? null },
 		meals: await listMeals(db, family.id, now, now),

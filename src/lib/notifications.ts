@@ -20,9 +20,14 @@ export const notificationKinds: { kind: NotificationKind; label: string; hint: s
 	},
 	{ kind: 'comment', label: 'Kommentare', hint: 'Neue Kommentare unter Planungs-Karten.' },
 	{
+		kind: 'week',
+		label: 'Wochenplanung',
+		hint: 'Sonntags um 15 Uhr: Termine, Aufgaben und Essen für die nächste Woche planen.'
+	},
+	{
 		kind: 'meals',
 		label: 'Essensplan',
-		hint: 'Sonntags um 18 Uhr, wenn für die nächste Woche noch Mahlzeiten offen sind.'
+		hint: 'Sonntags um 18 Uhr, wenn für die nächste Woche noch Mahlzeiten offen sind und die Wochenplanung nicht abgeschlossen ist.'
 	},
 	{
 		kind: 'receipt',

@@ -189,6 +189,7 @@ export const NOTIFICATION_KINDS: NotificationKind[] = [
 	'task',
 	'evening',
 	'comment',
+	'week',
 	'meals',
 	'receipt'
 ];
