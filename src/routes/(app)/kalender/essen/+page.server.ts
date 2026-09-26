@@ -12,7 +12,7 @@ import {
 	saveMeal
 } from '$lib/server/meals';
 import { field } from '$lib/server/validation';
-import { addDays, today, weekStart } from '$lib/dates';
+import { addDays, today } from '$lib/dates';
 import { holidaysBetween } from '$lib/holidays';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -20,7 +20,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const { family } = requireFamily(locals);
 	const now = today();
 	const param = url.searchParams.get('woche') ?? '';
-	const start = weekStart(isDate(param) ? param : now);
+	// Without a chosen week the plan starts today, so nobody scrolls past days that are over.
+	const start = isDate(param) ? param : now;
 	const end = addDays(start, 6);
 	return {
 		today: now,

@@ -13,6 +13,7 @@ Ein gemeinsamer Ort für die ganze Familie: Einkaufsliste, Termine und Planung. 
 | Planung                           | fertig (Ordner, Karten mit Text, Tabellen, Links, Bildern) |
 | Erinnerungen per Push             | fertig für Termine und Planungs-Kommentare                 |
 | Dashboard                         | fertig (Termine, meine Aufgaben, Neues aus der Planung)    |
+| Offline                           | letzter Stand aller Seiten, Einkaufsliste auch bearbeitbar |
 
 ## Technik
 
@@ -49,6 +50,10 @@ Die Startseite nach dem Login fasst den Tag zusammen:
 - **Meine Aufgaben** (wie der Filter „Meine“): überfällige und heutige, darunter die der nächsten 7 Tage. Abhaken geht direkt hier.
 - **Neu in der Planung:** Karten, die jemand anderes neu angelegt hat, Karten, die seit dem letzten Öffnen geändert wurden, und Kommentare anderer seit dem letzten Öffnen, mit dem neuesten Kommentar als Vorschau. Wer eine Karte öffnet, hat sie gesehen (gespeichert pro Person in `planning_card_seen`). Einzelne Karten lassen sich mit dem „x“ ausblenden, alle auf einmal mit „Alle gelesen“. Berücksichtigt werden die letzten 30 Tage. Beim Update zählt alles, was es schon gibt, als gesehen.
 
+## Offline
+
+Der Service Worker speichert jede Seite, die einmal geladen wurde, auf dem Gerät. Die Seiten kommen immer zuerst aus dem Netz; ohne Verbindung (oder wenn das Netz länger als 4 Sekunden hängt) zeigt die App den gespeicherten Stand mit einem Hinweis „Offline“. In der Einkaufsliste lassen sich ohne Verbindung Einträge abhaken und hinzufügen: Die Änderungen warten im Browser (`$lib/offline-queue.ts`) und werden gesendet, sobald das Handy wieder online ist. Auf der Login-Seite wird der Speicher geleert, damit nach dem Abmelden nichts zurückbleibt.
+
 ## Kalender
 
 - **Sichtbarkeit pro Termin:** ganze Familie (Standard), bestimmte Personen oder nur ich. Wer einen Termin nicht sehen darf, bekommt ihn auch über den direkten Link nicht (404).
@@ -56,6 +61,8 @@ Die Startseite nach dem Login fasst den Tag zusammen:
 - **Kalender-Abos:** Unter **Kalender → Kalender-Abos** (oder **Familie → Kalender-Abos**) kann ein Admin CalDAV-Kalender (z. B. Nextcloud) oder öffentliche ICS-Links (auch `webcal://`) einbinden. Die Termine sieht die ganze Familie, mit dem Namen des Abos als Quelle und einer eigenen Farbe. Sie sind nur lesbar. Abgleich alle 15 Minuten und per Knopf. Wiederkehrende Termine (inkl. Ausnahmen und verschobener Termine) werden ein Jahr zurück und zwei Jahre voraus berechnet. Termine, die in Nextcloud als privat oder vertraulich markiert sind, erscheinen nur als „Privat“ ohne Details.
   - Nextcloud: Adresse über Kalender → „…“ neben dem Kalendernamen → **Interne Adresse kopieren**, dazu Benutzername und ein **App-Passwort** (Einstellungen → Sicherheit). Wird die Adresse aller Kalender eingetragen, nennt die App die gefundenen Kalender.
   - Das Passwort wird mit AES-256-GCM verschlüsselt gespeichert. Den Schlüssel legt die App beim ersten Abo als `secret.key` neben der Datenbank an (im Docker-Volume), oder er kommt aus `SECRET_KEY` in der `.env`. Geht der Schlüssel verloren, müssen die Passwörter neu eingegeben werden.
+- **Wiederholungen:** Termine können sich täglich, wöchentlich, alle zwei Wochen, monatlich oder jährlich wiederholen, optional bis zu einem Datum. Gespeichert wird nur die Serie; die einzelnen Termine berechnet `$lib/repeat.ts` beim Anzeigen (auch für Erinnerungen). Ein Monatstermin am 31. fällt in kürzeren Monaten aus. Aufgaben mit Wiederholung kommen nach dem Abhaken als neue Aufgabe zum nächsten Termin wieder.
+- **Farben:** Jedes Mitglied hat eine Farbe (Einstellungen → Familie → Deine Farbe, sonst automatisch). Sie markiert eigene Termine, Zuständige bei Aufgaben und „von …“ auf der Einkaufsliste.
 - **Feiertage:** Die bundesweiten Feiertage werden immer angezeigt. Unter **Familie → Feiertage im Kalender** kann ein Admin das Bundesland wählen, dann kommen die regionalen dazu. Die Berechnung läuft offline (Osterformel), es wird kein externer Dienst gebraucht. Feiertage, die nur in Teilen eines Landes gelten (z. B. Mariä Himmelfahrt in Bayern), werden nicht angezeigt.
 - **Essensplan:** In der Tagesansicht des Kalenders stehen Frühstück, Mittag und Abend als schlanke Zeilen, leere Mahlzeiten als „+“-Knöpfe. „Woche planen“ zeigt die ganze Woche. Frühere Gerichte werden beim Tippen vorgeschlagen und bringen ihre Zutaten mit. Ein Tipp auf den Einkaufswagen setzt die Zutaten auf die Einkaufsliste (Mengen wie „500 g“ werden erkannt, was schon offen auf der Liste steht, wird übersprungen). Der Essensplan ist für die ganze Familie sichtbar und bearbeitbar.
 - **Aufgaben:** Jede Aufgabe hat ein Fälligkeitsdatum und optional eine zuständige Person. Sie erscheint am Fälligkeitstag im Kalender, überfällige offene Aufgaben zusätzlich am heutigen Tag. Unter „Alle“ gibt es die ganze Liste, gruppiert nach überfällig, heute, morgen, nächste 7 Tage und später, mit dem Filter „Meine“ (mir zugewiesen oder von mir ohne Zuständige angelegt). Abhaken darf jeder, der die Aufgabe sieht. Sichtbarkeit und Bearbeiten funktionieren wie bei Terminen. Eine private Aufgabe lässt sich nur sich selbst zuweisen, und bei geteilten Aufgaben wird die zuständige Person automatisch mit eingeschlossen. Per Push erfährt die zuständige Person sofort, wenn ihr jemand eine Aufgabe gibt, und am Fälligkeitstag um 8 Uhr kommt eine Erinnerung an offene Aufgaben (an die zuständige Person, sonst an die Person, die sie angelegt hat).

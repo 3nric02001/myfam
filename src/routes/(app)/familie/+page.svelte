@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { Check, ChevronRight, KeyRound, Share2, X } from '@lucide/svelte';
+	import { Check, ChevronLeft, ChevronRight, KeyRound, Share2, X } from '@lucide/svelte';
+	import PersonDot from '$lib/components/PersonDot.svelte';
 	import { enhance } from '$app/forms';
 	import { STATES } from '$lib/holidays';
 	import type { PageProps } from './$types';
@@ -21,7 +22,14 @@
 
 <svelte:head><title>Familie · MyFam</title></svelte:head>
 
-<h1 class="mb-4 text-xl font-semibold tracking-tight">Familie</h1>
+<div class="mb-4 flex items-center gap-2">
+	<a
+		href="/einstellungen"
+		class="icon-btn -ml-2 text-slate-500"
+		aria-label="Zurück zu den Einstellungen"><ChevronLeft size={24} aria-hidden="true" /></a
+	>
+	<h1 class="text-xl font-semibold tracking-tight">Familie</h1>
+</div>
 {#if form?.message}<p class="error mb-4">{form.message}</p>{/if}
 
 <section class="card mb-5 px-3">
@@ -29,7 +37,8 @@
 	<ul>
 		{#each data.members as member (member.id)}
 			<li class="flex items-center gap-2 border-b border-slate-100 py-3 last:border-0">
-				<div class="flex-1">
+				<PersonDot id={member.id} size={10} />
+				<div class="min-w-0 flex-1">
 					<p>
 						{member.name}
 						{#if member.id === data.user.id}<span class="text-xs text-slate-400">(du)</span>{/if}
@@ -149,7 +158,7 @@
 				}}
 			class="flex gap-2"
 		>
-			<select name="state" class="flex-1" value={data.state ?? ''}>
+			<select name="state" class="min-w-0 flex-1" value={data.state ?? ''}>
 				<option value="">Nur bundesweite Feiertage</option>
 				{#each Object.entries(STATES) as [code, name] (code)}
 					<option value={code}>{name}</option>
@@ -206,9 +215,6 @@
 	>
 		<input type="hidden" name="userId" value={data.user.id} />
 		<button class="btn-secondary w-full">Familie verlassen</button>
-	</form>
-	<form method="POST" action="/logout">
-		<button class="btn-secondary w-full">Abmelden</button>
 	</form>
 </section>
 

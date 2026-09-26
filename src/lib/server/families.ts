@@ -16,6 +16,7 @@ import {
 } from './db/schema';
 import { generateToken, hashToken } from './auth';
 import type { State } from '$lib/holidays';
+import { assignColors, type ColorId } from '$lib/colors';
 
 const INVITE_DAYS = 7;
 
@@ -63,6 +64,24 @@ export async function listMembers(db: DB, familyId: string) {
 		.innerJoin(user, eq(membership.userId, user.id))
 		.where(eq(membership.familyId, familyId))
 		.orderBy(sql`${user.name} collate nocase`);
+}
+
+/** Members with their colour, in join order. */
+export async function listMemberColors(db: DB, familyId: string) {
+	const rows = await db
+		.select({ id: user.id, name: user.name, color: membership.color })
+		.from(membership)
+		.innerJoin(user, eq(membership.userId, user.id))
+		.where(eq(membership.familyId, familyId))
+		.orderBy(asc(membership.createdAt), asc(user.name));
+	return assignColors(rows);
+}
+
+export async function setMemberColor(db: DB, familyId: string, userId: string, color: ColorId) {
+	await db
+		.update(membership)
+		.set({ color })
+		.where(and(eq(membership.familyId, familyId), eq(membership.userId, userId)));
 }
 
 export async function removeMember(db: DB, familyId: string, userId: string) {

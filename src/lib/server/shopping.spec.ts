@@ -4,6 +4,9 @@ import {
 	clearDone,
 	deleteItem,
 	forgetHistory,
+	getCategoryOrder,
+	restoreItem,
+	setCategoryOrder,
 	listHistory,
 	listItems,
 	listItemsWithCategory,
@@ -105,5 +108,31 @@ describe('shopping list', () => {
 		// Choosing the guessed section again drops the correction.
 		await setCategory(db, a.family.id, 'Erbsen', 'obst-gemuese');
 		expect(await section(a.family.id)).toEqual(['obst-gemuese', 'obst-gemuese']);
+	});
+
+	it('puts a deleted item back as it was', async () => {
+		const db = testDb();
+		const { owner, family } = await seedFamily(db, 'anna');
+		const milk = await addItem(db, family.id, owner.id, { name: 'Milch', quantity: '2 l' });
+		await setDone(db, family.id, milk.id, true);
+		const deleted = await deleteItem(db, family.id, milk.id);
+		expect(await listItems(db, family.id)).toEqual([]);
+		await restoreItem(db, family.id, owner.id, deleted!);
+		const items = await listItems(db, family.id);
+		expect(items.map((i) => [i.name, i.quantity, i.done, i.createdBy])).toEqual([
+			['Milch', '2 l', true, 'anna']
+		]);
+		// Putting it back does not count as buying it again.
+		expect((await listHistory(db, family.id)).map((h) => h.name)).toEqual(['Milch']);
+	});
+
+	it('keeps the order of sections per family', async () => {
+		const db = testDb();
+		const a = await seedFamily(db, 'anna');
+		const b = await seedFamily(db, 'ben');
+		expect(await getCategoryOrder(db, a.family.id)).toBeNull();
+		await setCategoryOrder(db, a.family.id, ['drogerie', 'obst-gemuese']);
+		expect(await getCategoryOrder(db, a.family.id)).toEqual(['drogerie', 'obst-gemuese']);
+		expect(await getCategoryOrder(db, b.family.id)).toBeNull();
 	});
 });

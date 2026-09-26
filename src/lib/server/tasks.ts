@@ -1,11 +1,20 @@
 import { and, asc, desc, eq, gte, isNotNull, isNull, lt, lte, or } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/sqlite-core';
 import type { DB } from './db/client';
-import { membership, task, taskShare, user, type Role, type Visibility } from './db/schema';
+import {
+	membership,
+	task,
+	taskShare,
+	user,
+	type Repeat,
+	type Role,
+	type Visibility
+} from './db/schema';
 import { isDate } from './calendar';
 import { visibleTo } from './visibility';
 import { sendToUsers, type Sender } from './push';
 import { addDays, dayLabel, today } from '$lib/dates';
+import { isRepeat, nextDate } from '$lib/repeat';
 
 // To-dos with a due day and an optional assignee. Every query is scoped to a family and to what
 // the viewer may see, with the same family / shared / private model as calendar events.
@@ -17,6 +26,7 @@ export type TaskInput = {
 	assigneeId: string | null;
 	visibility: Visibility;
 	shareWith: string[];
+	repeat?: Repeat | null;
 };
 
 type Viewer = { id: string; role: Role };
@@ -45,6 +55,9 @@ export function checkTask(
 	if (!isDate(input.dueDate)) return { error: 'Bitte gib ein gültiges Fälligkeitsdatum an.' };
 	const assigneeId = input.assigneeId || null;
 	if (assigneeId && !memberIds.includes(assigneeId)) return { error: 'Unbekanntes Mitglied.' };
+	const repeat = input.repeat || null;
+	if (repeat !== null && !isRepeat(repeat))
+		return { error: 'Bitte wähle eine gültige Wiederholung.' };
 	let shareWith = input.shareWith;
 	if (assigneeId && assigneeId !== creatorId) {
 		if (input.visibility === 'private') {
@@ -54,7 +67,7 @@ export function checkTask(
 			shareWith = [...shareWith, assigneeId];
 		}
 	}
-	return { task: { ...input, title, notes, assigneeId, shareWith } };
+	return { task: { ...input, title, notes, assigneeId, shareWith, repeat } };
 }
 
 export function taskFromForm(form: FormData) {
@@ -66,7 +79,8 @@ export function taskFromForm(form: FormData) {
 		title: text('title'),
 		notes: text('notes'),
 		dueDate: text('dueDate'),
-		assigneeId: text('assigneeId') || null
+		assigneeId: text('assigneeId') || null,
+		repeat: (text('repeat') || null) as Repeat | null
 	};
 }
 
@@ -82,6 +96,7 @@ function selectTasks(db: DB) {
 			assigneeId: task.assigneeId,
 			assignee: assignee.name,
 			visibility: task.visibility,
+			repeat: task.repeat,
 			done: isNotNull(task.doneAt).mapWith(Boolean),
 			createdById: task.createdBy
 		})
@@ -229,12 +244,51 @@ export async function setTaskDone(
 	id: string,
 	done: boolean
 ) {
-	if (!(await getTask(db, familyId, viewerId, id))) return false;
+	const existing = await getTask(db, familyId, viewerId, id);
+	if (!existing) return false;
 	await db
 		.update(task)
 		.set(done ? { doneAt: new Date(), doneBy: viewerId } : { doneAt: null, doneBy: null })
 		.where(and(eq(task.familyId, familyId), eq(task.id, id)));
+	if (done && existing.repeat && !existing.doneAt) await repeatTask(db, existing);
 	return true;
+}
+
+/**
+ * A repeating task that was ticked off comes back on its next due date after today. The series
+ * moves to the new task, so ticking the old one off again later does not create a second one.
+ */
+async function repeatTask(
+	db: DB,
+	done: NonNullable<Awaited<ReturnType<typeof getTask>>>,
+	now = today()
+) {
+	const after = done.dueDate > now ? done.dueDate : now;
+	const dueDate = nextDate(done.dueDate, done.repeat!, after);
+	if (!dueDate) return null;
+	db.transaction((tx) => {
+		tx.update(task).set({ repeat: null }).where(eq(task.id, done.id)).run();
+		const row = tx
+			.insert(task)
+			.values({
+				familyId: done.familyId,
+				title: done.title,
+				notes: done.notes,
+				dueDate,
+				assigneeId: done.assigneeId,
+				visibility: done.visibility,
+				repeat: done.repeat,
+				createdBy: done.createdBy
+			})
+			.returning()
+			.get();
+		if (done.sharedWith.length) {
+			tx.insert(taskShare)
+				.values(done.sharedWith.map((userId) => ({ taskId: row.id, userId })))
+				.run();
+		}
+	});
+	return dueDate;
 }
 
 export async function deleteTask(db: DB, familyId: string, viewer: Viewer, id: string) {

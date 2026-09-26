@@ -1,7 +1,9 @@
-import { and, asc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, isNotNull, isNull, lte, or } from 'drizzle-orm';
 import type { DB } from './db/client';
 import { field } from './validation';
 import { isReminder } from '$lib/reminders';
+import { daysBetween, isRepeat, occurrences, type Repeat } from '$lib/repeat';
+import { addDays } from '$lib/dates';
 import { visibleTo as sharedVisibleTo } from './visibility';
 import { calendarEvent, calendarEventShare, membership, user, type Visibility } from './db/schema';
 
@@ -20,6 +22,9 @@ export type EventInput = {
 	sharedWith?: string[];
 	/** Minutes before the start for a push reminder, see $lib/reminders. */
 	reminder?: number | null;
+	repeat?: Repeat | null;
+	/** Last day a repeating event may start on. */
+	repeatUntil?: string | null;
 };
 
 /** An event that passed checkEvent(). */
@@ -33,6 +38,8 @@ export type CheckedEvent = {
 	visibility: Visibility;
 	sharedWith: string[];
 	reminder: number | null;
+	repeat: Repeat | null;
+	repeatUntil: string | null;
 };
 
 const DATE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
@@ -76,6 +83,15 @@ export function checkEvent(input: EventInput): { error: string } | { event: Chec
 	if (reminder !== null && !isReminder(reminder, !startTime)) {
 		return { error: 'Bitte wähle eine gültige Erinnerung.' };
 	}
+	const repeat = input.repeat || null;
+	if (repeat !== null && !isRepeat(repeat))
+		return { error: 'Bitte wähle eine gültige Wiederholung.' };
+	const repeatUntil = repeat ? input.repeatUntil || null : null;
+	if (repeatUntil && !isDate(repeatUntil))
+		return { error: 'Bitte gib ein gültiges Datum für das Ende der Wiederholung an.' };
+	if (repeatUntil && repeatUntil < input.startDate) {
+		return { error: 'Die Wiederholung endet vor dem ersten Termin.' };
+	}
 	return {
 		event: {
 			title,
@@ -86,7 +102,9 @@ export function checkEvent(input: EventInput): { error: string } | { event: Chec
 			endTime,
 			visibility: input.visibility,
 			sharedWith,
-			reminder
+			reminder,
+			repeat,
+			repeatUntil
 		}
 	};
 }
@@ -104,7 +122,9 @@ export function eventFromForm(form: FormData): EventInput {
 		endTime: allDay ? null : field(form, 'endTime'),
 		visibility: field(form, 'visibility') as Visibility,
 		sharedWith: form.getAll('sharedWith').filter((v) => typeof v === 'string'),
-		reminder: reminder ? Number(reminder) : null
+		reminder: reminder ? Number(reminder) : null,
+		repeat: (field(form, 'repeat') || null) as Repeat | null,
+		repeatUntil: field(form, 'repeatUntil') || null
 	};
 }
 
@@ -116,7 +136,10 @@ function visibleTo(viewerId: string) {
 	});
 }
 
-/** Events the viewer may see that overlap the given date range (inclusive). */
+/**
+ * Events the viewer may see that overlap the given date range (inclusive). Repeating events come
+ * once per occurrence, with the dates of that occurrence; `key` tells occurrences apart.
+ */
 export async function listEvents(
 	db: DB,
 	familyId: string,
@@ -134,6 +157,8 @@ export async function listEvents(
 			endDate: calendarEvent.endDate,
 			endTime: calendarEvent.endTime,
 			visibility: calendarEvent.visibility,
+			repeat: calendarEvent.repeat,
+			repeatUntil: calendarEvent.repeatUntil,
 			createdById: calendarEvent.createdBy,
 			createdBy: user.name
 		})
@@ -143,18 +168,59 @@ export async function listEvents(
 			and(
 				eq(calendarEvent.familyId, familyId),
 				lte(calendarEvent.startDate, to),
-				gte(calendarEvent.endDate, from),
+				or(
+					and(isNull(calendarEvent.repeat), gte(calendarEvent.endDate, from)),
+					and(
+						isNotNull(calendarEvent.repeat),
+						// An occurrence may run a while past its start; a year covers any sensible event.
+						or(
+							isNull(calendarEvent.repeatUntil),
+							gte(calendarEvent.repeatUntil, addDays(from, -366))
+						)
+					)
+				),
 				visibleTo(viewerId)
 			)
 		)
-		.orderBy(
-			asc(calendarEvent.startDate),
-			// All-day events first, then by time.
-			sql`${calendarEvent.startTime} is not null`,
-			asc(calendarEvent.startTime),
-			asc(calendarEvent.title)
-		);
-	return rows;
+		.orderBy(asc(calendarEvent.startTime), asc(calendarEvent.title));
+	return expandSeries(rows, from, to);
+}
+
+/** One row per occurrence in from..to, sorted by day, all-day first, then by time. */
+export function expandSeries<
+	T extends {
+		id: string;
+		title: string;
+		startDate: string;
+		startTime: string | null;
+		endDate: string;
+		repeat: Repeat | null;
+		repeatUntil: string | null;
+	}
+>(rows: T[], from: string, to: string) {
+	const out: (T & { key: string })[] = [];
+	for (const row of rows) {
+		if (!row.repeat) {
+			out.push({ ...row, key: row.id });
+			continue;
+		}
+		const length = daysBetween(row.startDate, row.endDate);
+		for (const date of occurrences(row.startDate, row.repeat, row.repeatUntil, length, from, to)) {
+			out.push({
+				...row,
+				key: `${row.id}:${date}`,
+				startDate: date,
+				endDate: addDays(date, length)
+			});
+		}
+	}
+	return out.sort(
+		(a, b) =>
+			a.startDate.localeCompare(b.startDate) ||
+			Number(!!a.startTime) - Number(!!b.startTime) ||
+			(a.startTime ?? '').localeCompare(b.startTime ?? '') ||
+			a.title.localeCompare(b.title)
+	);
 }
 
 /** One event with the ids it is shared with, if the viewer may see it. */

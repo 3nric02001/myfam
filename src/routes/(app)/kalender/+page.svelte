@@ -9,6 +9,7 @@
 		ListTodo,
 		PartyPopper,
 		Plus,
+		Repeat,
 		UtensilsCrossed
 	} from '@lucide/svelte';
 	import { replaceState } from '$app/navigation';
@@ -20,6 +21,8 @@
 	import MealDay from '$lib/components/MealDay.svelte';
 	import MealDishes from '$lib/components/MealDishes.svelte';
 	import TaskRow from '$lib/components/TaskRow.svelte';
+	import PersonDot from '$lib/components/PersonDot.svelte';
+	import { colorHex } from '$lib/colors';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -64,6 +67,11 @@
 			);
 		return `${short(first)} – ${monthLabel(last)}`;
 	}
+
+	// Own events get the colour of the person who entered them.
+	let personHex = $derived(
+		new Map(data.memberColors.map((m) => [m.id, colorHex(m.color)] as const))
+	);
 
 	const weekdays = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
@@ -155,13 +163,18 @@
 					>{Number(date.slice(8))}</span
 				>
 				<span class="flex h-1.5 gap-0.5" aria-hidden="true">
-					{#each dayEvents.slice(0, 3) as e (e.id)}
+					{#each dayEvents.slice(0, 3) as e (e.key)}
+						{@const hex =
+							!isSelected && !e.color && e.createdById ? personHex.get(e.createdById) : null}
 						<span
 							class="size-1.5 rounded-full {isSelected
 								? 'bg-white'
 								: e.color
 									? colorOf(e.color).dot
-									: 'bg-brand-600'}"
+									: hex
+										? ''
+										: 'bg-brand-600'}"
+							style={hex ? `background: ${hex}` : undefined}
 						></span>
 					{/each}
 					<!-- Open tasks are hollow dots, after the events. -->
@@ -231,17 +244,21 @@
 	</div>
 	{#if selectedEvents.length}
 		<ul class="card px-3">
-			{#each selectedEvents as event (event.id)}
+			{#each selectedEvents as event (event.key)}
 				<li class="border-b border-slate-100 last:border-0">
 					<a href={event.href} class="flex min-h-14 items-center gap-3 py-2">
 						<span class="w-20 shrink-0 text-sm text-slate-500">{timeOf(event, selected)}</span>
 						<span class="flex-1">
 							<span class="block">{event.title}</span>
-							<span class="block text-xs text-slate-400">
+							<span class="flex items-center gap-1.5 text-xs text-slate-400">
+								{#if !event.source}<PersonDot id={event.createdById} />{/if}
 								{#if event.startDate !== event.endDate}
 									{shortDate(event.startDate)}–{shortDate(event.endDate)} ·
 								{/if}
 								{event.source ?? event.createdBy ?? 'Unbekannt'}
+								{#if 'repeat' in event && event.repeat}
+									<Repeat size={12} aria-label="wiederholt sich" />
+								{/if}
 							</span>
 						</span>
 						{#if event.source}
@@ -291,8 +308,9 @@
 <section id="essen" class="mt-6 scroll-mt-20" aria-label="Essen">
 	<div class="mb-2 flex items-center gap-2">
 		{@render sectionHead(UtensilsCrossed, 'Essen', 0)}
-		<a href="/kalender/essen?woche={weekStart(selected)}" class="text-sm text-brand-700"
-			>Woche planen</a
+		<a
+			href={selected === data.today ? '/kalender/essen' : `/kalender/essen?woche=${selected}`}
+			class="text-sm text-brand-700">Woche planen</a
 		>
 	</div>
 	<div class="card px-3 pt-1">

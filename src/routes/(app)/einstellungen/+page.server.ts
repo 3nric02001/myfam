@@ -17,11 +17,15 @@ import {
 	webPushSender
 } from '$lib/server/push';
 import { parseTheme, themeCookieName } from '$lib/theme';
+import { isColor } from '$lib/colors';
+import { listMemberColors, setMemberColor } from '$lib/server/families';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ cookies, locals }) => {
 	const { user } = requireUser(locals);
+	const colors = locals.family ? await listMemberColors(db, locals.family.id) : [];
 	return {
+		myColor: colors.find((m) => m.id === user.id)?.color ?? null,
 		theme: parseTheme(cookies.get(themeCookieName)),
 		push: {
 			publicKey: vapidKeys(db, env).publicKey,
@@ -31,6 +35,14 @@ export const load: PageServerLoad = async ({ cookies, locals }) => {
 };
 
 export const actions: Actions = {
+	color: async ({ request, locals }) => {
+		const { user } = requireUser(locals);
+		const color = field(await request.formData(), 'color');
+		if (!locals.family || !isColor(color)) return fail(400, { action: 'color' as const });
+		await setMemberColor(db, locals.family.id, user.id, color);
+		return { action: 'color' as const };
+	},
+
 	// Stored per device in a cookie, so the phone can stay light while the tablet is dark.
 	theme: async ({ request, cookies, url }) => {
 		const theme = parseTheme(field(await request.formData(), 'theme'));

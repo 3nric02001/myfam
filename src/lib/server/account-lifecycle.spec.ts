@@ -55,7 +55,9 @@ const event = (visibility: 'family' | 'shared' | 'private', sharedWith: string[]
 	endTime: null,
 	visibility,
 	sharedWith,
-	reminder: null
+	reminder: null,
+	repeat: null,
+	repeatUntil: null
 });
 
 const todo = (assigneeId: string | null, visibility: 'family' | 'private' = 'family') => ({

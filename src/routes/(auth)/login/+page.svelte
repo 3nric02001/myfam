@@ -1,9 +1,20 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
+	import { onMount } from 'svelte';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
+
+	// After logging out, nothing of the last account stays on the phone for offline use.
+	onMount(() => {
+		globalThis.caches?.delete('myfam-pages').catch(() => {});
+		try {
+			localStorage.removeItem('myfam-offline-queue');
+		} catch {
+			// Nothing stored.
+		}
+	});
 </script>
 
 <svelte:head><title>Anmelden · MyFam</title></svelte:head>
