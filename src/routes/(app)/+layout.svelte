@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { invalidateAll } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
+	import { openNotificationPages } from '$lib/push-client';
 	import { onMount } from 'svelte';
 	import {
 		CalendarDays,
@@ -22,6 +23,9 @@
 		{ href: '/planung', label: 'Planung', icon: ListTodo },
 		{ href: '/familie', label: 'Familie', icon: UsersRound }
 	];
+
+	// A tapped push notification opens the page it is about (event, task, comment).
+	onMount(() => openNotificationPages((url) => goto(url, { invalidateAll: true })));
 
 	// Pick up changes made by other family members when the app comes back into view.
 	onMount(() => {

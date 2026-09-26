@@ -487,7 +487,15 @@ async function cardAudience(db: DB, familyId: string, cardId: string) {
  * Tells everyone else who may see the card about a new comment, on their devices with push
  * switched on. Returns how many devices got it.
  */
-export async function notifyComment(db: DB, v: Viewer, cardId: string, text: string, send: Sender) {
+export async function notifyComment(
+	db: DB,
+	v: Viewer,
+	cardId: string,
+	text: string,
+	send: Sender,
+	/** Opens the card scrolled to this comment. */
+	commentId?: string
+) {
 	const card = await getCard(db, v, cardId);
 	if (!card) return 0;
 	const [author] = await db.select({ name: user.name }).from(user).where(eq(user.id, v.userId));
@@ -499,7 +507,7 @@ export async function notifyComment(db: DB, v: Viewer, cardId: string, text: str
 		{
 			title: `${author?.name ?? 'Jemand'} zu „${card.title}“`,
 			body,
-			url: `/planung/${card.folderId}/${card.id}`,
+			url: `/planung/${card.folderId}/${card.id}${commentId ? `#kommentar-${commentId}` : ''}`,
 			// Newer comments on the same card replace the older notification.
 			tag: `comment:${card.id}`
 		},

@@ -60,7 +60,8 @@
 		<ul class="mb-3 space-y-2">
 			{#each comments as comment (comment.id)}
 				<li
-					class="rounded-2xl px-4 py-3 {comment.isOwn
+					id="kommentar-{comment.id}"
+					class="scroll-mt-20 rounded-2xl px-4 py-3 {comment.isOwn
 						? 'bg-brand-50'
 						: 'border border-slate-200 bg-surface'}"
 				>
