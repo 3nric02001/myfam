@@ -3,6 +3,7 @@ import type { DB } from './db/client';
 import {
 	planningBlock,
 	planningCard,
+	planningCardSeen,
 	planningComment,
 	planningFolder,
 	planningFolderShare,
@@ -545,6 +546,116 @@ export async function deleteComment(db: DB, v: Viewer, cardId: string, commentId
 		)
 		.returning({ id: planningComment.id });
 	return deleted.length > 0;
+}
+
+// ---------- Seen ----------
+
+/** Remembers that the viewer has looked at the card as it is now. */
+export async function markCardSeen(db: DB, v: Viewer, cardId: string, now = new Date()) {
+	if (!(await getCard(db, v, cardId))) return false;
+	await db
+		.insert(planningCardSeen)
+		.values({ cardId, userId: v.userId, seenAt: now })
+		.onConflictDoUpdate({
+			target: [planningCardSeen.cardId, planningCardSeen.userId],
+			set: { seenAt: now }
+		});
+	return true;
+}
+
+/** Only look this far back, so someone who joins a family isn't greeted by every old card. */
+export const UNSEEN_DAYS = 30;
+
+/**
+ * Cards the viewer may see with something they haven't looked at yet: new cards from others,
+ * cards changed since their last visit, and comments by others since then.
+ */
+export async function listUnseen(db: DB, v: Viewer, now = new Date()) {
+	const since = Math.floor(now.getTime() / 1000) - UNSEEN_DAYS * 86_400;
+	const seenAt = sql<number | null>`(select s.seen_at from planning_card_seen s
+		where s.card_id = ${planningCard.id} and s.user_id = ${v.userId})`;
+	const newerThanSeen = (column: string) => {
+		const col = sql.raw(column);
+		return sql`${col} > coalesce(${seenAt}, 0) and ${col} >= ${since}`;
+	};
+	const othersComments = sql`from planning_comment c where c.card_id = ${planningCard.id}
+		and (c.user_id is null or c.user_id <> ${v.userId}) and ${newerThanSeen('c.created_at')}`;
+
+	const rows = await db
+		.select({
+			id: planningCard.id,
+			title: planningCard.title,
+			folderId: planningCard.folderId,
+			folderName: planningFolder.name,
+			updatedAt: planningCard.updatedAt,
+			seenAt,
+			createdById: planningCard.createdBy,
+			createdAt: planningCard.createdAt,
+			newComments: sql<number>`(select count(*) ${othersComments})`,
+			lastCommentId: sql<string | null>`(select c.id ${othersComments}
+				order by c.created_at desc, c.rowid desc limit 1)`
+		})
+		.from(planningCard)
+		.innerJoin(planningFolder, eq(planningCard.folderId, planningFolder.id))
+		.where(
+			and(
+				eq(planningCard.familyId, v.familyId),
+				folderVisible(v.userId),
+				sql`(${planningCard.updatedAt} >= ${since} or exists (select 1 ${othersComments}))`
+			)
+		)
+		.orderBy(desc(planningCard.updatedAt));
+
+	const items = rows
+		.map((r) => {
+			const isNew = r.seenAt === null && r.createdById !== v.userId;
+			const changed =
+				!isNew && r.seenAt !== null && r.updatedAt.getTime() / 1000 > Number(r.seenAt);
+			return { ...r, isNew, changed };
+		})
+		.filter((r) => r.isNew || r.changed || r.newComments > 0);
+
+	const commentIds = items.flatMap((i) => (i.lastCommentId ? [i.lastCommentId] : []));
+	const comments = commentIds.length
+		? await db
+				.select({
+					id: planningComment.id,
+					text: planningComment.text,
+					author: user.name,
+					createdAt: planningComment.createdAt
+				})
+				.from(planningComment)
+				.leftJoin(user, eq(planningComment.userId, user.id))
+				.where(inArray(planningComment.id, commentIds))
+		: [];
+	const byId = new Map(comments.map((c) => [c.id, c]));
+
+	return items
+		.map(
+			({
+				id,
+				title,
+				folderId,
+				folderName,
+				updatedAt,
+				isNew,
+				changed,
+				newComments,
+				lastCommentId
+			}) => {
+				const lastComment = lastCommentId ? (byId.get(lastCommentId) ?? null) : null;
+				const at = Math.max(updatedAt.getTime(), lastComment?.createdAt.getTime() ?? 0);
+				return { id, title, folderId, folderName, isNew, changed, newComments, lastComment, at };
+			}
+		)
+		.sort((a, b) => b.at - a.at);
+}
+
+/** Marks every card the viewer may see as seen. */
+export async function markAllSeen(db: DB, v: Viewer, now = new Date()) {
+	const cards = await listUnseen(db, v, now);
+	for (const card of cards) await markCardSeen(db, v, card.id, now);
+	return cards.length;
 }
 
 // ---------- Images ----------

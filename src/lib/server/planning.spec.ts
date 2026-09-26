@@ -19,6 +19,9 @@ import {
 	listBlocks,
 	listCards,
 	listFolders,
+	listUnseen,
+	markAllSeen,
+	markCardSeen,
 	moveBlock,
 	notifyComment,
 	parseBlock,
@@ -27,6 +30,8 @@ import {
 } from './planning';
 import { parseVisibility } from './visibility';
 import { saveSubscription, type Sender } from './push';
+import { planningCard, planningComment } from './db/schema';
+import { eq } from 'drizzle-orm';
 import { seedFamily, testDb } from './test/setup';
 
 async function familyOfThree() {
@@ -325,5 +330,87 @@ describe('planning comments', () => {
 		expect(checkComment('  \r\n ')).toHaveProperty('error');
 		expect(checkComment('x'.repeat(2001))).toHaveProperty('error');
 		expect(checkComment(' Hallo\r\nWelt ')).toEqual({ text: 'Hallo\nWelt' });
+	});
+});
+
+describe('unseen planning activity', () => {
+	const at = (seconds: number) => new Date(Date.UTC(2026, 8, 26, 12, 0, seconds));
+	const now = at(59);
+
+	async function setup() {
+		const f = await familyOfThree();
+		const folder = await createFolder(f.db, f.anna, 'Urlaub', {
+			visibility: 'family',
+			shareWith: []
+		});
+		const card = (await createCard(f.db, f.anna, folder.id, 'Packliste'))!;
+		await f.db.update(planningCard).set({ createdAt: at(0), updatedAt: at(0) });
+		return { ...f, folder, card };
+	}
+
+	async function comment(
+		f: Awaited<ReturnType<typeof setup>>,
+		who: Viewer,
+		text: string,
+		s: number
+	) {
+		const row = (await addComment(f.db, who, f.card.id, text))!;
+		await f.db
+			.update(planningComment)
+			.set({ createdAt: at(s) })
+			.where(eq(planningComment.id, row.id));
+	}
+
+	it('shows new cards from others, but not your own', async () => {
+		const f = await setup();
+		expect(await listUnseen(f.db, f.anna, now)).toEqual([]);
+		const [item] = await listUnseen(f.db, f.bert, now);
+		expect(item).toMatchObject({ title: 'Packliste', folderName: 'Urlaub', isNew: true });
+		await markCardSeen(f.db, f.bert, f.card.id, at(1));
+		expect(await listUnseen(f.db, f.bert, now)).toEqual([]);
+	});
+
+	it('counts comments by others since the last visit', async () => {
+		const f = await setup();
+		await markCardSeen(f.db, f.bert, f.card.id, at(1));
+		await comment(f, f.anna, 'Sonnencreme nicht vergessen', 2);
+		await comment(f, f.bert, 'Mach ich', 3);
+		await comment(f, f.cara, 'Und Hüte', 4);
+		const [item] = await listUnseen(f.db, f.bert, now);
+		expect(item).toMatchObject({ isNew: false, changed: false, newComments: 2 });
+		expect(item.lastComment).toMatchObject({ text: 'Und Hüte', author: 'cara' });
+		// Anna never opened her own card after creating it, but only sees the others' comments.
+		expect((await listUnseen(f.db, f.anna, now))[0].newComments).toBe(2);
+	});
+
+	it('shows changed cards and forgets them once seen', async () => {
+		const f = await setup();
+		await markCardSeen(f.db, f.bert, f.card.id, at(1));
+		await f.db.update(planningCard).set({ updatedAt: at(5) });
+		expect((await listUnseen(f.db, f.bert, now))[0]).toMatchObject({ changed: true });
+		expect(await markAllSeen(f.db, f.bert, at(6))).toBe(1);
+		expect(await listUnseen(f.db, f.bert, now)).toEqual([]);
+	});
+
+	it('only includes cards the viewer may see', async () => {
+		const f = await setup();
+		const secret = await createFolder(f.db, f.anna, 'Geschenke', {
+			visibility: 'shared',
+			shareWith: [f.cara.userId]
+		});
+		await createCard(f.db, f.anna, secret.id, 'Für Bert');
+		expect((await listUnseen(f.db, f.bert, new Date())).map((i) => i.title)).not.toContain(
+			'Für Bert'
+		);
+		expect((await listUnseen(f.db, f.cara, new Date())).map((i) => i.title)).toContain('Für Bert');
+		expect(await markCardSeen(f.db, f.bert, (await listCards(f.db, f.anna, secret.id))[0].id)).toBe(
+			false
+		);
+	});
+
+	it('ignores activity older than the look-back window', async () => {
+		const f = await setup();
+		const later = new Date(now.getTime() + 31 * 86_400_000);
+		expect(await listUnseen(f.db, f.bert, later)).toEqual([]);
 	});
 });

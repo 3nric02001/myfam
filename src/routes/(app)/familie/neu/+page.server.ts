@@ -15,6 +15,6 @@ export const actions: Actions = {
 		}
 		const created = await createFamily(db, name, user.id);
 		await setSessionFamily(db, sessionId, created.id);
-		redirect(303, '/einkauf');
+		redirect(303, '/dashboard');
 	}
 };
