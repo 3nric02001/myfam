@@ -10,6 +10,7 @@
 		ShoppingCart,
 		UsersRound
 	} from '@lucide/svelte';
+	import PushPrompt from '$lib/components/PushPrompt.svelte';
 
 	let { data, children } = $props();
 
@@ -57,6 +58,9 @@
 	</header>
 
 	<main class="flex-1 px-4 pt-4 pb-28">
+		{#if !page.url.pathname.startsWith('/einstellungen')}
+			<PushPrompt publicKey={data.pushKey} />
+		{/if}
 		{@render children()}
 	</main>
 

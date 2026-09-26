@@ -2,6 +2,12 @@
 	import { enhance } from '$app/forms';
 	import type { Visibility } from '$lib/server/db/schema';
 	import VisibilityPicker from '$lib/components/VisibilityPicker.svelte';
+	import {
+		DEFAULT_ALL_DAY_REMINDER,
+		DEFAULT_TIMED_REMINDER,
+		isReminder,
+		reminderOptions
+	} from '$lib/reminders';
 
 	type Values = {
 		title: string;
@@ -12,6 +18,7 @@
 		endTime: string | null;
 		visibility: Visibility;
 		sharedWith: string[];
+		reminder: number | null;
 	};
 
 	let {
@@ -39,6 +46,15 @@
 	let startDate = $state(values.startDate);
 	// svelte-ignore state_referenced_locally
 	let endDate = $state(values.endDate);
+	/** '' means no reminder. */
+	// svelte-ignore state_referenced_locally
+	let reminder = $state(values.reminder === null ? '' : String(values.reminder));
+
+	// All-day events have other choices; switching keeps "none" and otherwise picks the default.
+	function toggleAllDay() {
+		if (reminder === '' || isReminder(Number(reminder), allDay)) return;
+		reminder = String(allDay ? DEFAULT_ALL_DAY_REMINDER : DEFAULT_TIMED_REMINDER);
+	}
 </script>
 
 <form method="POST" {action} use:enhance class="card space-y-4 p-4">
@@ -56,7 +72,13 @@
 	</label>
 
 	<label class="flex items-center gap-2">
-		<input type="checkbox" name="allDay" bind:checked={allDay} class="size-5 rounded" />
+		<input
+			type="checkbox"
+			name="allDay"
+			bind:checked={allDay}
+			onchange={toggleAllDay}
+			class="size-5 rounded"
+		/>
 		<span>Ganztägig</span>
 	</label>
 
@@ -90,6 +112,16 @@
 			</label>
 		{/if}
 	</div>
+
+	<label class="block">
+		<span class="label">Erinnerung aufs Handy</span>
+		<select name="reminder" bind:value={reminder} class="w-full">
+			<option value="">Keine</option>
+			{#each reminderOptions(allDay) as option (option.value)}
+				<option value={String(option.value)}>{option.label}</option>
+			{/each}
+		</select>
+	</label>
 
 	<VisibilityPicker
 		visibility={values.visibility}

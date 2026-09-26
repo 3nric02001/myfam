@@ -102,6 +102,11 @@ export const calendarEvent = sqliteTable(
 		endDate: text('end_date').notNull(),
 		endTime: text('end_time'),
 		visibility: text('visibility').$type<Visibility>().notNull().default('family'),
+		/**
+		 * Minutes before the start to send a push reminder; null means none. All-day events start
+		 * at 00:00, so 360 is 18:00 the day before and -480 is 08:00 on the day.
+		 */
+		reminder: integer('reminder'),
 		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
 		createdAt: createdAt()
 	},
@@ -329,6 +334,38 @@ export const offerSearchCache = sqliteTable(
 	(t) => [primaryKey({ columns: [t.zip, t.query] })]
 );
 
+/** Key/value settings of the installation, e.g. the generated VAPID keys for push. */
+export const appSetting = sqliteTable('app_setting', {
+	key: text('key').primaryKey(),
+	value: text('value').notNull()
+});
+
+/** One device (browser) of a user that receives push notifications. */
+export const pushSubscription = sqliteTable(
+	'push_subscription',
+	{
+		id: id(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		endpoint: text('endpoint').notNull().unique(),
+		p256dh: text('p256dh').notNull(),
+		auth: text('auth').notNull(),
+		/** Short device description shown in the settings, e.g. "iPhone · Safari". */
+		device: text('device'),
+		createdAt: createdAt()
+	},
+	(t) => [index('push_subscription_user_idx').on(t.userId)]
+);
+
+/**
+ * Reminders already sent, so a restart or the next scheduler run doesn't send them twice.
+ * The key includes the time the reminder was due, so moving an event reminds again.
+ */
+export const reminderSent = sqliteTable('reminder_sent', {
+	key: text('key').primaryKey(),
+	sentAt: integer('sent_at', { mode: 'timestamp' }).notNull()
+});
 /**
  * A calendar the family follows: a CalDAV calendar (e.g. Nextcloud) or a public ICS link.
  * Read only. The password is stored encrypted (see server/secrets.ts).

@@ -1,6 +1,8 @@
 import { db } from '$lib/server/db';
 import { listFamiliesOfUser } from '$lib/server/families';
 import { requireUser } from '$lib/server/guards';
+import { vapidKeys } from '$lib/server/push';
+import { env } from '$env/dynamic/private';
 import type { LayoutServerLoad } from './$types';
 
 export const load: LayoutServerLoad = async ({ locals }) => {
@@ -8,6 +10,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 	return {
 		user,
 		family: locals.family,
-		families: await listFamiliesOfUser(db, user.id)
+		families: await listFamiliesOfUser(db, user.id),
+		pushKey: vapidKeys(db, env).publicKey
 	};
 };

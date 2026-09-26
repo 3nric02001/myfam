@@ -10,6 +10,10 @@ services:
       ORIGIN: ${PUBLIC_URL:-http://localhost:${PORT:-3000}}
       # Automatic supermarket offers via marktguru.de (see README). Off unless set to true.
       MARKTGURU_ENABLED: ${MARKTGURU_ENABLED:-false}
+      # Push reminders: keys are generated and stored in the database unless set here.
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-}
       # Key for the passwords of calendar subscriptions. Without it, /data/secret.key is created.
       SECRET_KEY: ${SECRET_KEY:-}
     ports:
