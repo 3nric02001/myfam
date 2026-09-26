@@ -135,6 +135,42 @@ describe('calendar', () => {
 		expect(await listEvents(db, family.id, anna.id, '2026-10-11', '2026-10-31')).toEqual([]);
 	});
 
+	it('lists each occurrence of a repeating event', async () => {
+		const { db, family, anna } = await familyOfThree();
+		await createEvent(
+			db,
+			family.id,
+			anna.id,
+			valid({
+				title: 'Schwimmen',
+				startDate: '2026-10-07',
+				startTime: '17:00',
+				repeat: 'weekly',
+				repeatUntil: '2026-10-21'
+			})
+		);
+		await createEvent(db, family.id, anna.id, valid({ title: 'Arzt', startDate: '2026-10-14' }));
+		const rows = await listEvents(db, family.id, anna.id, '2026-10-01', '2026-10-31');
+		expect(rows.map((r) => `${r.startDate} ${r.title}`)).toEqual([
+			'2026-10-07 Schwimmen',
+			'2026-10-14 Arzt',
+			'2026-10-14 Schwimmen',
+			'2026-10-21 Schwimmen'
+		]);
+		expect(new Set(rows.map((r) => r.key)).size).toBe(4);
+		expect(
+			checkEvent({
+				title: 'x',
+				startDate: '2026-10-07',
+				visibility: 'family',
+				repeat: 'weekly',
+				repeatUntil: '2026-10-01'
+			})
+		).toEqual({
+			error: 'Die Wiederholung endet vor dem ersten Termin.'
+		});
+	});
+
 	it('lets the creator edit and admins edit family events only', async () => {
 		const { db, family, anna, ben, cleo } = await familyOfThree();
 		const benAsMember = { id: ben.id, role: 'member' as const };

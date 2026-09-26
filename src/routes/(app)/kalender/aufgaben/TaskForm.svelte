@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import VisibilityPicker from '$lib/components/VisibilityPicker.svelte';
 	import type { Visibility } from '$lib/server/db/schema';
+	import { REPEATS, type Repeat } from '$lib/repeat';
 
 	let {
 		values,
@@ -20,6 +21,7 @@
 			assigneeId: string | null;
 			visibility: Visibility;
 			sharedWith: string[];
+			repeat?: Repeat | null;
 		};
 		/** All members of the family. */
 		members: { id: string; name: string }[];
@@ -47,11 +49,11 @@
 	</label>
 
 	<div class="grid grid-cols-2 gap-2">
-		<label class="block">
+		<label class="block min-w-0">
 			<span class="label">Fällig am</span>
 			<input type="date" name="dueDate" required value={values.dueDate} />
 		</label>
-		<label class="block">
+		<label class="block min-w-0">
 			<span class="label">Wer?</span>
 			<select name="assigneeId" class="w-full" value={values.assigneeId ?? ''}>
 				<option value="">Egal wer</option>
@@ -63,6 +65,17 @@
 			</select>
 		</label>
 	</div>
+
+	<label class="block">
+		<span class="label">Wiederholen</span>
+		<select name="repeat" class="w-full" value={values.repeat ?? ''}>
+			<option value="">Nie</option>
+			{#each REPEATS as r (r.value)}<option value={r.value}>{r.label}</option>{/each}
+		</select>
+		<span class="mt-1 block text-xs text-slate-500"
+			>Nach dem Abhaken kommt die Aufgabe zum nächsten Termin wieder.</span
+		>
+	</label>
 
 	<VisibilityPicker
 		noun="die Aufgabe"

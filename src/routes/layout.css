@@ -150,7 +150,18 @@
 		-webkit-tap-highlight-color: transparent;
 	}
 	input:not([type='checkbox']):not([type='radio']) {
-		@apply w-full;
+		@apply w-full min-w-0;
+	}
+	/* Date and time fields on iOS otherwise keep their own width and push past the screen edge. */
+	input[type='date'],
+	input[type='time'] {
+		-webkit-appearance: none;
+		appearance: none;
+		min-height: 2.75rem;
+		text-align: left;
+	}
+	input::-webkit-date-and-time-value {
+		text-align: left;
 	}
 	button {
 		@apply cursor-pointer;

@@ -1,8 +1,9 @@
-import { and, eq, gte, isNotNull, isNull, lte } from 'drizzle-orm';
+import { and, eq, gte, isNotNull, isNull, lte, or } from 'drizzle-orm';
 import type { DB } from './db/client';
 import { calendarEvent, calendarEventShare, membership, reminderSent, task } from './db/schema';
 import { sendToUsers, type PushMessage, type Sender } from './push';
 import { addDays, dayLabel, today } from '$lib/dates';
+import { occurrences } from '$lib/repeat';
 
 // Push reminders. Each source lists what is due around `now` together with the users who may
 // see it; the scheduler sends each reminder once. New kinds of reminders (e.g. tasks) only need
@@ -73,16 +74,32 @@ export function whenLabel(date: string, time: string | null, now: Date) {
 export const eventReminders: ReminderSource = async (db, now) => {
 	const day = today(now);
 	// Reminders are at most two days before the start or eight hours after midnight.
-	const events = await db
+	const from = addDays(day, -1);
+	const to = addDays(day, 3);
+	const rows = await db
 		.select()
 		.from(calendarEvent)
 		.where(
 			and(
 				isNotNull(calendarEvent.reminder),
-				gte(calendarEvent.startDate, addDays(day, -1)),
-				lte(calendarEvent.startDate, addDays(day, 3))
+				lte(calendarEvent.startDate, to),
+				or(
+					gte(calendarEvent.startDate, from),
+					and(
+						isNotNull(calendarEvent.repeat),
+						or(isNull(calendarEvent.repeatUntil), gte(calendarEvent.repeatUntil, from))
+					)
+				)
 			)
 		);
+	// Repeating events remind before each occurrence.
+	const events = rows.flatMap((event) =>
+		event.repeat
+			? occurrences(event.startDate, event.repeat, event.repeatUntil, 0, from, to).map(
+					(startDate) => ({ ...event, startDate })
+				)
+			: [event]
+	);
 	const due: DueReminder[] = [];
 	for (const event of events) {
 		const start = berlinTime(event.startDate, event.startTime ?? '00:00');

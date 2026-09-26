@@ -7,13 +7,17 @@ import {
 	clearDone,
 	deleteItem,
 	forgetHistory,
+	getCategoryOrder,
+	restoreItem,
+	setCategoryOrder,
 	listHistory,
 	listItemsWithCategory,
 	setCategory,
 	setDone,
 	updateItem
 } from '$lib/server/shopping';
-import { isCategory } from '$lib/categories';
+import { isCategory, type CategoryId } from '$lib/categories';
+import { memberIds } from '$lib/server/tasks';
 import { marktguruEnabled } from '$lib/server/marktguru';
 import { offersForList, purgeOffers } from '$lib/server/offers';
 import { deleteKnownPrice, listKnownPrices, recordPrice } from '$lib/server/prices';
@@ -44,7 +48,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const history = (await listHistory(db, family.id)).filter(
 		(h) => !onList.has(h.name.trim().toLowerCase())
 	);
-	return { items, offers, history, known, plan, today: day };
+	const categoryOrder = await getCategoryOrder(db, family.id);
+	return { items, offers, history, known, plan, categoryOrder, today: day };
 };
 
 export const actions: Actions = {
@@ -82,7 +87,47 @@ export const actions: Actions = {
 	delete: async ({ request, locals }) => {
 		const { family } = requireFamily(locals);
 		const form = await request.formData();
-		await deleteItem(db, family.id, field(form, 'id'));
+		const row = await deleteItem(db, family.id, field(form, 'id'));
+		// Sent back so the list can offer "Rückgängig" for a few seconds.
+		return row
+			? {
+					deleted: {
+						name: row.name,
+						quantity: row.quantity ?? '',
+						done: row.done,
+						createdBy: row.createdBy ?? ''
+					}
+				}
+			: undefined;
+	},
+
+	restore: async ({ request, locals }) => {
+		const { user, family } = requireFamily(locals);
+		const form = await request.formData();
+		const name = field(form, 'name');
+		const quantity = field(form, 'quantity');
+		if (!name || name.length > 100 || quantity.length > 30) return fail(400);
+		// Keep "von …" of the person who added it, as long as they are still in the family.
+		const by = field(form, 'createdBy');
+		const createdBy = (await memberIds(db, family.id)).includes(by) ? by : user.id;
+		await restoreItem(db, family.id, createdBy, {
+			name,
+			quantity,
+			done: field(form, 'done') === 'true'
+		});
+	},
+
+	order: async ({ request, locals }) => {
+		const { family } = requireFamily(locals);
+		const form = await request.formData();
+		if (form.get('reset')) {
+			await setCategoryOrder(db, family.id, null);
+			return;
+		}
+		const order = form
+			.getAll('order')
+			.filter((v): v is CategoryId => typeof v === 'string' && isCategory(v));
+		await setCategoryOrder(db, family.id, [...new Set(order)]);
 	},
 
 	category: async ({ request, locals }) => {

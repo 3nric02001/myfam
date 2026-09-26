@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { Check } from '@lucide/svelte';
+	import { Check, Repeat } from '@lucide/svelte';
 	import { shortDate } from '$lib/dates';
 	import type { Visibility } from '$lib/server/db/schema';
 	import { visibilityLabel } from '$lib/visibility';
 	import VisibilityIcon from './VisibilityIcon.svelte';
+	import PersonDot from './PersonDot.svelte';
 
 	let {
 		task,
@@ -16,6 +17,8 @@
 			title: string;
 			dueDate: string;
 			assignee: string | null;
+			assigneeId?: string | null;
+			repeat?: string | null;
 			visibility: Visibility;
 			done: boolean;
 		};
@@ -66,6 +69,11 @@
 				</span>
 			{/if}
 		</span>
+		{#if task.repeat}
+			<span class="text-slate-400" title="Wiederholt sich"
+				><Repeat size={15} aria-hidden="true" /></span
+			>
+		{/if}
 		{#if task.visibility !== 'family'}
 			<span class="text-slate-400" title={visibilityLabel[task.visibility]}
 				><VisibilityIcon visibility={task.visibility} size={16} /></span
@@ -73,8 +81,10 @@
 		{/if}
 		{#if task.assignee}
 			<span
-				class="max-w-24 shrink-0 truncate rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-800"
-				>{task.assignee}</span
+				class="flex max-w-28 shrink-0 items-center gap-1.5 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700"
+				><PersonDot id={task.assigneeId} name={task.assignee} /><span class="truncate"
+					>{task.assignee}</span
+				></span
 			>
 		{/if}
 	</a>

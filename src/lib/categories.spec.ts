@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { categoryKey, guessCategory } from './categories';
+import { CATEGORIES, categoryKey, guessCategory, orderedCategories } from './categories';
 
 describe('guessCategory', () => {
 	it.each([
@@ -34,6 +34,15 @@ describe('guessCategory', () => {
 		['', 'sonstiges']
 	])('%s → %s', (name, category) => {
 		expect(guessCategory(name)).toBe(category);
+	});
+});
+
+describe('orderedCategories', () => {
+	it('puts the family order first and the other sections after it', () => {
+		const ids = orderedCategories(['drogerie', 'obst-gemuese', 'kaputt']).map((c) => c.id);
+		expect(ids.slice(0, 2)).toEqual(['drogerie', 'obst-gemuese']);
+		expect(ids).toHaveLength(CATEGORIES.length);
+		expect(orderedCategories(null).map((c) => c.id)).toEqual(CATEGORIES.map((c) => c.id));
 	});
 });
 

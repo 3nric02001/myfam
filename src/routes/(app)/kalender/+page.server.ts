@@ -37,6 +37,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		visibility: 'family' as const,
 		createdById: null,
 		createdBy: null,
+		key: e.id,
 		href: `/kalender/abos/termin/${e.id}`
 	}));
 	const sortKey = (e: (typeof own)[number] | (typeof subscribed)[number]) =>

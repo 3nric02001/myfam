@@ -1,6 +1,7 @@
 <script lang="ts">
-	import { Bell, ChevronLeft } from '@lucide/svelte';
+	import { Bell, ChevronLeft, Repeat } from '@lucide/svelte';
 	import { reminderLabel } from '$lib/reminders';
+	import { repeatLabel } from '$lib/repeat';
 	import { enhance } from '$app/forms';
 	import { dayLabel } from '$lib/dates';
 	import EventForm from '../EventForm.svelte';
@@ -59,6 +60,12 @@
 			{/if}
 			{#if !event.startTime}<span class="text-slate-500">(ganztägig)</span>{/if}
 		</p>
+		{#if event.repeat}
+			<p class="text-sm text-slate-500">
+				<Repeat size={16} class="inline align-[-3px]" aria-hidden="true" />
+				{repeatLabel(event.repeat)}{event.repeatUntil ? ` bis ${dayLabel(event.repeatUntil)}` : ''}
+			</p>
+		{/if}
 		{#if event.notes}<p class="whitespace-pre-line text-slate-700">{event.notes}</p>{/if}
 		<p class="text-sm text-slate-500">
 			<VisibilityIcon visibility={event.visibility} size={16} class="inline align-[-3px]" />

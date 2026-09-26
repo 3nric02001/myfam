@@ -25,6 +25,15 @@ export function isCategory(id: string): id is CategoryId {
 	return CATEGORIES.some((c) => c.id === id);
 }
 
+/** The sections in the family's own order; sections missing from it follow in the usual order. */
+export function orderedCategories(order: readonly string[] | null | undefined) {
+	const placed = [...new Set((order ?? []).filter(isCategory))];
+	return [
+		...placed.map((id) => CATEGORIES.find((c) => c.id === id)!),
+		...CATEGORIES.filter((c) => !placed.includes(c.id))
+	];
+}
+
 export function categoryLabel(id: string) {
 	return CATEGORIES.find((c) => c.id === id)?.label ?? 'Sonstiges';
 }

@@ -1,35 +1,181 @@
 <script lang="ts">
 	import {
+		ArrowDown,
+		ArrowUp,
 		CalendarDays,
 		Check,
 		ChevronRight,
+		Clock,
 		Euro,
 		Plus,
 		ReceiptText,
 		ShoppingBasket,
+		Store,
 		Tag,
 		X
 	} from '@lucide/svelte';
 	import { enhance } from '$app/forms';
+	import { invalidateAll } from '$app/navigation';
+	import { onMount } from 'svelte';
+	import { flushQueue, readQueue, sendOrQueue, type QueuedChange } from '$lib/offline-queue';
+	import PersonDot from '$lib/components/PersonDot.svelte';
 	import { formatPrice, STORES, storeLabel } from '$lib/offers';
 	import { pricesFor } from '$lib/prices';
 	import { addDays, dayLabel, shortDate } from '$lib/dates';
-	import { CATEGORIES } from '$lib/categories';
+	import { CATEGORIES, guessCategory, orderedCategories, type CategoryId } from '$lib/categories';
 	import CategoryIcon from '$lib/components/CategoryIcon.svelte';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
 
-	let open = $derived(data.items.filter((i) => !i.done));
+	// Changes made without a connection, sent when it is back (see $lib/offline-queue).
+	let queue = $state<QueuedChange[]>([]);
+	// Ticks show at once; the server confirms on the next load (or later, when offline).
+	let localDone = $state<Record<string, boolean>>({});
+	let items = $derived.by(() => {
+		// Ticks still waiting to be sent count too, e.g. after reopening the app offline.
+		const waiting = new Map(
+			queue.filter((c) => c.action === 'toggle').map((c) => [c.fields.id, c.fields.done === 'true'])
+		);
+		return data.items.map((i) =>
+			i.id in localDone
+				? { ...i, done: localDone[i.id] }
+				: waiting.has(i.id)
+					? { ...i, done: waiting.get(i.id)! }
+					: i
+		);
+	});
+	// Once the server agrees, the local tick is no longer needed.
+	$effect(() => {
+		for (const item of data.items) {
+			if (item.id in localDone && localDone[item.id] === item.done) delete localDone[item.id];
+		}
+	});
+
+	let pendingAdds = $derived(
+		queue
+			.filter((c) => c.action === 'add')
+			.map((c) => ({
+				id: c.id,
+				name: c.fields.name,
+				quantity: c.fields.quantity || null,
+				category: guessCategory(c.fields.name) as CategoryId
+			}))
+	);
+	async function flush() {
+		if (await flushQueue()) await invalidateAll();
+		queue = readQueue();
+	}
+	onMount(() => {
+		queue = readQueue();
+		flush();
+		window.addEventListener('online', flush);
+		return () => window.removeEventListener('online', flush);
+	});
+
+	async function toggle(item: { id: string; done: boolean }) {
+		localDone[item.id] = !item.done;
+		const sent = await sendOrQueue('toggle', { id: item.id, done: String(!item.done) });
+		queue = readQueue();
+		if (sent) await invalidateAll();
+	}
+
+	let open = $derived(items.filter((i) => !i.done));
 	let editHistory = $state(false);
-	// Open items by section, sections in supermarket order, empty ones left out.
+	// Open items by section, sections in the family's store order, empty ones left out.
+	let sections = $derived(orderedCategories(data.categoryOrder));
 	let groups = $derived(
-		CATEGORIES.map((c) => ({ ...c, items: open.filter((i) => i.category === c.id) })).filter(
-			(g) => g.items.length
-		)
+		sections
+			.map((c) => ({
+				...c,
+				items: open.filter((i) => i.category === c.id),
+				pending: pendingAdds.filter((p) => p.category === c.id)
+			}))
+			.filter((g) => g.items.length || g.pending.length)
 	);
 	let suggestions = $derived(data.history.slice(0, 12));
-	let done = $derived(data.items.filter((i) => i.done));
+	let done = $derived(items.filter((i) => i.done));
+
+	// In the store: bigger rows, nothing to delete by accident, and the screen stays on.
+	let shopMode = $state(false);
+	let wakeLock: { release(): Promise<void> } | null = null;
+	async function keepAwake() {
+		try {
+			wakeLock =
+				(await (
+					navigator as {
+						wakeLock?: { request(t: 'screen'): Promise<{ release(): Promise<void> }> };
+					}
+				).wakeLock?.request('screen')) ?? null;
+		} catch {
+			wakeLock = null;
+		}
+	}
+	function setShopMode(on: boolean) {
+		shopMode = on;
+		try {
+			if (on) sessionStorage.setItem('einkaufsmodus', '1');
+			else sessionStorage.removeItem('einkaufsmodus');
+		} catch {
+			// Only the mode is not remembered.
+		}
+		if (on) keepAwake();
+		else wakeLock?.release().catch(() => {});
+	}
+	onMount(() => {
+		try {
+			if (sessionStorage.getItem('einkaufsmodus')) setShopMode(true);
+		} catch {
+			// Starts in the normal list.
+		}
+		// The browser drops the wake lock when the app goes to the background.
+		const again = () => shopMode && document.visibilityState === 'visible' && keepAwake();
+		document.addEventListener('visibilitychange', again);
+		return () => {
+			document.removeEventListener('visibilitychange', again);
+			wakeLock?.release().catch(() => {});
+		};
+	});
+
+	// "Rückgängig" after deleting, for a few seconds.
+	let undo = $state<{ name: string; quantity: string; done: boolean; createdBy: string } | null>(
+		null
+	);
+	let undoTimer: ReturnType<typeof setTimeout> | undefined;
+	function offerUndo(deleted: typeof undo) {
+		clearTimeout(undoTimer);
+		undo = deleted;
+		undoTimer = setTimeout(() => (undo = null), 6000);
+	}
+	const deleteEnhance =
+		() =>
+		async ({
+			result,
+			update
+		}: {
+			result: { type: string; data?: Record<string, unknown> };
+			update: () => Promise<void>;
+		}) => {
+			await update();
+			if (result.type === 'success' && result.data?.deleted) {
+				offerUndo(result.data.deleted as NonNullable<typeof undo>);
+			}
+		};
+
+	// The order of sections, as the family walks through their store.
+	let orderDialog = $state<HTMLDialogElement>();
+	let draftOrder = $state<CategoryId[]>([]);
+	function editOrder() {
+		draftOrder = sections.map((c) => c.id);
+		orderDialog?.showModal();
+	}
+	function move(index: number, by: number) {
+		const next = [...draftOrder];
+		const [id] = next.splice(index, 1);
+		next.splice(index + by, 0, id);
+		draftOrder = next;
+	}
+	const label = (id: string) => CATEGORIES.find((c) => c.id === id)?.label ?? id;
 
 	type Tip = {
 		date: string;
@@ -90,17 +236,44 @@
 
 <svelte:head><title>Einkauf · MyFam</title></svelte:head>
 
-<h1 class="mb-4 text-xl font-semibold tracking-tight">Einkaufsliste</h1>
+<div class="mb-4 flex items-center gap-2">
+	<h1 class="flex-1 text-xl font-semibold tracking-tight">Einkaufsliste</h1>
+	<button
+		type="button"
+		class="flex min-h-10 items-center gap-1.5 rounded-full px-3 text-sm font-medium {shopMode
+			? 'bg-brand-600 text-white'
+			: 'border border-slate-300 text-slate-700'}"
+		aria-pressed={shopMode}
+		onclick={() => setShopMode(!shopMode)}
+		><Store size={16} aria-hidden="true" /> {shopMode ? 'Fertig' : 'Im Laden'}</button
+	>
+</div>
+{#if shopMode}
+	<p class="mb-4 rounded-xl bg-brand-50 px-3 py-2 text-sm text-brand-800">
+		Einkaufsmodus: Abhaken per Tipp, der Bildschirm bleibt an.
+	</p>
+{/if}
 
 <form
 	method="POST"
 	action="?/add"
 	class="card mb-5 flex gap-2 p-3"
-	use:enhance={() =>
-		async ({ update }) => {
+	use:enhance={({ formData, formElement, cancel }) => {
+		// Without a connection the entry waits on the phone and is sent later.
+		if (!navigator.onLine) {
+			cancel();
+			sendOrQueue('add', {
+				name: String(formData.get('name') ?? ''),
+				quantity: String(formData.get('quantity') ?? '')
+			}).then(() => (queue = readQueue()));
+			formElement.reset();
+			return;
+		}
+		return async ({ update }) => {
 			await update({ reset: true });
 			document.querySelector<HTMLInputElement>('#new-item')?.focus();
-		}}
+		};
+	}}
 >
 	<input
 		id="new-item"
@@ -122,9 +295,9 @@
 </form>
 {#if form?.message}<p class="error mb-4">{form.message}</p>{/if}
 
-{@render tripCard()}
+{#if !shopMode}{@render tripCard()}{/if}
 
-{#if suggestions.length}
+{#if suggestions.length && !shopMode}
 	<section class="mb-5" aria-label="Oft gekauft">
 		<div class="mb-2 flex items-center justify-between">
 			<h2 class="text-sm font-semibold text-slate-500">Oft gekauft</h2>
@@ -160,7 +333,7 @@
 	</section>
 {/if}
 
-{#if data.items.length === 0}
+{#if data.items.length === 0 && !pendingAdds.length}
 	<div class="flex flex-col items-center py-10 text-center text-slate-500">
 		<span
 			class="mb-3 flex size-14 items-center justify-center rounded-2xl bg-brand-50 text-brand-600"
@@ -172,18 +345,17 @@
 
 {#snippet row(item: (typeof data.items)[number])}
 	<li class="border-b border-slate-100 last:border-0">
-		<div class="flex items-center gap-3 py-1">
-			<form id="toggle-{item.id}" method="POST" action="?/toggle" use:enhance class="hidden">
-				<input type="hidden" name="id" value={item.id} />
-				<input type="hidden" name="done" value={String(!item.done)} />
-			</form>
+		<div class="flex items-center gap-3 {shopMode ? 'py-2 text-lg' : 'py-1'}">
 			<button
-				form="toggle-{item.id}"
+				type="button"
+				onclick={() => toggle(item)}
 				class="flex min-h-12 items-center"
 				aria-label={item.done ? `${item.name} wieder offen` : `${item.name} abhaken`}
 			>
 				<span
-					class="flex size-6 shrink-0 items-center justify-center rounded-full border-2 {item.done
+					class="flex {shopMode
+						? 'size-8'
+						: 'size-6'} shrink-0 items-center justify-center rounded-full border-2 {item.done
 						? 'border-brand-600 bg-brand-600 text-white'
 						: 'border-slate-300'}"
 					aria-hidden="true"
@@ -200,7 +372,7 @@
 					<span class={item.done ? 'text-slate-400 line-through' : ''}>{item.name}</span>
 					{#if item.quantity}<span class="ml-1 text-sm text-slate-500">{item.quantity}</span>{/if}
 				</button>
-				{#if !item.done}
+				{#if !item.done && !shopMode}
 					{#await data.offers then offers}
 						{@const best = offers.byItem[item.id]?.[0]}
 						{@const cost = offers.cost.perItem[item.id]}
@@ -234,11 +406,13 @@
 						{/if}
 					{/await}
 				{/if}
-				{#if item.createdBy}
-					<span class="block text-xs text-slate-400">von {item.createdBy}</span>
+				{#if item.createdBy && !shopMode}
+					<span class="flex items-center gap-1.5 text-xs text-slate-400"
+						><PersonDot name={item.createdBy} size={7} />von {item.createdBy}</span
+					>
 				{/if}
 			</div>
-			{#if !item.done}
+			{#if !item.done && !shopMode}
 				{#await data.offers then offers}
 					{@const cost = offers.cost.perItem[item.id]}
 					{#if cost}
@@ -248,7 +422,7 @@
 					{/if}
 				{/await}
 			{/if}
-			{#if item.done}
+			{#if item.done && !shopMode}
 				<button
 					class="icon-btn"
 					aria-label="Preis für {item.name} eintragen"
@@ -257,12 +431,14 @@
 					><Euro size={18} aria-hidden="true" /></button
 				>
 			{/if}
-			<form method="POST" action="?/delete" use:enhance>
-				<input type="hidden" name="id" value={item.id} />
-				<button class="icon-btn" aria-label="{item.name} löschen"
-					><X size={18} aria-hidden="true" /></button
-				>
-			</form>
+			{#if !shopMode}
+				<form method="POST" action="?/delete" use:enhance={deleteEnhance}>
+					<input type="hidden" name="id" value={item.id} />
+					<button class="icon-btn" aria-label="{item.name} löschen"
+						><X size={18} aria-hidden="true" /></button
+					>
+				</form>
+			{/if}
 		</div>
 		{#if pricing === item.id && detailsId !== item.id}{@render priceForm(item)}{/if}
 	</li>
@@ -452,30 +628,85 @@
 				</h2>
 				<ul class="card px-3">
 					{#each group.items as item (item.id)}{@render row(item)}{/each}
+					{#each group.pending as p (p.id)}
+						<li
+							class="flex min-h-12 items-center gap-3 border-b border-slate-100 py-1 last:border-0"
+						>
+							<span
+								class="flex size-6 items-center justify-center text-slate-400"
+								aria-hidden="true"><Clock size={18} /></span
+							>
+							<span class="min-w-0 flex-1">
+								{p.name}
+								{#if p.quantity}<span class="ml-1 text-sm text-slate-500">{p.quantity}</span>{/if}
+								<span class="block text-xs text-slate-400"
+									>wird gesendet, sobald du online bist</span
+								>
+							</span>
+						</li>
+					{/each}
+				</ul>
+			</section>
+		{/each}
+		<button
+			type="button"
+			class="block w-full text-center text-sm text-slate-500 underline"
+			onclick={editOrder}
+		>
+			Reihenfolge der Bereiche anpassen
+		</button>
+	</div>
+	{#if !shopMode}
+		{#await data.offers then offers}
+			<section class="card mt-4 p-4" aria-label="Voraussichtlicher Preis">
+				<div class="flex items-baseline justify-between gap-3">
+					<span class="font-semibold">Voraussichtlich</span>
+					<span class="text-xl font-semibold tabular-nums">
+						{offers.cost.priced ? `≈ ${formatPrice(offers.cost.total)}` : '–'}
+					</span>
+				</div>
+				<p class="mt-1 text-xs text-slate-500">
+					{#if offers.cost.priced === open.length}
+						Alle {open.length} Artikel mit Preis{data.plan
+							? `, Angebote vom ${shortDate(data.plan.date)}`
+							: ''}.
+					{:else}
+						{offers.cost.priced} von {open.length} Artikeln mit Preis. Fehlende Preise lernt MyFam vom
+						<a href="/einkauf/kassenzettel" class="underline">Kassenzettel</a>.
+					{/if}
+				</p>
+			</section>
+		{/await}
+	{/if}
+{:else if pendingAdds.length}
+	<div class="space-y-4">
+		{#each groups as group (group.id)}
+			<section aria-label={group.label}>
+				<h2 class="mb-1.5 flex items-center gap-1.5 px-1 text-sm font-semibold text-slate-500">
+					<CategoryIcon category={group.id} />
+					{group.label}
+				</h2>
+				<ul class="card px-3">
+					{#each group.pending as p (p.id)}
+						<li
+							class="flex min-h-12 items-center gap-3 border-b border-slate-100 py-1 last:border-0"
+						>
+							<span
+								class="flex size-6 items-center justify-center text-slate-400"
+								aria-hidden="true"><Clock size={18} /></span
+							>
+							<span class="min-w-0 flex-1">
+								{p.name}
+								<span class="block text-xs text-slate-400"
+									>wird gesendet, sobald du online bist</span
+								>
+							</span>
+						</li>
+					{/each}
 				</ul>
 			</section>
 		{/each}
 	</div>
-	{#await data.offers then offers}
-		<section class="card mt-4 p-4" aria-label="Voraussichtlicher Preis">
-			<div class="flex items-baseline justify-between gap-3">
-				<span class="font-semibold">Voraussichtlich</span>
-				<span class="text-xl font-semibold tabular-nums">
-					{offers.cost.priced ? `≈ ${formatPrice(offers.cost.total)}` : '–'}
-				</span>
-			</div>
-			<p class="mt-1 text-xs text-slate-500">
-				{#if offers.cost.priced === open.length}
-					Alle {open.length} Artikel mit Preis{data.plan
-						? `, Angebote vom ${shortDate(data.plan.date)}`
-						: ''}.
-				{:else}
-					{offers.cost.priced} von {open.length} Artikeln mit Preis. Fehlende Preise lernt MyFam vom
-					<a href="/einkauf/kassenzettel" class="underline">Kassenzettel</a>.
-				{/if}
-			</p>
-		</section>
-	{/await}
 {/if}
 
 {#if done.length}
@@ -486,9 +717,11 @@
 					>Preis für {form.priced} gemerkt</span
 				>{/if}
 		</h2>
-		<form method="POST" action="?/clearDone" use:enhance>
-			<button class="text-sm text-slate-500 underline">Erledigte löschen</button>
-		</form>
+		{#if !shopMode}
+			<form method="POST" action="?/clearDone" use:enhance>
+				<button class="text-sm text-slate-500 underline">Erledigte löschen</button>
+			</form>
+		{/if}
 	</div>
 	<ul class="card px-3">
 		{#each done as item (item.id)}{@render row(item)}{/each}
@@ -654,9 +887,9 @@
 					method="POST"
 					action="?/delete"
 					use:enhance={() =>
-						async ({ update }) => {
+						async ({ result, update }) => {
 							dialog?.close();
-							await update();
+							await deleteEnhance()({ result, update });
 						}}
 				>
 					<input type="hidden" name="id" value={detailsItem.id} />
@@ -667,3 +900,83 @@
 		</div>
 	{/if}
 </dialog>
+
+<dialog
+	bind:this={orderDialog}
+	class="m-auto w-[min(100%-2rem,28rem)] rounded-2xl bg-surface p-0 text-slate-900 shadow-xl backdrop:bg-black/40"
+>
+	<form
+		method="POST"
+		action="?/order"
+		class="max-h-[85dvh] overflow-y-auto p-4"
+		use:enhance={() =>
+			async ({ update }) => {
+				await update();
+				orderDialog?.close();
+			}}
+	>
+		<div class="mb-1 flex items-start justify-between gap-2">
+			<h2 class="text-lg font-semibold">Reihenfolge der Bereiche</h2>
+			<button
+				type="button"
+				class="icon-btn -mt-2 -mr-2"
+				aria-label="Schließen"
+				onclick={() => orderDialog?.close()}><X size={18} aria-hidden="true" /></button
+			>
+		</div>
+		<p class="mb-3 text-sm text-slate-500">
+			So, wie ihr durch euren Markt geht. Gilt für die ganze Familie.
+		</p>
+		<ol class="mb-4">
+			{#each draftOrder as id, i (id)}
+				<li class="flex items-center gap-2 border-b border-slate-100 py-1 last:border-0">
+					<input type="hidden" name="order" value={id} />
+					<CategoryIcon category={id} />
+					<span class="flex-1 text-sm">{label(id)}</span>
+					<button
+						type="button"
+						class="icon-btn size-9"
+						aria-label="{label(id)} nach oben"
+						disabled={i === 0}
+						onclick={() => move(i, -1)}><ArrowUp size={18} /></button
+					>
+					<button
+						type="button"
+						class="icon-btn size-9"
+						aria-label="{label(id)} nach unten"
+						disabled={i === draftOrder.length - 1}
+						onclick={() => move(i, 1)}><ArrowDown size={18} /></button
+					>
+				</li>
+			{/each}
+		</ol>
+		<div class="grid grid-cols-2 gap-2">
+			<button name="reset" value="1" class="btn-secondary">Standard</button>
+			<button class="btn-primary">Speichern</button>
+		</div>
+	</form>
+</dialog>
+
+{#if undo}
+	<div
+		class="fixed inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 mx-auto flex w-[min(100%-2rem,26rem)] items-center gap-3 rounded-xl bg-slate-900 px-4 py-2.5 text-sm text-slate-50 shadow-lg"
+		role="status"
+	>
+		<span class="min-w-0 flex-1 truncate">„{undo.name}“ gelöscht</span>
+		<form
+			method="POST"
+			action="?/restore"
+			use:enhance={() => {
+				clearTimeout(undoTimer);
+				undo = null;
+				return async ({ update }) => update();
+			}}
+		>
+			<input type="hidden" name="name" value={undo.name} />
+			<input type="hidden" name="quantity" value={undo.quantity} />
+			<input type="hidden" name="done" value={String(undo.done)} />
+			<input type="hidden" name="createdBy" value={undo.createdBy} />
+			<button class="font-semibold text-brand-300">Rückgängig</button>
+		</form>
+	</div>
+{/if}

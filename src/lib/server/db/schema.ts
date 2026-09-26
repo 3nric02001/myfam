@@ -31,6 +31,8 @@ export const family = sqliteTable('family', {
 	name: text('name').notNull(),
 	/** Bundesland code (e.g. 'BY') for regional holidays; null shows only nationwide ones. */
 	state: text('state'),
+	/** JSON list of shopping sections in the order of the family's store; null is the default order. */
+	categoryOrder: text('category_order'),
 	createdAt: createdAt()
 });
 
@@ -46,6 +48,8 @@ export const membership = sqliteTable(
 			.notNull()
 			.references(() => family.id, { onDelete: 'cascade' }),
 		role: text('role').$type<Role>().notNull().default('member'),
+		/** The member's colour in this family, see $lib/colors; null picks one by join order. */
+		color: text('color'),
 		createdAt: createdAt()
 	},
 	(t) => [primaryKey({ columns: [t.userId, t.familyId] })]
@@ -91,6 +95,9 @@ export const shoppingItem = sqliteTable(
 	(t) => [index('shopping_item_family_idx').on(t.familyId)]
 );
 
+/** How often an event or task comes back; null means once. */
+export type Repeat = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'yearly';
+
 /** Who sees an event: the whole family, the creator plus chosen members, or only the creator. */
 export type Visibility = 'family' | 'shared' | 'private';
 
@@ -114,6 +121,9 @@ export const calendarEvent = sqliteTable(
 		 * at 00:00, so 360 is 18:00 the day before and -480 is 08:00 on the day.
 		 */
 		reminder: integer('reminder'),
+		repeat: text('repeat').$type<Repeat>(),
+		/** Last day a repeating event can start on; null repeats without end. */
+		repeatUntil: text('repeat_until'),
 		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
 		createdAt: createdAt()
 	},
@@ -491,6 +501,8 @@ export const task = sqliteTable(
 		visibility: text('visibility').$type<Visibility>().notNull().default('family'),
 		doneAt: integer('done_at', { mode: 'timestamp' }),
 		doneBy: text('done_by').references(() => user.id, { onDelete: 'set null' }),
+		/** When done, a repeating task comes back as a new task on the next due date. */
+		repeat: text('repeat').$type<Repeat>(),
 		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
 		createdAt: createdAt()
 	},

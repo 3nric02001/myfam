@@ -3,12 +3,76 @@
 /// <reference lib="esnext" />
 /// <reference lib="webworker" />
 
-// Only shows push notifications. Pages are not cached, so the app always shows current data.
+// Push notifications, and the last seen version of every page for times without a connection.
+// Pages always come from the network first, so the app shows current data whenever it can; only
+// when the phone is offline (or the network hangs) does the stored copy step in.
+
+import { build, files, version } from '$service-worker';
 
 const sw = self as unknown as ServiceWorkerGlobalScope;
 
-sw.addEventListener('install', () => sw.skipWaiting());
-sw.addEventListener('activate', (event) => event.waitUntil(sw.clients.claim()));
+const ASSETS = `myfam-assets-${version}`;
+/** Pages and their data. Cleared on the login page, so nothing stays behind after logging out. */
+const PAGES = 'myfam-pages';
+const assetPaths = new Set([...build, ...files]);
+
+sw.addEventListener('install', (event) => {
+	event.waitUntil(
+		caches
+			.open(ASSETS)
+			.then((cache) => cache.addAll([...assetPaths]))
+			.then(() => sw.skipWaiting())
+	);
+});
+sw.addEventListener('activate', (event) =>
+	event.waitUntil(
+		(async () => {
+			for (const key of await caches.keys()) {
+				if (key.startsWith('myfam-assets-') && key !== ASSETS) await caches.delete(key);
+			}
+			await sw.clients.claim();
+		})()
+	)
+);
+
+/** Pages of the logged-in app; login, invites and uploads are never stored. */
+const APP_PAGES = /^\/(dashboard|einkauf|kalender|planung|einstellungen|familie)(\/|$)/;
+/** How long a slow network gets before the stored page is shown instead. */
+const NETWORK_WAIT_MS = 4000;
+
+sw.addEventListener('fetch', (event) => {
+	const { request } = event;
+	if (request.method !== 'GET') return;
+	const url = new URL(request.url);
+	if (url.origin !== sw.location.origin) return;
+
+	if (assetPaths.has(url.pathname)) {
+		event.respondWith(caches.match(request).then((hit) => hit ?? fetch(request)));
+		return;
+	}
+	if (APP_PAGES.test(url.pathname) || url.pathname === '/') {
+		event.respondWith(networkFirst(event, request));
+	}
+});
+
+async function networkFirst(event: FetchEvent, request: Request) {
+	const cache = await caches.open(PAGES);
+	const network = fetch(request).then(async (res) => {
+		if (res.ok && !res.redirected && res.type === 'basic') {
+			event.waitUntil(cache.put(request, res.clone()));
+		}
+		return res;
+	});
+	const stored = await cache.match(request);
+	if (!stored) return network;
+	network.catch(() => {});
+	const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), NETWORK_WAIT_MS));
+	try {
+		return (await Promise.race([network, timeout])) ?? stored;
+	} catch {
+		return stored;
+	}
+}
 
 type Message = { title: string; body: string; url: string; tag?: string };
 

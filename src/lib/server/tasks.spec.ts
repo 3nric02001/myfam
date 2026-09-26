@@ -163,4 +163,23 @@ describe('tasks', () => {
 		expect(await deleteTask(db, family.id, annaAdmin, shared.id)).toBe(false);
 		expect(await deleteTask(db, family.id, { id: ben.id, role: 'member' }, shared.id)).toBe(true);
 	});
+
+	it('brings a repeating task back on its next date once it is ticked off', async () => {
+		const { db, family, anna, ben } = await familyOfThree();
+		const t = await createTask(
+			db,
+			family.id,
+			anna.id,
+			input({ title: 'Müll', dueDate: '2099-01-05', repeat: 'weekly', assigneeId: ben.id })
+		);
+		await setTaskDone(db, family.id, ben.id, t.id, true);
+		const { open } = await listTasks(db, family.id, anna.id);
+		expect(open.map((o) => [o.title, o.dueDate, o.repeat, o.assigneeId])).toEqual([
+			['Müll', '2099-01-12', 'weekly', ben.id]
+		]);
+		// Undoing and ticking off again does not create another one.
+		await setTaskDone(db, family.id, ben.id, t.id, false);
+		await setTaskDone(db, family.id, ben.id, t.id, true);
+		expect((await listTasks(db, family.id, anna.id)).open).toHaveLength(1);
+	});
 });

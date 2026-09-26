@@ -5,6 +5,12 @@ import { requireViewer } from '$lib/server/guards';
 import { listUnseen, markAllSeen, markCardSeen } from '$lib/server/planning';
 import { listSubscriptionEvents } from '$lib/server/subscriptions';
 import { listTasks } from '$lib/server/tasks';
+import { listItems } from '$lib/server/shopping';
+import { listMeals } from '$lib/server/meals';
+import { getPlan } from '$lib/server/plan';
+import { getOfferSettings } from '$lib/server/offers';
+import { listSubscriptions } from '$lib/server/push';
+import { listMemberColors } from '$lib/server/families';
 import { field } from '$lib/server/validation';
 import { holidaysBetween } from '$lib/holidays';
 import { addDays, today } from '$lib/dates';
@@ -21,6 +27,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 	// Today's and tomorrow's events, own ones and those from subscribed calendars.
 	const own = (await listEvents(db, family.id, user.id, now, tomorrow)).map((e) => ({
 		id: e.id,
+		key: e.key,
+		createdById: e.createdById as string | null,
+		repeat: e.repeat as string | null,
 		title: e.title,
 		startDate: e.startDate,
 		startTime: e.startTime,
@@ -33,6 +42,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 	}));
 	const subscribed = (await listSubscriptionEvents(db, family.id, now, tomorrow)).map((e) => ({
 		id: e.id,
+		key: e.id,
+		createdById: null,
+		repeat: null,
 		title: e.title,
 		startDate: e.startDate,
 		startTime: e.startTime,
@@ -50,8 +62,21 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const { open } = await listTasks(db, family.id, user.id, { mine: true, doneLimit: 0 });
 	const until = addDays(now, TASK_DAYS);
 
+	const items = await listItems(db, family.id);
+	const plan = await getPlan(db, family.id, now);
+	// First steps for a new family; the dashboard hides them once everything is done.
+	const setup = {
+		invited: (await listMemberColors(db, family.id)).length > 1,
+		push: (await listSubscriptions(db, user.id)).length > 0,
+		stores: (await getOfferSettings(db, family.id)).stores.length > 0
+	};
+
 	return {
 		today: now,
+		userName: user.name,
+		shopping: { open: items.filter((i) => !i.done).length, planned: plan?.date ?? null },
+		meals: await listMeals(db, family.id, now, now),
+		setup,
 		tomorrow,
 		events,
 		holidays: holidaysBetween(now, tomorrow, await getFamilyState(db, family.id)),

@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import type { DB } from './db/client';
-import { shoppingCategory, shoppingHistory, shoppingItem, user } from './db/schema';
+import { family, shoppingCategory, shoppingHistory, shoppingItem, user } from './db/schema';
 import { categoryKey, guessCategory, isCategory, type CategoryId } from '$lib/categories';
 
 // Every query is scoped to a family, so one family can never see or change another's items.
@@ -103,10 +103,56 @@ export async function setDone(db: DB, familyId: string, id: string, done: boolea
 		.where(and(eq(shoppingItem.familyId, familyId), eq(shoppingItem.id, id)));
 }
 
+/** Deletes an entry and returns it, so it can be put back with restoreItem(). */
 export async function deleteItem(db: DB, familyId: string, id: string) {
-	await db
+	const [row] = await db
 		.delete(shoppingItem)
-		.where(and(eq(shoppingItem.familyId, familyId), eq(shoppingItem.id, id)));
+		.where(and(eq(shoppingItem.familyId, familyId), eq(shoppingItem.id, id)))
+		.returning();
+	return row ?? null;
+}
+
+/** Puts a deleted entry back as it was ("Rückgängig"), without counting it in the history again. */
+export async function restoreItem(
+	db: DB,
+	familyId: string,
+	createdBy: string,
+	input: { name: string; quantity?: string | null; done: boolean }
+) {
+	const [row] = await db
+		.insert(shoppingItem)
+		.values({
+			familyId,
+			createdBy,
+			name: input.name.trim(),
+			quantity: input.quantity?.trim() || null,
+			done: input.done
+		})
+		.returning();
+	return row;
+}
+
+/** The family's order of sections, as walked through their store; null is the default order. */
+export async function getCategoryOrder(db: DB, familyId: string): Promise<string[] | null> {
+	const [row] = await db
+		.select({ order: family.categoryOrder })
+		.from(family)
+		.where(eq(family.id, familyId));
+	try {
+		const order = row?.order ? JSON.parse(row.order) : null;
+		return Array.isArray(order)
+			? order.filter((id) => typeof id === 'string' && isCategory(id))
+			: null;
+	} catch {
+		return null;
+	}
+}
+
+export async function setCategoryOrder(db: DB, familyId: string, order: CategoryId[] | null) {
+	await db
+		.update(family)
+		.set({ categoryOrder: order ? JSON.stringify(order) : null })
+		.where(eq(family.id, familyId));
 }
 
 export async function clearDone(db: DB, familyId: string) {

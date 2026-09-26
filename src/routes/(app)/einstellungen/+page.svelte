@@ -1,6 +1,9 @@
 <script lang="ts">
 	import {
+		Check,
 		ChevronDown,
+		ChevronRight,
+		UsersRound,
 		KeyRound,
 		LogOut,
 		Mail,
@@ -11,6 +14,7 @@
 	} from '@lucide/svelte';
 	import { enhance } from '$app/forms';
 	import { themeColor, type Theme } from '$lib/theme';
+	import { COLORS } from '$lib/colors';
 	import PushSettings from './PushSettings.svelte';
 	import type { PageProps } from './$types';
 
@@ -49,7 +53,12 @@
 	// A section with an error stays open so the message and the entered values are visible.
 	let open = $state<Section | null>(null);
 	$effect(() => {
-		if (form?.action && form.action !== 'theme' && form.action !== 'push')
+		if (
+			form?.action &&
+			form.action !== 'theme' &&
+			form.action !== 'push' &&
+			form.action !== 'color'
+		)
 			open = form.message ? (form.action as Section) : null;
 	});
 
@@ -83,8 +92,65 @@
 	</div>
 </section>
 
-{#if form?.action && form.action !== 'theme' && form.action !== 'push' && 'success' in form && form.success}
+{#if form?.action && form.action !== 'theme' && form.action !== 'push' && form.action !== 'color' && 'success' in form && form.success}
 	<p class="success mb-4" role="status">{form.success}</p>
+{/if}
+
+{#if data.family}
+	<h2 class="mb-2 px-1 text-xs font-semibold tracking-wide text-slate-500 uppercase">Familie</h2>
+	<div class="card mb-6 divide-y divide-slate-100 overflow-hidden">
+		<a href="/familie" class="flex min-h-14 items-center gap-3 px-4 py-2">
+			<span
+				class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600"
+				aria-hidden="true"><UsersRound size={18} /></span
+			>
+			<span class="min-w-0 flex-1">
+				<span class="block font-medium">{data.family.name}</span>
+				<span class="block truncate text-sm text-slate-500"
+					>{data.memberColors.length}
+					{data.memberColors.length === 1 ? 'Mitglied' : 'Mitglieder'} · Einladen, Feiertage, Kalender-Abos</span
+				>
+			</span>
+			<ChevronRight size={18} class="shrink-0 text-slate-400" aria-hidden="true" />
+		</a>
+		<form
+			method="POST"
+			action="?/color"
+			use:enhance={() =>
+				({ update }) =>
+					update({ reset: false })}
+			class="px-4 py-3"
+		>
+			<p class="mb-2 text-sm font-medium">Deine Farbe</p>
+			<div class="flex flex-wrap gap-2" role="radiogroup" aria-label="Deine Farbe">
+				{#each COLORS as c (c.id)}
+					{@const mine = data.myColor === c.id}
+					<label
+						class="flex size-9 cursor-pointer items-center justify-center rounded-full text-white {mine
+							? 'ring-2 ring-slate-900 ring-offset-2 ring-offset-surface'
+							: ''}"
+						style="background: {c.hex}"
+						title={c.label}
+					>
+						<input
+							type="radio"
+							name="color"
+							value={c.id}
+							checked={mine}
+							class="sr-only"
+							aria-label={c.label}
+							onchange={(e) => e.currentTarget.form?.requestSubmit()}
+						/>
+						{#if mine}<Check size={18} strokeWidth={3} aria-hidden="true" />{/if}
+					</label>
+				{/each}
+			</div>
+			<p class="mt-2 text-xs text-slate-500">
+				Damit sieht die Familie im Kalender, bei Aufgaben und auf der Einkaufsliste, was von dir
+				ist.
+			</p>
+		</form>
+	</div>
 {/if}
 
 <h2 class="mb-2 px-1 text-xs font-semibold tracking-wide text-slate-500 uppercase">Darstellung</h2>
