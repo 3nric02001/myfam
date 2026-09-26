@@ -7,6 +7,8 @@ import { requireFamily } from '$lib/server/guards';
 import { getOfferSettings } from '$lib/server/offers';
 import { OcrError, readText } from '$lib/server/ocr';
 import { recordPrice } from '$lib/server/prices';
+import { savePurchase } from '$lib/server/purchases';
+import type { PurchaseLine } from '$lib/purchases';
 import { listHistory, listItems } from '$lib/server/shopping';
 import { field } from '$lib/server/validation';
 import type { Actions, PageServerLoad } from './$types';
@@ -77,18 +79,25 @@ export const actions: Actions = {
 		}
 		const count = Math.min(Number(field(form, 'lines')) || 0, MAX_LINES);
 		let saved = 0;
+		const lines: PurchaseLine[] = [];
 		for (let i = 0; i < count; i++) {
 			if (field(form, `keep-${i}`) !== 'on') continue;
 			const name = field(form, `name-${i}`).slice(0, 100);
 			const product = field(form, `product-${i}`).slice(0, 100);
 			const price = parsePrice(field(form, `price-${i}`));
 			if (!name || !price) continue;
+			const weighed = field(form, `weighed-${i}`) === '1';
+			const pieces = weighed
+				? 1
+				: Math.min(Math.max(Number(field(form, `count-${i}`)) || 1, 1), 99);
+			lines.push({ name, product: product || name, price, count: pieces, weighed });
 			if (
 				await recordPrice(db, family.id, user.id, { name, store, product, price, seenOn: date })
 			) {
 				saved++;
 			}
 		}
-		return { saved };
+		const trip = await savePurchase(db, family.id, user.id, { store, date, lines });
+		return { saved, purchaseId: trip?.id ?? null };
 	}
 };

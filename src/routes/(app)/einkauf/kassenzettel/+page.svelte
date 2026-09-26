@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Camera, ChevronLeft, LoaderCircle } from '@lucide/svelte';
+	import { Camera, ChevronLeft, Wallet, LoaderCircle } from '@lucide/svelte';
 	import { enhance } from '$app/forms';
 	import { formatPrice, STORES } from '$lib/offers';
 	import type { PageProps } from './$types';
@@ -34,16 +34,26 @@
 <a href="/einkauf" class="mb-2 inline-flex items-center gap-1 text-sm text-slate-500"
 	><ChevronLeft size={16} aria-hidden="true" /> Einkaufsliste</a
 >
-<h1 class="mb-1 text-xl font-semibold tracking-tight">Kassenzettel</h1>
+<div class="mb-1 flex items-center gap-2">
+	<h1 class="min-w-0 flex-1 text-xl font-semibold tracking-tight">Kassenzettel</h1>
+	<a
+		href="/finanzen"
+		class="flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-slate-300 px-3 text-sm font-medium text-slate-700"
+		><Wallet size={16} aria-hidden="true" /> Finanzen</a
+	>
+</div>
 <p class="mb-4 text-sm text-slate-500">
 	Fotografiere den Bon nach dem Einkauf. MyFam liest die Preise und merkt sie sich für die Schätzung
-	des nächsten Einkaufs. Das Foto wird nicht gespeichert.
+	des nächsten Einkaufs. Der Einkauf landet in den Finanzen, das Foto selbst wird nicht gespeichert.
 </p>
 {#if form?.message}<p class="error mb-4">{form.message}</p>{/if}
 {#if form && 'saved' in form}
 	<p class="success mb-4">
 		{form.saved}
 		{form.saved === 1 ? 'Preis' : 'Preise'} gemerkt.
+		{#if form.purchaseId}
+			<a href="/finanzen/{form.purchaseId}" class="underline">Einkauf ansehen</a> ·
+		{/if}
 		<a href="/einkauf" class="underline">Zur Einkaufsliste</a>
 	</p>
 {/if}
@@ -143,6 +153,8 @@
 							/>
 						</div>
 						<input type="hidden" name="product-{i}" value={line.product} />
+						<input type="hidden" name="count-{i}" value={line.count} />
+						<input type="hidden" name="weighed-{i}" value={line.weighed ? '1' : '0'} />
 						<span class="mt-0.5 block text-xs text-slate-500">
 							Bon: {line.text}{#if line.count > 1}&nbsp;· {line.count} Stück{/if}{#if line.weighed}&nbsp;·
 								nach Gewicht{/if}{#if !line.known}&nbsp;· nicht auf der Liste{/if}

@@ -120,6 +120,13 @@
       "when": 1790438531942,
       "tag": "0016_ux_improvements",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1790448992325,
+      "tag": "0017_purchases",
+      "breakpoints": true
     }
   ]
 }

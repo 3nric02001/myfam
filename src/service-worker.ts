@@ -36,7 +36,7 @@ sw.addEventListener('activate', (event) =>
 );
 
 /** Pages of the logged-in app; login, invites and uploads are never stored. */
-const APP_PAGES = /^\/(dashboard|einkauf|kalender|planung|einstellungen|familie)(\/|$)/;
+const APP_PAGES = /^\/(dashboard|einkauf|kalender|planung|finanzen|einstellungen|familie)(\/|$)/;
 /** How long a slow network gets before the stored page is shown instead. */
 const NETWORK_WAIT_MS = 4000;
 

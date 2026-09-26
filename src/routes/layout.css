@@ -276,3 +276,21 @@
 		@apply text-brand-700 underline;
 	}
 }
+
+/* The menu behind the logo slides in from the left as a full-height panel. */
+dialog.menu[open] {
+	animation: menu-in 160ms ease-out;
+}
+dialog.menu::backdrop {
+	background: rgb(0 0 0 / 0.4);
+}
+@keyframes menu-in {
+	from {
+		transform: translateX(-100%);
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	dialog.menu[open] {
+		animation: none;
+	}
+}
