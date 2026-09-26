@@ -41,7 +41,7 @@
 				<div class="min-w-0 flex-1">
 					<p>
 						{member.name}
-						{#if member.id === data.user.id}<span class="text-xs text-slate-400">(du)</span>{/if}
+						{#if member.id === data.user.id}<span class="text-xs text-slate-500">(du)</span>{/if}
 					</p>
 					<p class="text-xs text-slate-500">{member.email}</p>
 				</div>

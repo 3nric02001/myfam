@@ -42,6 +42,6 @@
 	</p>
 </div>
 
-<p class="mt-3 text-center text-xs text-slate-400">
+<p class="mt-3 text-center text-xs text-slate-500">
 	Änderungen bitte im Ursprungskalender vornehmen.
 </p>

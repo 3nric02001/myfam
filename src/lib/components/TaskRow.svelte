@@ -63,7 +63,7 @@
 		<span class="min-w-0 flex-1">
 			<span class="block truncate {done ? 'text-slate-400 line-through' : ''}">{task.title}</span>
 			{#if showDue || overdue}
-				<span class="block text-xs {overdue ? 'font-medium text-red-700' : 'text-slate-400'}">
+				<span class="block text-xs {overdue ? 'font-medium text-red-700' : 'text-slate-500'}">
 					{overdue ? 'überfällig seit' : 'fällig'}
 					{task.dueDate === today ? 'heute' : shortDate(task.dueDate)}
 				</span>

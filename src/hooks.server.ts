@@ -5,7 +5,13 @@ import { sessionCookieName, setSessionFamily, validateSession } from '$lib/serve
 import { getMembership, listFamiliesOfUser } from '$lib/server/families';
 import { setSessionCookie } from '$lib/server/cookies';
 import { startCalendarSync } from '$lib/server/calendar-sync';
-import { parseTheme, themeColor, themeCookieName } from '$lib/theme';
+import {
+	parseTextSize,
+	parseTheme,
+	themeColor,
+	themeCookieName,
+	textSizeCookieName
+} from '$lib/theme';
 import { vapidKeys, vapidSubject, webPushSender } from '$lib/server/push';
 import { startReminderScheduler } from '$lib/server/reminders';
 import { startCleanup } from '$lib/server/cleanup';
@@ -44,12 +50,15 @@ const handleRequest: Handle = async ({ event, resolve }) => {
 
 	// Render the chosen appearance right away, so a forced theme never flashes the other one.
 	const theme = parseTheme(event.cookies.get(themeCookieName));
+	const textSize = parseTextSize(event.cookies.get(textSizeCookieName));
 	const render = () =>
 		resolve(event, {
 			transformPageChunk: ({ html }) => {
+				if (textSize === 'large')
+					html = html.replace('<html lang="de"', '<html lang="de" data-text="large"');
 				if (theme === 'system') return html;
 				return html
-					.replace('<html lang="de">', `<html lang="de" data-theme="${theme}">`)
+					.replace('<html lang="de"', `<html lang="de" data-theme="${theme}"`)
 					.replace(
 						/<meta name="theme-color"[^>]*>\s*<meta name="theme-color"[^>]*>/,
 						`<meta name="theme-color" content="${themeColor[theme]}" />`

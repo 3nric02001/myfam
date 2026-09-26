@@ -16,7 +16,7 @@ import {
 	vapidSubject,
 	webPushSender
 } from '$lib/server/push';
-import { parseTheme, themeCookieName } from '$lib/theme';
+import { parseTextSize, parseTheme, textSizeCookieName, themeCookieName } from '$lib/theme';
 import { isColor } from '$lib/colors';
 import { listMemberColors, setMemberColor } from '$lib/server/families';
 import type { Actions, PageServerLoad } from './$types';
@@ -27,6 +27,7 @@ export const load: PageServerLoad = async ({ cookies, locals }) => {
 	return {
 		myColor: colors.find((m) => m.id === user.id)?.color ?? null,
 		theme: parseTheme(cookies.get(themeCookieName)),
+		textSize: parseTextSize(cookies.get(textSizeCookieName)),
 		push: {
 			publicKey: vapidKeys(db, env).publicKey,
 			devices: await listSubscriptions(db, user.id)
@@ -54,6 +55,18 @@ export const actions: Actions = {
 			maxAge: 60 * 60 * 24 * 400
 		});
 		return { action: 'theme', theme };
+	},
+
+	textSize: async ({ request, cookies, url }) => {
+		const textSize = parseTextSize(field(await request.formData(), 'textSize'));
+		cookies.set(textSizeCookieName, textSize, {
+			path: '/',
+			httpOnly: false,
+			sameSite: 'lax',
+			secure: !dev && url.protocol === 'https:',
+			maxAge: 60 * 60 * 24 * 400
+		});
+		return { action: 'textSize' as const, textSize };
 	},
 
 	pushTest: async ({ locals }) => {

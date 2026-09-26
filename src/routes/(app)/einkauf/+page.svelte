@@ -413,7 +413,7 @@
 					{/await}
 				{/if}
 				{#if item.createdBy && !shopMode}
-					<span class="flex items-center gap-1.5 text-xs text-slate-400"
+					<span class="flex items-center gap-1.5 text-xs text-slate-500"
 						><PersonDot name={item.createdBy} size={7} />von {item.createdBy}</span
 					>
 				{/if}
@@ -653,7 +653,7 @@
 							<span class="min-w-0 flex-1">
 								{p.name}
 								{#if p.quantity}<span class="ml-1 text-sm text-slate-500">{p.quantity}</span>{/if}
-								<span class="block text-xs text-slate-400"
+								<span class="block text-xs text-slate-500"
 									>wird gesendet, sobald du online bist</span
 								>
 							</span>
@@ -711,7 +711,7 @@
 							>
 							<span class="min-w-0 flex-1">
 								{p.name}
-								<span class="block text-xs text-slate-400"
+								<span class="block text-xs text-slate-500"
 									>wird gesendet, sobald du online bist</span
 								>
 							</span>
