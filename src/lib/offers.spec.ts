@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
 	matchOffer,
-	offerLink,
 	parsePrice,
 	recommend,
 	runsDuring,
-	slug,
 	term,
 	weekRange,
 	type Offer
@@ -171,31 +169,5 @@ describe('weeks', () => {
 				weekRange('2026-09-24', 'this')
 			)
 		).toBe(false);
-	});
-});
-
-describe('offerLink', () => {
-	it('leads every offer somewhere useful', () => {
-		expect(offerLink({ store: 'lidl', source: 'marktguru', brand: 'Galbani', url: null })).toEqual({
-			href: 'https://www.marktguru.de/rb/lidl/galbani',
-			label: 'Galbani bei Lidl auf marktguru'
-		});
-		// Old cached offers point at marktguru's home page: build the link instead.
-		expect(
-			offerLink({ store: 'rewe', source: 'marktguru', url: 'https://www.marktguru.de/' }).href
-		).toBe('https://www.marktguru.de/r/rewe');
-		expect(
-			offerLink({ store: 'rewe', source: 'manual', url: 'https://www.rewe.de/angebote/' })
-		).toEqual({ href: 'https://www.rewe.de/angebote/', label: 'Prospekt öffnen' });
-		expect(offerLink({ store: 'edeka', source: 'manual', url: null })).toEqual({
-			href: 'https://www.marktguru.de/r/edeka',
-			label: 'Edeka-Angebote auf marktguru'
-		});
-	});
-
-	it('writes names like marktguru', () => {
-		expect(slug('Gut&Günstig')).toBe('gut-guenstig');
-		expect(slug('ja!')).toBe('ja');
-		expect(slug('Müller')).toBe('mueller');
 	});
 });

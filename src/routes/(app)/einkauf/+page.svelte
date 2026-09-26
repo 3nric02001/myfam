@@ -16,14 +16,12 @@
 	import { addDays, dayLabel, shortDate } from '$lib/dates';
 	import { CATEGORIES } from '$lib/categories';
 	import CategoryIcon from '$lib/components/CategoryIcon.svelte';
-	import OfferLink from '$lib/components/OfferLink.svelte';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
 
 	let open = $derived(data.items.filter((i) => !i.done));
 	let editHistory = $state(false);
-	let editCategories = $state(false);
 	// Open items by section, sections in supermarket order, empty ones left out.
 	let groups = $derived(
 		CATEGORIES.map((c) => ({ ...c, items: open.filter((i) => i.category === c.id) })).filter(
@@ -330,7 +328,7 @@
 					<span class="block text-xs text-slate-400">von {item.createdBy}</span>
 				{/if}
 			</div>
-			{#if !item.done && !editCategories}
+			{#if !item.done}
 				{#await data.offers then offers}
 					{@const cost = offers.cost.perItem[item.id]}
 					{#if cost}
@@ -339,20 +337,6 @@
 						</span>
 					{/if}
 				{/await}
-			{/if}
-			{#if editCategories && !item.done}
-				<form method="POST" action="?/category" use:enhance>
-					<input type="hidden" name="name" value={item.name} />
-					<select
-						name="category"
-						class="w-40 shrink-0 py-1 text-sm"
-						aria-label="Bereich für {item.name}"
-						value={item.category}
-						onchange={(e) => e.currentTarget.form?.requestSubmit()}
-					>
-						{#each CATEGORIES as c (c.id)}<option value={c.id}>{c.label}</option>{/each}
-					</select>
-				</form>
 			{/if}
 			{#if item.done}
 				<button
@@ -408,14 +392,6 @@
 {/snippet}
 
 {#if open.length}
-	<div class="mb-2 flex justify-end">
-		<button
-			class="text-sm text-slate-500 underline"
-			onclick={() => (editCategories = !editCategories)}
-		>
-			{editCategories ? 'Fertig' : 'Bereiche ändern'}
-		</button>
-	</div>
 	<div class="space-y-4">
 		{#each groups as group (group.id)}
 			<section aria-label={group.label}>
@@ -575,7 +551,6 @@
 										marktguru.de
 									{/if}
 								</span>
-								<OfferLink offer={o} />
 							</li>
 						{/each}
 					</ul>

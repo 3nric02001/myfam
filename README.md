@@ -141,7 +141,7 @@ Danach unter `https://<deine Domain>/registrieren` die erste Familie anlegen und
 
 ## Bereiche in der Einkaufsliste
 
-Die offenen Einträge sind nach Supermarkt-Bereichen gruppiert (Obst & Gemüse, Brot, Milch/Käse/Eier, Fleisch/Fisch, Vorrat, Süßes, Getränke, Tiefkühl, Drogerie, Haushalt, Baby & Tier, Sonstiges). Die App rät den Bereich anhand einer Stichwortliste (`src/lib/categories.ts`), ganz ohne Internet. Liegt sie daneben, lässt sich der Bereich über **Bereiche ändern** korrigieren; die Familie behält die Korrektur für diesen Artikel.
+Die offenen Einträge sind nach Supermarkt-Bereichen gruppiert (Obst & Gemüse, Brot, Milch/Käse/Eier, Fleisch/Fisch, Vorrat, Süßes, Getränke, Tiefkühl, Drogerie, Haushalt, Baby & Tier, Sonstiges). Die App rät den Bereich anhand einer Stichwortliste (`src/lib/categories.ts`), ganz ohne Internet. Liegt sie daneben, lässt sich der Bereich in der Detailansicht des Eintrags korrigieren; die Familie behält die Korrektur für diesen Artikel.
 
 ## Angebote in der Einkaufsliste
 
@@ -149,7 +149,7 @@ Unter **Einkauf → Tipp / Angebote** wählt jede Familie ihre Märkte (und die 
 
 Ein Angebot zählt sicher, wenn der Artikel als eigenes Wort im Produktnamen steht („Milch“ in „Frische Milch“). Ist er nur das Ende eines längeren Worts („Vollmilch“, „Müllermilch“) oder nennt das Angebot eine andere Produktart („Schokolade“, „Drink“), fragt die App einmal nach, ob das zählt, und merkt sich die Antwort für die Familie. Mitten im Wort („Vollmilchschokolade“, „Milchreis“) passt es nie. Oben auf der Angebote-Seite lässt sich zwischen dieser und der nächsten Woche umschalten.
 
-**Preise:** Beim Abhaken lässt sich über das €-Symbol eintragen, was ein Artikel gekostet hat (Markt, Preis, optional das genaue Produkt wie „Gut&Günstig Mozzarella“). Daraus und aus den Angeboten schätzt die App den Gesamtpreis der offenen Liste. Ist ein gemerkter Preis niedriger als das beste Angebot, zeigt die Liste die günstigere Alternative. Ein Tipp auf einen Eintrag öffnet seine Detailansicht: Name, Menge und Bereich ändern, alle Angebote mit Quelle, Bild und Link (bei marktguru die Seite der Marke in diesem Markt, z. B. /rb/lidl/milbona, weil die API keine Seite für das einzelne Angebot nennt) sowie die gemerkten Preise. Abgehakt wird nur über den Kreis links. Eine freie Quelle für normale Regalpreise gibt es nicht, deshalb lernt die App sie beim Einkaufen.
+**Preise:** Beim Abhaken lässt sich über das €-Symbol eintragen, was ein Artikel gekostet hat (Markt, Preis, optional das genaue Produkt wie „Gut&Günstig Mozzarella“). Daraus und aus den Angeboten schätzt die App den Gesamtpreis der offenen Liste. Ist ein gemerkter Preis niedriger als das beste Angebot, zeigt die Liste die günstigere Alternative. Ein Tipp auf einen Eintrag öffnet seine Detailansicht: Name, Menge und Bereich ändern, alle Angebote mit Quelle und Bild sowie die gemerkten Preise. Abgehakt wird nur über den Kreis links. Eine freie Quelle für normale Regalpreise gibt es nicht, deshalb lernt die App sie beim Einkaufen.
 
 **Kassenzettel:** Unter /einkauf/kassenzettel fotografiert man den Bon. Der Server liest ihn mit tesseract.js und dem deutschen Sprachmodell aus `@tesseract.js-data/deu` (alles lokal, kein externer Dienst, das Foto wird nicht gespeichert). Die erkannten Zeilen werden den Einträgen der Liste zugeordnet und nach dem Prüfen als Preise gemerkt. Der voraussichtliche Preis steht als Summe unter der Liste, wie in einem Warenkorb.
 

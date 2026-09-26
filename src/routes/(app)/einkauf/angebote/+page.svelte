@@ -3,7 +3,6 @@
 	import { enhance } from '$app/forms';
 	import { shortDate } from '$lib/dates';
 	import { formatPrice, STORES, storeLabel } from '$lib/offers';
-	import OfferLink from '$lib/components/OfferLink.svelte';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
@@ -64,7 +63,6 @@
 									>
 									als „{q.name}“?
 								</p>
-								<OfferLink offer={q.example} />
 								<div class="mt-2 flex gap-2">
 									{#each [true, false] as fits (fits)}
 										<form method="POST" action="?/answer" use:enhance class="flex-1">
@@ -136,7 +134,6 @@
 									bis {shortDate(hit.offer.validUntil)} ·
 									{hit.offer.source === 'manual' ? 'eingetragen' : 'marktguru'}
 								</span>
-								<OfferLink offer={hit.offer} />
 							</li>
 						{/each}
 					</ul>
@@ -201,10 +198,6 @@
 				<input type="date" name="validUntil" required min={data.today} value={data.defaultUntil} />
 			</label>
 		</div>
-		<label class="block">
-			<span class="label">Link zum Prospekt (optional)</span>
-			<input name="url" type="url" maxlength="500" placeholder="https://…" />
-		</label>
 		<button class="btn-primary w-full">Eintragen</button>
 	</form>
 
@@ -220,7 +213,6 @@
 							{#if o.validFrom && o.validFrom > data.today}ab {shortDate(o.validFrom)}{/if}
 							bis {shortDate(o.validUntil)}{#if o.createdBy}&nbsp;· von {o.createdBy}{/if}
 						</span>
-						<OfferLink offer={{ ...o, source: 'manual' }} />
 					</span>
 					<form method="POST" action="?/delete" use:enhance>
 						<input type="hidden" name="id" value={o.id} />
