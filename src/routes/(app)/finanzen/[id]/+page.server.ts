@@ -15,6 +15,6 @@ export const actions: Actions = {
 	delete: async ({ locals, params }) => {
 		const { family } = requireFamily(locals);
 		await deletePurchase(db, family.id, params.id);
-		redirect(303, '/einkauf/verlauf');
+		redirect(303, '/finanzen');
 	}
 };

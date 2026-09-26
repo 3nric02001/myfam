@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Camera, ChevronLeft, History, LoaderCircle } from '@lucide/svelte';
+	import { Camera, ChevronLeft, Wallet, LoaderCircle } from '@lucide/svelte';
 	import { enhance } from '$app/forms';
 	import { formatPrice, STORES } from '$lib/offers';
 	import type { PageProps } from './$types';
@@ -37,14 +37,14 @@
 <div class="mb-1 flex items-center gap-2">
 	<h1 class="min-w-0 flex-1 text-xl font-semibold tracking-tight">Kassenzettel</h1>
 	<a
-		href="/einkauf/verlauf"
+		href="/finanzen"
 		class="flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-slate-300 px-3 text-sm font-medium text-slate-700"
-		><History size={16} aria-hidden="true" /> Verlauf</a
+		><Wallet size={16} aria-hidden="true" /> Finanzen</a
 	>
 </div>
 <p class="mb-4 text-sm text-slate-500">
 	Fotografiere den Bon nach dem Einkauf. MyFam liest die Preise und merkt sie sich für die Schätzung
-	des nächsten Einkaufs. Der Einkauf landet im Verlauf, das Foto selbst wird nicht gespeichert.
+	des nächsten Einkaufs. Der Einkauf landet in den Finanzen, das Foto selbst wird nicht gespeichert.
 </p>
 {#if form?.message}<p class="error mb-4">{form.message}</p>{/if}
 {#if form && 'saved' in form}
@@ -52,7 +52,7 @@
 		{form.saved}
 		{form.saved === 1 ? 'Preis' : 'Preise'} gemerkt.
 		{#if form.purchaseId}
-			<a href="/einkauf/verlauf/{form.purchaseId}" class="underline">Einkauf ansehen</a> ·
+			<a href="/finanzen/{form.purchaseId}" class="underline">Einkauf ansehen</a> ·
 		{/if}
 		<a href="/einkauf" class="underline">Zur Einkaufsliste</a>
 	</p>

@@ -12,8 +12,8 @@
 
 <svelte:head><title>Einkauf bei {storeLabel(p.store)} · MyFam</title></svelte:head>
 
-<a href="/einkauf/verlauf" class="mb-2 inline-flex items-center gap-1 text-sm text-slate-500"
-	><ChevronLeft size={16} aria-hidden="true" /> Verlauf</a
+<a href="/finanzen" class="mb-2 inline-flex items-center gap-1 text-sm text-slate-500"
+	><ChevronLeft size={16} aria-hidden="true" /> Finanzen</a
 >
 
 <div class="card mb-5 p-4">
@@ -53,8 +53,7 @@
 	method="POST"
 	action="?/delete"
 	use:enhance={({ cancel }) => {
-		if (!confirm('Diesen Einkauf aus dem Verlauf löschen? Gemerkte Preise bleiben erhalten.'))
-			cancel();
+		if (!confirm('Diesen Einkauf löschen? Gemerkte Preise bleiben erhalten.')) cancel();
 	}}
 >
 	<button class="btn-secondary w-full text-red-700">Einkauf löschen</button>

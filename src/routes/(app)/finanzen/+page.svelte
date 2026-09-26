@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ChevronLeft, ChevronRight, ReceiptText } from '@lucide/svelte';
+	import { ChevronRight, ReceiptText } from '@lucide/svelte';
 	import { monthLabel, shortDayLabel } from '$lib/dates';
 	import { formatPrice, storeLabel } from '$lib/offers';
 	import {
@@ -38,12 +38,10 @@
 	}
 </script>
 
-<svelte:head><title>Einkaufsverlauf · MyFam</title></svelte:head>
+<svelte:head><title>Finanzen · MyFam</title></svelte:head>
 
-<a href="/einkauf" class="mb-2 inline-flex items-center gap-1 text-sm text-slate-500"
-	><ChevronLeft size={16} aria-hidden="true" /> Einkaufsliste</a
->
-<h1 class="mb-4 text-xl font-semibold tracking-tight">Verlauf</h1>
+<h1 class="text-xl font-semibold tracking-tight">Finanzen</h1>
+<p class="mb-4 text-sm text-slate-500">Eure Einkäufe aus den fotografierten Kassenzetteln.</p>
 
 {#if !data.purchases.length}
 	<div class="card p-5 text-center">
@@ -146,7 +144,7 @@
 			<ul class="card divide-y divide-slate-100">
 				{#each group.items as p (p.id)}
 					<li>
-						<a href="/einkauf/verlauf/{p.id}" class="flex min-h-14 items-center gap-3 px-4 py-2.5">
+						<a href="/finanzen/{p.id}" class="flex min-h-14 items-center gap-3 px-4 py-2.5">
 							<div class="min-w-0 flex-1">
 								<p class="truncate font-semibold">{storeLabel(p.store)}</p>
 								<p class="text-xs text-slate-500">
