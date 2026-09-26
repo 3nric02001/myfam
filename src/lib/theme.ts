@@ -8,7 +8,7 @@ export function parseTheme(value: string | null | undefined): Theme {
 }
 
 /** Browser bar color, matching the header background in src/routes/layout.css. */
-export const themeColor = { light: '#ffffff', dark: '#221f1c' } as const;
+export const themeColor = { light: '#ffffff', dark: '#1a2020' } as const;
 
 // Text size, also per device: 'large' scales the whole app by 12.5% (see src/routes/layout.css).
 export type TextSize = 'normal' | 'large';
