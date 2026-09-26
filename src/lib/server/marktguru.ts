@@ -57,29 +57,14 @@ function berlinDay(timestamp: string | undefined) {
 	return Number.isNaN(date.getTime()) ? '' : dayOf(date);
 }
 
-/** marktguru's way of writing names in addresses: "Müller" -> mueller, "Gustavo Gusto" -> gustavo-gusto. */
-export function slug(name: string) {
-	return name
-		.toLowerCase()
-		.replace(/ä/g, 'ae')
-		.replace(/ö/g, 'oe')
-		.replace(/ü/g, 'ue')
-		.replace(/ß/g, 'ss')
-		.normalize('NFD')
-		.replace(/[\u0300-\u036f]/g, '')
-		.replace(/[^a-z0-9]+/g, '-')
-		.replace(/^-|-$/g, '');
-}
-
-/**
- * Where to look at the offer on marktguru: the link it gives, else its page for the brand at
- * that store (e.g. /rb/lidl/milbona), else the store's offers. The API names no page for a
- * single offer.
- */
-function offerUrl(raw: RawOffer, store: string) {
-	if (raw.externalUrl?.startsWith('https://')) return raw.externalUrl;
-	const brand = raw.brand?.name ? slug(raw.brand.name) : '';
-	return `https://www.marktguru.de/${brand ? `rb/${store}/${brand}` : `r/${store}`}`;
+/** A link marktguru gives to the retailer's own page; its links to itself say nothing more. */
+function shopUrl(url: string | null | undefined) {
+	try {
+		const parsed = new URL(url ?? '');
+		return parsed.protocol === 'https:' && !parsed.hostname.endsWith('marktguru.de') ? url : null;
+	} catch {
+		return null;
+	}
 }
 
 /** The offer's picture, cut from the leaflet. */
@@ -117,7 +102,8 @@ export function toOffers(raw: RawOffer, today: string): Offer[] {
 			validFrom,
 			validUntil,
 			source: 'marktguru' as const,
-			url: offerUrl(raw, store),
+			brand: raw.brand?.name || null,
+			url: shopUrl(raw.externalUrl),
 			image: offerImage(raw)
 		}));
 }

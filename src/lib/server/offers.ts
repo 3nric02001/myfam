@@ -16,6 +16,8 @@ import { searchMarktguru } from './marktguru';
 // Every query is scoped to a family, like the shopping list itself.
 
 const CACHE_MS = 6 * 3600_000;
+// Raised when cached offers lack fields the pages need, so old entries are fetched again.
+const CACHE_VERSION = 2;
 /** Upper bound of searches per page load, so a long list cannot flood the source. */
 const MAX_SEARCHES = 30;
 
@@ -107,7 +109,8 @@ export async function autoOffers(
 	let failed = false;
 	const fresh = new Date(Date.now() - CACHE_MS);
 
-	for (const query of queries.slice(0, MAX_SEARCHES)) {
+	for (const term of queries.slice(0, MAX_SEARCHES)) {
+		const query = `v${CACHE_VERSION}:${term}`;
 		const [cached] = await db
 			.select()
 			.from(offerSearchCache)
@@ -117,7 +120,7 @@ export async function autoOffers(
 			continue;
 		}
 		try {
-			const results = await search(query, zip, today);
+			const results = await search(term, zip, today);
 			const values = { results, fetchedAt: new Date() };
 			await db
 				.insert(offerSearchCache)

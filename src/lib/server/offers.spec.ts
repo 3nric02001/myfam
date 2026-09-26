@@ -14,7 +14,7 @@ import {
 	purgeOffers,
 	saveOfferSettings
 } from './offers';
-import { resetKeys, searchMarktguru, slug, toOffers } from './marktguru';
+import { resetKeys, searchMarktguru, toOffers } from './marktguru';
 import { seedFamily, testDb } from './test/setup';
 
 const TODAY = '2026-09-24';
@@ -170,7 +170,8 @@ describe('marktguru offers', () => {
 				validFrom: '2026-09-22',
 				validUntil: '2026-09-27',
 				source: 'marktguru',
-				url: 'https://www.marktguru.de/rb/lidl/milbona',
+				brand: 'Milbona',
+				url: null,
 				image: 'https://mg2de.b-cdn.net/api/v1/offers/24963108/images/default/0/small.webp'
 			},
 			{
@@ -181,30 +182,27 @@ describe('marktguru offers', () => {
 				validFrom: '2026-09-22',
 				validUntil: '2026-09-27',
 				source: 'marktguru',
-				url: 'https://www.marktguru.de/rb/penny/milbona',
+				brand: 'Milbona',
+				url: null,
 				image: 'https://mg2de.b-cdn.net/api/v1/offers/24963108/images/default/0/small.webp'
 			}
 		]);
 		expect(toOffers(raw, '2026-09-28')).toEqual([]);
 	});
 
-	it('links to the offer page it gives, else to the store', () => {
+	it('keeps a link only when it leads to the retailer', () => {
 		const raw = {
 			price: 1.99,
 			product: { name: 'Bio Äpfel' },
 			advertisers: [{ uniqueName: 'rewe' }],
 			validityDates: [{ from: '2026-09-21T22:00:00Z', to: '2026-09-27T21:59:59Z' }]
 		};
-		expect(toOffers(raw, TODAY)[0]).toMatchObject({
-			url: 'https://www.marktguru.de/r/rewe',
-			image: null
-		});
-		expect(toOffers({ ...raw, externalUrl: 'https://www.rewe.de/angebote/' }, TODAY)[0].url).toBe(
-			'https://www.rewe.de/angebote/'
-		);
-		expect(slug('Gut&Günstig')).toBe('gut-guenstig');
-		expect(slug('ja!')).toBe('ja');
-		expect(toOffers(raw, '2026-09-28')).toEqual([]);
+		expect(toOffers(raw, TODAY)[0]).toMatchObject({ url: null, brand: null, image: null });
+		const at = (externalUrl: string) => toOffers({ ...raw, externalUrl }, TODAY)[0].url;
+		expect(at('https://www.rewe.de/angebote/')).toBe('https://www.rewe.de/angebote/');
+		expect(at('https://www.marktguru.de/')).toBeNull();
+		expect(at('http://www.rewe.de/')).toBeNull();
+		expect(at('kein link')).toBeNull();
 	});
 });
 
