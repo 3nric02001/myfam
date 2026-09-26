@@ -41,6 +41,8 @@ export type Offer = {
 	source: 'manual' | 'marktguru';
 	/** Where to see it: the leaflet link someone entered, or the source website. */
 	url?: string | null;
+	/** A picture of the offer from the leaflet. */
+	image?: string | null;
 	/** Who entered it by hand. */
 	by?: string | null;
 };

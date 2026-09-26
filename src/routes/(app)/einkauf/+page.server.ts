@@ -10,7 +10,8 @@ import {
 	listHistory,
 	listItemsWithCategory,
 	setCategory,
-	setDone
+	setDone,
+	updateItem
 } from '$lib/server/shopping';
 import { isCategory } from '$lib/categories';
 import { marktguruEnabled } from '$lib/server/marktguru';
@@ -54,6 +55,19 @@ export const actions: Actions = {
 			return fail(400, { message: 'Der Eintrag ist zu lang.' });
 		}
 		await addItem(db, family.id, user.id, { name, quantity });
+	},
+
+	edit: async ({ request, locals }) => {
+		const { family } = requireFamily(locals);
+		const form = await request.formData();
+		const name = field(form, 'name');
+		const quantity = field(form, 'quantity');
+		if (!name) return fail(400, { message: 'Der Eintrag braucht einen Namen.' });
+		if (name.length > 100 || quantity.length > 30) {
+			return fail(400, { message: 'Der Eintrag ist zu lang.' });
+		}
+		await updateItem(db, family.id, field(form, 'id'), { name, quantity });
+		return { edited: true };
 	},
 
 	toggle: async ({ request, locals }) => {

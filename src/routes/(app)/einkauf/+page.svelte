@@ -34,12 +34,14 @@
 	/** The done item whose price is being entered. */
 	let pricing = $state<string | null>(null);
 
-	// Offer details in a pop-up: all offers and known prices for one item, with their source.
+	// An entry's details in a pop-up: edit it, see all offers and known prices with their source.
 	let dialog = $state<HTMLDialogElement>();
 	let detailsId = $state<string | null>(null);
 	let detailsItem = $derived(data.items.find((i) => i.id === detailsId));
+	let saved = $state(false);
 	function showDetails(id: string) {
 		detailsId = id;
+		saved = false;
 		dialog?.showModal();
 	}
 </script>
@@ -207,7 +209,12 @@
 				>
 			</button>
 			<div class="min-w-0 flex-1 py-1">
-				<button form="toggle-{item.id}" class="block w-full text-left">
+				<button
+					type="button"
+					class="block w-full text-left"
+					aria-label="Details zu {item.name}"
+					onclick={() => showDetails(item.id)}
+				>
 					<span class={item.done ? 'text-slate-400 line-through' : ''}>{item.name}</span>
 					{#if item.quantity}<span class="ml-1 text-sm text-slate-500">{item.quantity}</span>{/if}
 				</button>
@@ -279,39 +286,41 @@
 				>
 			</form>
 		</div>
-		{#if pricing === item.id}
-			<form
-				method="POST"
-				action="?/price"
-				class="mb-3 grid grid-cols-2 gap-2 rounded-xl bg-slate-50 p-3"
-				use:enhance={() =>
-					async ({ result, update }) => {
-						await update();
-						if (result.type === 'success') pricing = null;
-					}}
-			>
-				<p class="col-span-2 text-sm text-slate-500">
-					Was hat {item.name} gekostet? Die App merkt sich den Preis für die Schätzung.
-				</p>
-				<input type="hidden" name="name" value={item.name} />
-				<label>
-					<span class="label">Markt</span>
-					<select name="store" required class="w-full">
-						{#each STORES as s (s.id)}<option value={s.id}>{s.label}</option>{/each}
-					</select>
-				</label>
-				<label>
-					<span class="label">Preis</span>
-					<input name="price" required inputmode="decimal" placeholder="1,99" maxlength="10" />
-				</label>
-				<label class="col-span-2">
-					<span class="label">Produkt (optional)</span>
-					<input name="product" maxlength="100" placeholder="z. B. Gut&Günstig {item.name}" />
-				</label>
-				<button class="btn-primary col-span-2">Preis merken</button>
-			</form>
-		{/if}
+		{#if pricing === item.id && detailsId !== item.id}{@render priceForm(item)}{/if}
 	</li>
+{/snippet}
+
+{#snippet priceForm(item: (typeof data.items)[number])}
+	<form
+		method="POST"
+		action="?/price"
+		class="mb-3 grid grid-cols-2 gap-2 rounded-xl bg-slate-50 p-3"
+		use:enhance={() =>
+			async ({ result, update }) => {
+				await update();
+				if (result.type === 'success') pricing = null;
+			}}
+	>
+		<p class="col-span-2 text-sm text-slate-500">
+			Was hat {item.name} gekostet? Die App merkt sich den Preis für die Schätzung.
+		</p>
+		<input type="hidden" name="name" value={item.name} />
+		<label>
+			<span class="label">Markt</span>
+			<select name="store" required class="w-full">
+				{#each STORES as s (s.id)}<option value={s.id}>{s.label}</option>{/each}
+			</select>
+		</label>
+		<label>
+			<span class="label">Preis</span>
+			<input name="price" required inputmode="decimal" placeholder="1,99" maxlength="10" />
+		</label>
+		<label class="col-span-2">
+			<span class="label">Produkt (optional)</span>
+			<input name="product" maxlength="100" placeholder="z. B. Gut&Günstig {item.name}" />
+		</label>
+		<button class="btn-primary col-span-2">Preis merken</button>
+	</form>
 {/snippet}
 
 {#if open.length}
@@ -359,16 +368,75 @@
 <dialog
 	bind:this={dialog}
 	class="m-auto w-[min(100%-2rem,28rem)] rounded-2xl bg-surface p-0 text-slate-900 shadow-xl backdrop:bg-black/40"
-	onclose={() => (detailsId = null)}
+	onclose={() => {
+		if (pricing === detailsId) pricing = null;
+		detailsId = null;
+	}}
 >
 	{#if detailsItem}
-		<div class="max-h-[80dvh] overflow-y-auto p-4">
+		<div class="max-h-[85dvh] overflow-y-auto p-4">
 			<div class="mb-3 flex items-start justify-between gap-2">
-				<h2 class="text-lg font-semibold">{detailsItem.name}</h2>
+				<h2 class="text-lg font-semibold">
+					{detailsItem.name}
+					{#if detailsItem.done}<span class="ml-1 text-sm font-normal text-slate-500">erledigt</span
+						>{/if}
+				</h2>
 				<button class="icon-btn -mt-2 -mr-2" aria-label="Schließen" onclick={() => dialog?.close()}
 					><X size={18} aria-hidden="true" /></button
 				>
 			</div>
+			{#key detailsItem.id}
+				<form
+					method="POST"
+					action="?/edit"
+					class="mb-1 flex gap-2"
+					use:enhance={() =>
+						async ({ result, update }) => {
+							await update({ reset: false });
+							saved = result.type === 'success';
+						}}
+				>
+					<input type="hidden" name="id" value={detailsItem.id} />
+					<label class="min-w-0 flex-1">
+						<span class="label">Artikel</span>
+						<input name="name" value={detailsItem.name} required maxlength="100" class="w-full" />
+					</label>
+					<label class="w-24">
+						<span class="label">Menge</span>
+						<input
+							name="quantity"
+							value={detailsItem.quantity ?? ''}
+							maxlength="30"
+							class="w-full"
+						/>
+					</label>
+					<button class="btn-primary self-end px-3" aria-label="Speichern"
+						><Check size={20} aria-hidden="true" /></button
+					>
+				</form>
+			{/key}
+			<p class="mb-3 min-h-5 text-sm" aria-live="polite">
+				{#if saved}<span class="text-brand-700">Gespeichert.</span>{:else if form?.message}<span
+						class="error">{form.message}</span
+					>{/if}
+			</p>
+			<form method="POST" action="?/category" use:enhance class="mb-2">
+				<input type="hidden" name="name" value={detailsItem.name} />
+				<label>
+					<span class="label">Bereich</span>
+					<select
+						name="category"
+						class="w-full"
+						value={detailsItem.category}
+						onchange={(e) => e.currentTarget.form?.requestSubmit()}
+					>
+						{#each CATEGORIES as c (c.id)}<option value={c.id}>{c.label}</option>{/each}
+					</select>
+				</label>
+			</form>
+			{#if detailsItem.createdBy}
+				<p class="mb-4 text-xs text-slate-500">Eingetragen von {detailsItem.createdBy}</p>
+			{/if}
 			{#await data.offers then offers}
 				{@const list = offers.byItem[detailsItem.id] ?? []}
 				{@const cost = offers.cost.perItem[detailsItem.id]}
@@ -377,6 +445,15 @@
 					<ul class="mb-4">
 						{#each list as o, i (i)}
 							<li class="border-b border-slate-100 py-2 text-sm last:border-0">
+								{#if o.image}
+									<img
+										src={o.image}
+										alt=""
+										loading="lazy"
+										class="mb-2 max-h-40 rounded-lg bg-white object-contain"
+										onerror={(e) => e.currentTarget.remove()}
+									/>
+								{/if}
 								<span class="block font-medium">{o.product}</span>
 								<span class="block">
 									{storeLabel(o.store)} ·
@@ -400,7 +477,7 @@
 										target="_blank"
 										rel="noopener noreferrer"
 										class="link mt-1 inline-flex items-center gap-1 text-xs"
-										>{o.source === 'manual' ? 'Prospekt öffnen' : 'Bei marktguru ansehen'}
+										>{o.source === 'manual' ? 'Prospekt öffnen' : 'Bei marktguru öffnen'}
 										<ExternalLink size={12} aria-hidden="true" /></a
 									>
 								{/if}
@@ -445,6 +522,28 @@
 					<p class="text-sm text-slate-500">Noch kein Angebot und kein Preis bekannt.</p>
 				{/if}
 			{/await}
+			<div class="mt-4 flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
+				<button
+					type="button"
+					class="flex min-h-10 items-center gap-1 text-sm text-slate-600 underline"
+					aria-expanded={pricing === detailsItem.id}
+					onclick={() => (pricing = pricing === detailsId ? null : detailsId)}
+					><Euro size={16} aria-hidden="true" /> Preis eintragen</button
+				>
+				<form
+					method="POST"
+					action="?/delete"
+					use:enhance={() =>
+						async ({ update }) => {
+							dialog?.close();
+							await update();
+						}}
+				>
+					<input type="hidden" name="id" value={detailsItem.id} />
+					<button class="min-h-10 text-sm text-red-700 underline">Eintrag löschen</button>
+				</form>
+			</div>
+			{#if pricing === detailsItem.id}{@render priceForm(detailsItem)}{/if}
 		</div>
 	{/if}
 </dialog>

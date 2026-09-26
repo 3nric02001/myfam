@@ -8,7 +8,8 @@ import {
 	listItems,
 	listItemsWithCategory,
 	setCategory,
-	setDone
+	setDone,
+	updateItem
 } from './shopping';
 import { seedFamily, testDb } from './test/setup';
 
@@ -30,6 +31,22 @@ describe('shopping list', () => {
 		await clearDone(db, family.id);
 		items = await listItems(db, family.id);
 		expect(items.map((i) => i.name)).toEqual(['Brot']);
+	});
+
+	it('edits name and quantity, only within the family', async () => {
+		const db = testDb();
+		const a = await seedFamily(db, 'anna');
+		const b = await seedFamily(db, 'bert');
+		const milk = await addItem(db, a.family.id, a.owner.id, { name: 'Milch' });
+
+		await updateItem(db, a.family.id, milk.id, { name: 'Milch', quantity: ' 2 l ' });
+		await updateItem(db, a.family.id, milk.id, { name: ' H-Milch ', quantity: '2 l' });
+		expect(await updateItem(db, b.family.id, milk.id, { name: 'Bier' })).toBeNull();
+
+		const [item] = await listItems(db, a.family.id);
+		expect([item.name, item.quantity]).toEqual(['H-Milch', '2 l']);
+		const history = await listHistory(db, a.family.id);
+		expect(history.map((h) => h.name).sort()).toEqual(['H-Milch', 'Milch']);
 	});
 
 	it('keeps families apart', async () => {
