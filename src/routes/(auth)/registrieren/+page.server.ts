@@ -15,7 +15,12 @@ export const load: PageServerLoad = ({ locals }) => {
 export const actions: Actions = {
 	default: async (event) => {
 		if (!registrationOpen(db, env)) {
-			return fail(403, { message: 'Neue Konten gibt es nur über einen Einladungslink.' });
+			return fail(403, {
+				name: '',
+				email: '',
+				familyName: '',
+				message: 'Neue Konten gibt es nur über einen Einladungslink.'
+			});
 		}
 		const form = await event.request.formData();
 		const input = {

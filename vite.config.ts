@@ -13,6 +13,25 @@ export default defineConfig({
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
 			adapter: adapter(),
+			// Scripts only from this server (SvelteKit adds a nonce or hash for its own inline
+			// script), and no embedding in other sites. Offer pictures may come from other hosts.
+			csp: {
+				mode: 'auto',
+				directives: {
+					'default-src': ['self'],
+					'script-src': ['self'],
+					'style-src': ['self', 'unsafe-inline'],
+					'img-src': ['self', 'data:', 'blob:', 'https:'],
+					'font-src': ['self', 'data:'],
+					'connect-src': ['self'],
+					'worker-src': ['self'],
+					'manifest-src': ['self'],
+					'frame-ancestors': ['none'],
+					'form-action': ['self'],
+					'base-uri': ['self'],
+					'object-src': ['none']
+				}
+			},
 			typescript: {
 				config: (config) => {
 					config.include.push('../drizzle.config.ts');
