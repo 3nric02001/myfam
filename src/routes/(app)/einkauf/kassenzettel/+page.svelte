@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Camera, ChevronLeft, Wallet, LoaderCircle } from '@lucide/svelte';
+	import { Camera, ChevronLeft, Image, Wallet, LoaderCircle } from '@lucide/svelte';
 	import { enhance } from '$app/forms';
 	import { formatPrice, STORES } from '$lib/offers';
 	import type { PageProps } from './$types';
@@ -64,8 +64,9 @@
 	enctype="multipart/form-data"
 	class="card mb-5 p-4"
 	use:enhance={async ({ formData }) => {
-		const photo = formData.get('photo');
-		if (photo instanceof File && photo.size) formData.set('photo', await shrink(photo));
+		// Only the input that was used holds a file.
+		const photo = formData.getAll('photo').find((p) => p instanceof File && p.size);
+		if (photo instanceof File) formData.set('photo', await shrink(photo));
 		reading = true;
 		return async ({ update }) => {
 			await update();
@@ -73,22 +74,36 @@
 		};
 	}}
 >
-	<label class="btn-primary flex cursor-pointer items-center justify-center gap-2">
-		{#if reading}
+	{#if reading}
+		<p class="btn-primary flex items-center justify-center gap-2" role="status">
 			<LoaderCircle size={20} class="animate-spin" aria-hidden="true" /> Lese den Kassenzettel …
-		{:else}
-			<Camera size={20} aria-hidden="true" /> Kassenzettel fotografieren
-		{/if}
-		<input
-			type="file"
-			name="photo"
-			accept="image/*"
-			capture="environment"
-			class="sr-only"
-			disabled={reading}
-			onchange={(e) => e.currentTarget.form?.requestSubmit()}
-		/>
-	</label>
+		</p>
+	{:else}
+		<!-- Two inputs: "capture" opens the camera straight away, without it the phone offers the gallery. -->
+		<div class="grid gap-2">
+			<label class="btn-primary flex cursor-pointer items-center justify-center gap-2">
+				<Camera size={20} aria-hidden="true" /> Kassenzettel fotografieren
+				<input
+					type="file"
+					name="photo"
+					accept="image/*"
+					capture="environment"
+					class="sr-only"
+					onchange={(e) => e.currentTarget.form?.requestSubmit()}
+				/>
+			</label>
+			<label class="btn-secondary flex cursor-pointer items-center justify-center gap-2">
+				<Image size={20} aria-hidden="true" /> Bild aus der Galerie wählen
+				<input
+					type="file"
+					name="photo"
+					accept="image/*"
+					class="sr-only"
+					onchange={(e) => e.currentTarget.form?.requestSubmit()}
+				/>
+			</label>
+		</div>
+	{/if}
 </form>
 
 {#if receipt}
