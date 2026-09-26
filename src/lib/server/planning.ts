@@ -3,6 +3,7 @@ import type { DB } from './db/client';
 import {
 	planningBlock,
 	planningCard,
+	planningComment,
 	planningFolder,
 	planningFolderShare,
 	planningImage,
@@ -170,7 +171,8 @@ export async function listCards(db: DB, v: Viewer, folderId: string) {
 			id: planningCard.id,
 			title: planningCard.title,
 			updatedAt: planningCard.updatedAt,
-			blocks: sql<number>`(select count(*) from planning_block b where b.card_id = planning_card.id)`
+			blocks: sql<number>`(select count(*) from planning_block b where b.card_id = planning_card.id)`,
+			comments: sql<number>`(select count(*) from planning_comment c where c.card_id = planning_card.id)`
 		})
 		.from(planningCard)
 		.where(and(eq(planningCard.familyId, v.familyId), eq(planningCard.folderId, folderId)))
@@ -408,6 +410,86 @@ export async function moveBlock(
 		);
 	});
 	await touchCard(db, cardId);
+}
+
+// ---------- Comments ----------
+
+export const MAX_COMMENT_LENGTH = 2000;
+
+/** Checks a comment. Returns the cleaned text or an error message. */
+export function checkComment(raw: string): { text: string } | { error: string } {
+	const text = raw.replace(/\r\n/g, '\n').trim();
+	if (!text) return { error: 'Der Kommentar ist leer.' };
+	if (text.length > MAX_COMMENT_LENGTH) return { error: 'Der Kommentar ist zu lang.' };
+	return { text };
+}
+
+export async function listComments(db: DB, v: Viewer, cardId: string) {
+	if (!(await getCard(db, v, cardId))) return [];
+	const rows = await db
+		.select({
+			id: planningComment.id,
+			text: planningComment.text,
+			authorId: planningComment.userId,
+			author: user.name,
+			createdAt: planningComment.createdAt,
+			editedAt: planningComment.editedAt
+		})
+		.from(planningComment)
+		.leftJoin(user, eq(planningComment.userId, user.id))
+		.where(and(eq(planningComment.familyId, v.familyId), eq(planningComment.cardId, cardId)))
+		.orderBy(asc(planningComment.createdAt), sql`planning_comment.rowid`);
+	return rows.map(({ authorId, ...c }) => ({ ...c, isOwn: authorId === v.userId }));
+}
+
+export async function addComment(db: DB, v: Viewer, cardId: string, text: string) {
+	if (!(await getCard(db, v, cardId))) return null;
+	const [row] = await db
+		.insert(planningComment)
+		.values({ familyId: v.familyId, cardId, userId: v.userId, text })
+		.returning();
+	return row;
+}
+
+/** Only the author may change their comment. */
+export async function updateComment(
+	db: DB,
+	v: Viewer,
+	cardId: string,
+	commentId: string,
+	text: string
+) {
+	if (!(await getCard(db, v, cardId))) return false;
+	const changed = await db
+		.update(planningComment)
+		.set({ text, editedAt: new Date() })
+		.where(
+			and(
+				eq(planningComment.familyId, v.familyId),
+				eq(planningComment.cardId, cardId),
+				eq(planningComment.id, commentId),
+				eq(planningComment.userId, v.userId)
+			)
+		)
+		.returning({ id: planningComment.id });
+	return changed.length > 0;
+}
+
+/** Only the author may delete their comment. */
+export async function deleteComment(db: DB, v: Viewer, cardId: string, commentId: string) {
+	if (!(await getCard(db, v, cardId))) return false;
+	const deleted = await db
+		.delete(planningComment)
+		.where(
+			and(
+				eq(planningComment.familyId, v.familyId),
+				eq(planningComment.cardId, cardId),
+				eq(planningComment.id, commentId),
+				eq(planningComment.userId, v.userId)
+			)
+		)
+		.returning({ id: planningComment.id });
+	return deleted.length > 0;
 }
 
 // ---------- Images ----------

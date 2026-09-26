@@ -1,5 +1,12 @@
 <script lang="ts">
-	import { ChevronLeft, ChevronRight, Pencil, Plus, StickyNote } from '@lucide/svelte';
+	import {
+		ChevronLeft,
+		ChevronRight,
+		MessageCircle,
+		Pencil,
+		Plus,
+		StickyNote
+	} from '@lucide/svelte';
 	import { enhance } from '$app/forms';
 	import VisibilityBadge from '$lib/components/VisibilityBadge.svelte';
 	import VisibilityPicker from '$lib/components/VisibilityPicker.svelte';
@@ -120,6 +127,15 @@
 							)}
 						</span>
 					</span>
+					{#if card.comments}
+						<span
+							class="flex items-center gap-1 text-xs text-slate-500"
+							aria-label="{card.comments} {card.comments === 1 ? 'Kommentar' : 'Kommentare'}"
+						>
+							<MessageCircle size={14} aria-hidden="true" />
+							{card.comments}
+						</span>
+					{/if}
 					<ChevronRight size={18} class="text-slate-400" aria-hidden="true" />
 				</a>
 			</li>
