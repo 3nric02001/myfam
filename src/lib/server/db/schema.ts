@@ -617,7 +617,8 @@ export const planningCardSeen = sqliteTable(
 );
 
 /** Kinds of push notifications a member can switch off in the settings. */
-export type NotificationKind = 'event' | 'task' | 'comment' | 'meals' | 'receipt';
+export type NotificationKind =
+	'morning' | 'event' | 'task' | 'evening' | 'comment' | 'meals' | 'receipt';
 
 /** A kind of notification a member switched off. Everything else is on. */
 export const notificationOff = sqliteTable(

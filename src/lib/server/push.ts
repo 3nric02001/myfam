@@ -184,8 +184,10 @@ export function webPushSender(keys: VapidKeys, subject: string): Sender {
 }
 
 export const NOTIFICATION_KINDS: NotificationKind[] = [
+	'morning',
 	'event',
 	'task',
+	'evening',
 	'comment',
 	'meals',
 	'receipt'

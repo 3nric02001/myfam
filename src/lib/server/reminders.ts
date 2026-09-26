@@ -14,6 +14,10 @@ import {
 import { sendToUsers, type PushMessage, type Sender } from './push';
 import { addDays, dayLabel, today, weekStart } from '$lib/dates';
 import { mealSlotLabel, mealSlots } from '$lib/meals';
+import { listEvents } from './calendar';
+import { listMeals } from './meals';
+import { listSubscriptionEvents } from './subscriptions';
+import { listTasks } from './tasks';
 import { occurrences } from '$lib/repeat';
 
 // Push reminders. Each source lists what is due around `now` together with the users who may
@@ -198,6 +202,100 @@ export const taskReminders: ReminderSource = async (db, now) => {
 	return due;
 };
 
+/** Everyone in a family, once per family they belong to. */
+async function memberships(db: DB) {
+	return db.select({ userId: membership.userId, familyId: membership.familyId }).from(membership);
+}
+
+/** Open tasks of the user (assigned to them, or unassigned and created by them) due by `day`. */
+async function myOpenTasks(db: DB, familyId: string, userId: string, day: string) {
+	const { open } = await listTasks(db, familyId, userId, { mine: true, doneLimit: 0 });
+	return open.filter((t) => t.dueDate <= day);
+}
+
+/** "Müll, Einkaufen und 2 weitere". */
+export function listLabel(names: string[], max = 3) {
+	if (names.length <= max) return names.join(', ');
+	return `${names.slice(0, max).join(', ')} und ${names.length - max} weitere`;
+}
+
+/** The morning overview is sent at this time. */
+export const MORNING_TIME = '07:00';
+
+/**
+ * Every morning, for each member: today's events they may see, their open tasks and the
+ * meals planned for today. Nothing is sent on a day without any of these.
+ */
+export const morningOverview: ReminderSource = async (db, now) => {
+	const day = today(now);
+	const at = berlinTime(day, MORNING_TIME);
+	if (at > now || now.getTime() - at.getTime() > GRACE_MS) return [];
+	const due: DueReminder[] = [];
+	const mealsOf = new Map<string, Awaited<ReturnType<typeof listMeals>>>();
+	for (const { userId, familyId } of await memberships(db)) {
+		if (!mealsOf.has(familyId)) mealsOf.set(familyId, await listMeals(db, familyId, day, day));
+		const meals = mealsOf.get(familyId)!;
+		const events = [
+			...(await listEvents(db, familyId, userId, day, day)),
+			...(await listSubscriptionEvents(db, familyId, day, day))
+		]
+			.map((e) => (e.startTime && e.startDate === day ? `${e.startTime} ${e.title}` : e.title))
+			// All-day events first, then by time.
+			.sort((a, b) => (/^\d/.test(a) ? 1 : 0) - (/^\d/.test(b) ? 1 : 0) || a.localeCompare(b));
+		const tasks = await myOpenTasks(db, familyId, userId, day);
+		if (!events.length && !tasks.length && !meals.length) continue;
+		const lines = [
+			events.length ? `Termine: ${listLabel(events)}` : null,
+			tasks.length ? `Aufgaben: ${listLabel(tasks.map((t) => t.title))}` : null,
+			meals.length
+				? `Essen: ${meals.map((m) => `${m.name} (${mealSlotLabel[m.slot]})`).join(', ')}`
+				: null
+		].filter(Boolean);
+		due.push({
+			key: `morning:${familyId}:${userId}:${day}`,
+			at,
+			kind: 'morning',
+			userIds: [userId],
+			message: {
+				title: `Heute, ${dayLabel(day)}`,
+				body: lines.join('\n'),
+				url: '/dashboard',
+				tag: `morning:${familyId}`
+			}
+		});
+	}
+	return due;
+};
+
+/** Tasks still open for today are mentioned at this time in the evening. */
+export const EVENING_TIME = '20:00';
+
+/** In the evening, to each member whose tasks for today (or earlier) are still open. */
+export const eveningTasks: ReminderSource = async (db, now) => {
+	const day = today(now);
+	const at = berlinTime(day, EVENING_TIME);
+	if (at > now || now.getTime() - at.getTime() > GRACE_MS) return [];
+	const due: DueReminder[] = [];
+	for (const { userId, familyId } of await memberships(db)) {
+		const tasks = await myOpenTasks(db, familyId, userId, day);
+		if (!tasks.length) continue;
+		due.push({
+			key: `evening:${familyId}:${userId}:${day}`,
+			at,
+			kind: 'evening',
+			userIds: [userId],
+			message: {
+				title:
+					tasks.length === 1 ? 'Noch eine Aufgabe offen' : `Noch ${tasks.length} Aufgaben offen`,
+				body: listLabel(tasks.map((t) => t.title)),
+				url: '/kalender/aufgaben',
+				tag: `evening:${familyId}`
+			}
+		});
+	}
+	return due;
+};
+
 /** On Sundays at this time the family hears about meals still open for the coming week. */
 export const MEAL_REMINDER_TIME = '18:00';
 
@@ -305,8 +403,10 @@ export const receiptReminders: ReminderSource = async (db, now) => {
 };
 
 export const sources: ReminderSource[] = [
+	morningOverview,
 	eventReminders,
 	taskReminders,
+	eveningTasks,
 	mealReminders,
 	receiptReminders
 ];
