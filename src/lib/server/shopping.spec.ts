@@ -6,6 +6,8 @@ import {
 	forgetHistory,
 	listHistory,
 	listItems,
+	listItemsWithCategory,
+	setCategory,
 	setDone
 } from './shopping';
 import { seedFamily, testDb } from './test/setup';
@@ -65,5 +67,26 @@ describe('shopping list', () => {
 		await forgetHistory(db, b.family.id, history[0].key);
 		await forgetHistory(db, a.family.id, history[1].key);
 		expect((await listHistory(db, a.family.id)).map((h) => h.name)).toEqual(['Milch']);
+	});
+
+	it('guesses sections and remembers corrections per family', async () => {
+		const db = testDb();
+		const a = await seedFamily(db, 'anna');
+		const b = await seedFamily(db, 'bert');
+		await addItem(db, a.family.id, a.owner.id, { name: 'Erbsen' });
+		await addItem(db, b.family.id, b.owner.id, { name: 'Erbsen' });
+		const section = async (familyId: string) =>
+			(await listItemsWithCategory(db, familyId)).map((i) => i.category);
+		expect(await section(a.family.id)).toEqual(['obst-gemuese']);
+
+		// Anna's family buys frozen peas; that sticks, also when written differently.
+		await setCategory(db, a.family.id, 'Erbsen', 'tiefkuehl');
+		await addItem(db, a.family.id, a.owner.id, { name: 'erbsen ' });
+		expect(await section(a.family.id)).toEqual(['tiefkuehl', 'tiefkuehl']);
+		expect(await section(b.family.id)).toEqual(['obst-gemuese']);
+
+		// Choosing the guessed section again drops the correction.
+		await setCategory(db, a.family.id, 'Erbsen', 'obst-gemuese');
+		expect(await section(a.family.id)).toEqual(['obst-gemuese', 'obst-gemuese']);
 	});
 });

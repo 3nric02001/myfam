@@ -265,6 +265,19 @@ export const offerMatchRule = sqliteTable(
 	(t) => [primaryKey({ columns: [t.familyId, t.term, t.variant] })]
 );
 
+/** A family's own section for a list entry, overriding the keyword guess. Keyed like categoryKey(). */
+export const shoppingCategory = sqliteTable(
+	'shopping_category',
+	{
+		familyId: text('family_id')
+			.notNull()
+			.references(() => family.id, { onDelete: 'cascade' }),
+		key: text('key').notNull(),
+		category: text('category').notNull()
+	},
+	(t) => [primaryKey({ columns: [t.familyId, t.key] })]
+);
+
 /** Everything a family has put on the shopping list, for suggestions. Keyed by lowercase name. */
 export const shoppingHistory = sqliteTable(
 	'shopping_history',

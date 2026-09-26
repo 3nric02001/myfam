@@ -107,6 +107,10 @@ Danach unter `https://<deine Domain>/registrieren` die erste Familie anlegen und
   `docker compose exec app node -e "require('better-sqlite3')('/data/myfam.db').backup('/data/backup.db')"` und dann `docker compose cp app:/data/backup.db .`
   Die Bilder aus der Planung liegen im selben Volume unter `/data/uploads` und gehören mit ins Backup: `docker compose cp app:/data/uploads ./uploads`
 
+## Bereiche in der Einkaufsliste
+
+Die offenen Einträge sind nach Supermarkt-Bereichen gruppiert (Obst & Gemüse, Brot, Milch/Käse/Eier, Fleisch/Fisch, Vorrat, Süßes, Getränke, Tiefkühl, Drogerie, Haushalt, Baby & Tier, Sonstiges). Die App rät den Bereich anhand einer Stichwortliste (`src/lib/categories.ts`), ganz ohne Internet. Liegt sie daneben, lässt sich der Bereich über **Bereiche ändern** korrigieren; die Familie behält die Korrektur für diesen Artikel.
+
 ## Angebote in der Einkaufsliste
 
 Unter **Einkauf → Tipp / Angebote** wählt jede Familie ihre Märkte (und die Postleitzahl). Die App sucht zu jedem offenen Artikel passende Angebote dieser Märkte und empfiehlt den Markt mit den meisten Angeboten, oder zwei Märkte, wenn ein zweiter Stopp weitere Artikel abdeckt.
