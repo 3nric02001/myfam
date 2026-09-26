@@ -58,6 +58,16 @@ export function dayLabel(date: string) {
 	}).format(parse(date));
 }
 
+/** "Sa., 3.10.": short enough for one line on a phone. */
+export function shortDayLabel(date: string) {
+	return new Intl.DateTimeFormat('de-DE', {
+		weekday: 'short',
+		day: 'numeric',
+		month: 'numeric',
+		timeZone: 'UTC'
+	}).format(parse(date));
+}
+
 export function shortDate(date: string) {
 	return new Intl.DateTimeFormat('de-DE', {
 		day: 'numeric',
