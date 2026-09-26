@@ -1,14 +1,18 @@
 <script lang="ts">
-	import { ChevronLeft, ChevronRight, PartyPopper, Plus } from '@lucide/svelte';
-	import { addMonths, dayLabel, monthLabel, shortDate } from '$lib/dates';
+	import { ChevronLeft, ChevronRight, PartyPopper, Plus, UtensilsCrossed } from '@lucide/svelte';
+	import { addMonths, dayLabel, monthLabel, shortDate, weekStart } from '$lib/dates';
 	import { visibilityLabel } from '$lib/visibility';
 	import VisibilityIcon from '$lib/components/VisibilityIcon.svelte';
+	import MealDay from '$lib/components/MealDay.svelte';
+	import MealDishes from '$lib/components/MealDishes.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 
-	// Picking a day happens in the browser; a new month resets it to what the server chose.
-	let selected = $derived(data.selected);
+	// Picking a day happens in the browser. It survives the regular refresh of the data,
+	// and a new month falls back to the day the server chose.
+	let picked = $state<string | null>(null);
+	let selected = $derived(picked?.startsWith(data.month) ? picked : data.selected);
 
 	const weekdays = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
@@ -33,6 +37,8 @@
 </script>
 
 <svelte:head><title>Kalender · MyFam</title></svelte:head>
+
+<MealDishes id="dishes" dishes={data.dishes} />
 
 <div class="mb-3 flex items-center gap-2">
 	<h1 class="flex-1 text-xl font-semibold tracking-tight">{monthLabel(data.month)}</h1>
@@ -70,7 +76,7 @@
 			{@const isToday = date === data.today}
 			<button
 				type="button"
-				onclick={() => (selected = date)}
+				onclick={() => (picked = date)}
 				class="flex h-12 flex-col items-center justify-start gap-0.5 rounded-lg pt-1 {isSelected
 					? 'bg-brand-600 text-white'
 					: ''} {!inMonth && !isSelected ? 'text-slate-300' : ''}"
@@ -112,6 +118,24 @@
 			{holidayByDate.get(selected)} (Feiertag)
 		</p>
 	{/if}
+
+	<div class="card mb-3 px-3 pt-2">
+		<div class="flex items-center justify-between">
+			<h3 class="flex items-center gap-1.5 text-sm font-semibold text-slate-600">
+				<UtensilsCrossed size={16} aria-hidden="true" /> Essen
+			</h3>
+			<a href="/kalender/essen?woche={weekStart(selected)}" class="text-sm text-brand-700"
+				>Woche planen</a
+			>
+		</div>
+		{#key selected}
+			<MealDay
+				date={selected}
+				meals={data.meals.filter((m) => m.date === selected)}
+				datalistId="dishes"
+			/>
+		{/key}
+	</div>
 
 	{#if selectedEvents.length}
 		<ul class="card px-3">

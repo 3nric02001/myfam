@@ -1,5 +1,12 @@
 import { sql } from 'drizzle-orm';
-import { integer, primaryKey, sqliteTable, text, index } from 'drizzle-orm/sqlite-core';
+import {
+	integer,
+	primaryKey,
+	sqliteTable,
+	text,
+	index,
+	uniqueIndex
+} from 'drizzle-orm/sqlite-core';
 
 const id = () =>
 	text('id')
@@ -306,6 +313,30 @@ export const offerSearchCache = sqliteTable(
 		fetchedAt: integer('fetched_at', { mode: 'timestamp' }).notNull()
 	},
 	(t) => [primaryKey({ columns: [t.zip, t.query] })]
+);
+
+export type MealSlot = 'breakfast' | 'lunch' | 'dinner';
+
+/** The family's meal plan: at most one dish per day and meal. Everyone in the family sees it. */
+export const meal = sqliteTable(
+	'meal',
+	{
+		id: id(),
+		familyId: text('family_id')
+			.notNull()
+			.references(() => family.id, { onDelete: 'cascade' }),
+		/** Local 'YYYY-MM-DD', like calendar events. */
+		date: text('date').notNull(),
+		slot: text('slot').$type<MealSlot>().notNull(),
+		name: text('name').notNull(),
+		/** One ingredient per line, e.g. '500 g Nudeln'. */
+		ingredients: text('ingredients'),
+		/** Set once the ingredients were put on the shopping list. */
+		addedToList: integer('added_to_list', { mode: 'boolean' }).notNull().default(false),
+		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+		createdAt: createdAt()
+	},
+	(t) => [uniqueIndex('meal_family_day_slot_idx').on(t.familyId, t.date, t.slot)]
 );
 
 export type User = typeof user.$inferSelect;

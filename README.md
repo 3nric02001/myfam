@@ -25,6 +25,7 @@ src/lib/server/
   families.ts    Familien, Mitglieder, Einladungen
   shopping.ts    Einkaufsliste
   calendar.ts    Kalender: Termine, Sichtbarkeit, Freigaben
+  meals.ts       Essensplan, Zutaten auf die Einkaufsliste
   planning.ts    Planung: Ordner, Karten, Inhalte, Bilder
   visibility.ts  Gemeinsames Sichtbarkeitsmodell (Familie / bestimmte Personen / nur ich)
   uploads.ts     Hochgeladene Bilder im Dateisystem
@@ -40,6 +41,7 @@ src/routes/
 - **Sichtbarkeit pro Termin:** ganze Familie (Standard), bestimmte Personen oder nur ich. Wer einen Termin nicht sehen darf, bekommt ihn auch über den direkten Link nicht (404).
 - **Bearbeiten:** Die Person, die den Termin angelegt hat. Admins dürfen zusätzlich Termine der ganzen Familie ändern oder löschen, aber deren Sichtbarkeit nicht ändern. Private und geteilte Termine bleiben allein bei ihrer Person.
 - **Feiertage:** Die bundesweiten Feiertage werden immer angezeigt. Unter **Familie → Feiertage im Kalender** kann ein Admin das Bundesland wählen, dann kommen die regionalen dazu. Die Berechnung läuft offline (Osterformel), es wird kein externer Dienst gebraucht. Feiertage, die nur in Teilen eines Landes gelten (z. B. Mariä Himmelfahrt in Bayern), werden nicht angezeigt.
+- **Essensplan:** In der Tagesansicht des Kalenders stehen Frühstück, Mittag und Abend als schlanke Zeilen, leere Mahlzeiten als „+“-Knöpfe. „Woche planen“ zeigt die ganze Woche. Frühere Gerichte werden beim Tippen vorgeschlagen und bringen ihre Zutaten mit. Ein Tipp auf den Einkaufswagen setzt die Zutaten auf die Einkaufsliste (Mengen wie „500 g“ werden erkannt, was schon offen auf der Liste steht, wird übersprungen). Der Essensplan ist für die ganze Familie sichtbar und bearbeitbar.
 
 ## Planung
 

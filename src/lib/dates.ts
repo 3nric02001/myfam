@@ -65,3 +65,8 @@ export function shortDate(date: string) {
 		timeZone: 'UTC'
 	}).format(parse(date));
 }
+
+/** The Monday of the week the date is in. */
+export function weekStart(date: string) {
+	return addDays(date, -((parse(date).getUTCDay() + 6) % 7));
+}
