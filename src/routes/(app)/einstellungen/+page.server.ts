@@ -1,6 +1,9 @@
-import { fail } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { changeEmail, changeName, changePassword } from '$lib/server/account';
+import { changeEmail, changeName, changePassword, deleteAccount } from '$lib/server/account';
+import { deleteSessionCookie } from '$lib/server/cookies';
+import { uploads } from '$lib/server/upload-dir';
+import { deleteImageFiles } from '$lib/server/uploads';
 import { requireUser } from '$lib/server/guards';
 import { field, rawField } from '$lib/server/validation';
 import { dev } from '$app/environment';
@@ -108,5 +111,15 @@ export const actions: Actions = {
 			action: 'password',
 			success: 'Dein Passwort wurde geändert. Auf anderen Geräten musst du dich neu anmelden.'
 		};
+	},
+
+	deleteAccount: async (event) => {
+		const { user } = requireUser(event.locals);
+		const form = await event.request.formData();
+		const result = await deleteAccount(db, user.id, rawField(form, 'currentPassword'));
+		if (!result.ok) return fail(400, { action: 'delete', message: result.reason });
+		await deleteImageFiles(uploads(), result.imageIds);
+		deleteSessionCookie(event);
+		redirect(303, '/login');
 	}
 };

@@ -285,6 +285,7 @@ describe('planning comments', () => {
 			await saveSubscription(
 				db,
 				v.userId,
+				null,
 				{ endpoint: `https://fcm.googleapis.com/fcm/send/${n}`, keys: { p256dh: 'p', auth: 'a' } },
 				null
 			);

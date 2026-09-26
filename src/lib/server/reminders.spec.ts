@@ -33,6 +33,7 @@ async function setup() {
 		await saveSubscription(
 			db,
 			user.id,
+			null,
 			{ endpoint: `https://fcm.googleapis.com/fcm/send/${n}`, keys: { p256dh: 'p', auth: 'a' } },
 			null
 		);

@@ -92,3 +92,12 @@ export async function createUser(db: DB, input: { email: string; name: string; p
 		.returning();
 	return row;
 }
+
+/**
+ * Anyone may register while there is no account yet (setting up the app). After that, new
+ * people join through an invite link, unless the operator sets ALLOW_REGISTRATION=true.
+ */
+export function registrationOpen(db: DB, env: Record<string, string | undefined> = {}) {
+	if (env.ALLOW_REGISTRATION === 'true') return true;
+	return !db.select({ id: user.id }).from(user).limit(1).get();
+}
