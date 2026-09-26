@@ -5,6 +5,7 @@
 	import {
 		CalendarDays,
 		HouseHeart,
+		LayoutDashboard,
 		ListTodo,
 		Settings,
 		ShoppingCart,
@@ -15,6 +16,7 @@
 	let { data, children } = $props();
 
 	const tabs = [
+		{ href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
 		{ href: '/einkauf', label: 'Einkauf', icon: ShoppingCart },
 		{ href: '/kalender', label: 'Kalender', icon: CalendarDays },
 		{ href: '/planung', label: 'Planung', icon: ListTodo },
@@ -67,7 +69,7 @@
 	<nav
 		class="fixed inset-x-0 bottom-0 z-10 border-t border-slate-200/70 bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur"
 	>
-		<ul class="mx-auto grid max-w-md grid-cols-4">
+		<ul class="mx-auto grid max-w-md grid-cols-5">
 			{#each tabs as tab (tab.href)}
 				{@const active = page.url.pathname.startsWith(tab.href)}
 				<li>
@@ -79,7 +81,7 @@
 						aria-current={active ? 'page' : undefined}
 					>
 						<span
-							class="flex h-8 w-14 items-center justify-center rounded-full transition-colors {active
+							class="flex h-8 w-12 items-center justify-center rounded-full transition-colors {active
 								? 'bg-brand-100'
 								: ''}"
 							aria-hidden="true"><tab.icon size={22} strokeWidth={active ? 2 : 1.75} /></span

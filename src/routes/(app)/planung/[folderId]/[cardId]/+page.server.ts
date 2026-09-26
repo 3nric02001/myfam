@@ -18,6 +18,7 @@ import {
 	getBlock,
 	getCard,
 	listBlocks,
+	markCardSeen,
 	moveBlock,
 	parseBlock,
 	removeImageRecords,
@@ -38,6 +39,8 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	const { viewer } = requireViewer(locals);
 	const card = await getCard(db, viewer, params.cardId);
 	if (!card || card.folderId !== params.folderId) error(404, 'Karte nicht gefunden.');
+	// Opening the card (and every refresh while it is open) counts as having seen it.
+	await markCardSeen(db, viewer, card.id);
 	return {
 		card,
 		blocks: await listBlocks(db, viewer, card.id),

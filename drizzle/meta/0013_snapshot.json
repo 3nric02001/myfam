@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "9309935c-d25d-4785-a302-1199b9ff60f1",
-  "prevId": "e9a4c65e-c694-41a6-abe5-58572a394b56",
+  "id": "11606708-c736-4260-a662-1c4ed2681470",
+  "prevId": "9309935c-d25d-4785-a302-1199b9ff60f1",
   "tables": {
     "app_setting": {
       "name": "app_setting",
@@ -2043,6 +2043,92 @@
         "shopping_item_created_by_user_id_fk": {
           "name": "shopping_item_created_by_user_id_fk",
           "tableFrom": "shopping_item",
+          "tableTo": "user",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "shopping_plan": {
+      "name": "shopping_plan",
+      "columns": {
+        "family_id": {
+          "name": "family_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "date": {
+          "name": "date",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "task_id": {
+          "name": "task_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "shopping_plan_family_id_family_id_fk": {
+          "name": "shopping_plan_family_id_family_id_fk",
+          "tableFrom": "shopping_plan",
+          "tableTo": "family",
+          "columnsFrom": [
+            "family_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "shopping_plan_task_id_task_id_fk": {
+          "name": "shopping_plan_task_id_task_id_fk",
+          "tableFrom": "shopping_plan",
+          "tableTo": "task",
+          "columnsFrom": [
+            "task_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "shopping_plan_created_by_user_id_fk": {
+          "name": "shopping_plan_created_by_user_id_fk",
+          "tableFrom": "shopping_plan",
           "tableTo": "user",
           "columnsFrom": [
             "created_by"
