@@ -107,7 +107,7 @@
 <p class="mb-4 text-sm text-slate-500">{dayLabel(data.today)}</p>
 
 {#if stepsLeft && !setupHidden}
-	<section class="card mb-4 p-3" aria-labelledby="erste-schritte">
+	<section class="card mb-5 p-3" aria-labelledby="erste-schritte">
 		<div class="flex items-center justify-between">
 			<h2 id="erste-schritte" class="px-1 font-semibold">Erste Schritte</h2>
 			<button
@@ -162,71 +162,73 @@
 	</section>
 {/if}
 
-<section class="card mb-4 px-3 pt-2 pb-1" aria-labelledby="termine">
-	<div class="flex items-center justify-between">
+<section class="mb-5" aria-labelledby="termine">
+	<div class="section-title">
 		<h2 id="termine" class="flex items-center gap-1.5 font-semibold">
 			<CalendarDays size={18} class="text-brand-700" aria-hidden="true" /> Termine
 		</h2>
 		<a href="/kalender" class="text-sm text-brand-700">Kalender</a>
 	</div>
-	{#if days.every((d) => !d.events.length && !d.holiday)}
-		<p class="py-2 text-sm text-slate-400">Heute und morgen keine Termine.</p>
-	{:else}
-		{#each days as day (day.date)}
-			<h3 class="mt-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">
-				{day.title}
-			</h3>
-			{#if day.holiday}
-				<p
-					class="my-1 flex items-center gap-2 rounded-xl bg-accent-50 px-3 py-1.5 text-sm text-accent-700"
-				>
-					<PartyPopper size={16} aria-hidden="true" />
-					{day.holiday}
-				</p>
-			{/if}
-			{#if day.events.length}
-				<ul>
-					{#each day.events as event (event.key)}
-						<li class="border-b border-slate-100 last:border-0">
-							<a href={event.href} class="flex min-h-12 items-center gap-3 py-1.5">
-								<span class="w-24 shrink-0 text-sm whitespace-nowrap text-slate-500"
-									>{timeOf(event, day.date)}</span
-								>
-								<span class="min-w-0 flex-1">
-									<span class="flex items-center gap-1.5 truncate">
-										{#if !event.source}<PersonDot id={event.createdById} />{/if}
-										<span class="truncate">{event.title}</span>
-										{#if event.repeat}<Repeat
-												size={13}
-												class="shrink-0 text-slate-400"
-												aria-label="wiederholt sich"
-											/>{/if}
+	<div class="card px-3 py-1">
+		{#if days.every((d) => !d.events.length && !d.holiday)}
+			<p class="py-2 text-sm text-slate-500">Heute und morgen keine Termine.</p>
+		{:else}
+			{#each days as day (day.date)}
+				<h3 class="group-title mt-2">
+					{day.title}
+				</h3>
+				{#if day.holiday}
+					<p
+						class="my-1 flex items-center gap-2 rounded-xl bg-accent-50 px-3 py-1.5 text-sm text-accent-700"
+					>
+						<PartyPopper size={16} aria-hidden="true" />
+						{day.holiday}
+					</p>
+				{/if}
+				{#if day.events.length}
+					<ul>
+						{#each day.events as event (event.key)}
+							<li class="border-b border-slate-100 last:border-0">
+								<a href={event.href} class="flex min-h-11 items-center gap-3 py-1 text-base">
+									<span class="w-24 shrink-0 text-sm whitespace-nowrap text-slate-500 tabular-nums"
+										>{timeOf(event, day.date)}</span
+									>
+									<span class="min-w-0 flex-1">
+										<span class="flex items-center gap-1.5 truncate">
+											{#if !event.source}<PersonDot id={event.createdById} />{/if}
+											<span class="truncate">{event.title}</span>
+											{#if event.repeat}<Repeat
+													size={13}
+													class="shrink-0 text-slate-400"
+													aria-label="wiederholt sich"
+												/>{/if}
+										</span>
+										{#if event.source}
+											<span class="block truncate text-xs text-slate-500">{event.source}</span>
+										{/if}
 									</span>
 									{#if event.source}
-										<span class="block truncate text-xs text-slate-400">{event.source}</span>
+										<span class={colorOf(event.color ?? '').text} aria-label="Abo „{event.source}“"
+											><CalendarSync size={18} /></span
+										>
+									{:else if event.visibility !== 'family'}
+										<span class="text-slate-400" aria-label={visibilityLabel[event.visibility]}
+											><VisibilityIcon visibility={event.visibility} size={18} /></span
+										>
 									{/if}
-								</span>
-								{#if event.source}
-									<span class={colorOf(event.color ?? '').text} aria-label="Abo „{event.source}“"
-										><CalendarSync size={18} /></span
-									>
-								{:else if event.visibility !== 'family'}
-									<span class="text-slate-400" aria-label={visibilityLabel[event.visibility]}
-										><VisibilityIcon visibility={event.visibility} size={18} /></span
-									>
-								{/if}
-							</a>
-						</li>
-					{/each}
-				</ul>
-			{:else}
-				<p class="py-2 text-sm text-slate-400">Keine Termine.</p>
-			{/if}
-		{/each}
-	{/if}
+								</a>
+							</li>
+						{/each}
+					</ul>
+				{:else}
+					<p class="py-2 text-sm text-slate-500">Keine Termine.</p>
+				{/if}
+			{/each}
+		{/if}
+	</div>
 </section>
 
-<div class="mb-4 grid grid-cols-2 gap-3">
+<div class="mb-5 grid grid-cols-2 gap-3">
 	<a href="/einkauf" class="card flex flex-col gap-1 p-3" aria-label="Einkaufsliste">
 		<span class="flex items-center gap-1.5 text-sm font-semibold">
 			<ShoppingCart size={16} class="text-brand-700" aria-hidden="true" /> Einkauf
@@ -263,8 +265,8 @@
 	</a>
 </div>
 
-<section class="card mb-4 px-2 pt-2" aria-labelledby="aufgaben">
-	<div class="flex items-center justify-between px-1">
+<section class="mb-5" aria-labelledby="aufgaben">
+	<div class="section-title">
 		<h2 id="aufgaben" class="flex items-center gap-1.5 font-semibold">
 			<ListTodo size={18} class="text-brand-700" aria-hidden="true" /> Meine Aufgaben
 		</h2>
@@ -277,35 +279,35 @@
 			>
 		</span>
 	</div>
-	{#if dueNow.length}
-		<ul>
-			{#each dueNow as task (task.id)}
-				<TaskRow {task} today={data.today} />
-			{/each}
-		</ul>
-	{:else}
-		<p class="px-1 py-2 text-sm text-slate-400">Heute ist nichts fällig.</p>
-	{/if}
-	{#if dueSoon.length}
-		<h3 class="mt-2 px-1 text-xs font-semibold tracking-wide text-slate-500 uppercase">
-			Nächste 7 Tage
-		</h3>
-		<ul>
-			{#each dueSoon as task (task.id)}
-				<TaskRow {task} today={data.today} showDue />
-			{/each}
-		</ul>
-	{/if}
-	{#if data.laterTasks}
-		<p class="px-1 pb-2 text-xs text-slate-400">
-			+ {data.laterTasks} später fällig
-		</p>
-	{/if}
-	{#if !dueSoon.length && !data.laterTasks}<div class="pb-1"></div>{/if}
+	<div class="card px-2 py-1">
+		{#if dueNow.length}
+			<ul>
+				{#each dueNow as task (task.id)}
+					<TaskRow {task} today={data.today} />
+				{/each}
+			</ul>
+		{:else}
+			<p class="px-1 py-2 text-sm text-slate-500">Heute ist nichts fällig.</p>
+		{/if}
+		{#if dueSoon.length}
+			<h3 class="group-title mt-2 px-1">Nächste 7 Tage</h3>
+			<ul>
+				{#each dueSoon as task (task.id)}
+					<TaskRow {task} today={data.today} showDue />
+				{/each}
+			</ul>
+		{/if}
+		{#if data.laterTasks}
+			<p class="px-1 pb-2 text-xs text-slate-500">
+				+ {data.laterTasks} später fällig
+			</p>
+		{/if}
+		{#if !dueSoon.length && !data.laterTasks}<div class="pb-1"></div>{/if}
+	</div>
 </section>
 
-<section class="card mb-4 px-3 pt-2 pb-1" aria-labelledby="planung">
-	<div class="flex items-center justify-between">
+<section class="mb-5" aria-labelledby="planung">
+	<div class="section-title">
 		<h2 id="planung" class="flex items-center gap-1.5 font-semibold">
 			<StickyNote size={18} class="text-brand-700" aria-hidden="true" /> Neu in der Planung
 		</h2>
@@ -319,54 +321,56 @@
 			<a href="/planung" class="text-sm text-brand-700">Planung</a>
 		{/if}
 	</div>
-	{#if data.planning.length}
-		<ul>
-			{#each data.planning as item (item.id)}
-				<li class="flex items-start gap-1 border-b border-slate-100 last:border-0">
-					<a href="/planung/{item.folderId}/{item.id}" class="min-w-0 flex-1 py-2">
-						<span class="block truncate text-xs text-slate-400">{item.folderName}</span>
-						<span class="block truncate font-medium">{item.title}</span>
-						<span class="mt-1 flex flex-wrap gap-1.5 text-xs">
-							{#if item.isNew}
-								<span
-									class="flex items-center gap-1 rounded-full bg-accent-50 px-2 py-0.5 font-medium text-accent-700"
-									><Sparkles size={12} aria-hidden="true" /> Neue Karte</span
-								>
-							{:else if item.changed}
-								<span
-									class="flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-600"
-									><Pencil size={12} aria-hidden="true" /> Geändert</span
-								>
-							{/if}
-							{#if item.newComments}
-								<span
-									class="flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 font-medium text-brand-800"
-									><MessageCircle size={12} aria-hidden="true" />
-									{item.newComments}
-									{item.newComments === 1 ? 'neuer Kommentar' : 'neue Kommentare'}</span
-								>
-							{/if}
-						</span>
-						{#if item.lastComment}
-							<span class="mt-1 line-clamp-2 text-sm text-slate-600">
-								<span class="font-medium">{item.lastComment.author ?? 'Unbekannt'}:</span>
-								{item.lastComment.text}
-								<span class="text-xs text-slate-400">· {when(item.lastComment.createdAt)}</span>
+	<div class="card px-3 py-1">
+		{#if data.planning.length}
+			<ul>
+				{#each data.planning as item (item.id)}
+					<li class="flex items-start gap-1 border-b border-slate-100 last:border-0">
+						<a href="/planung/{item.folderId}/{item.id}" class="min-w-0 flex-1 py-2">
+							<span class="block truncate text-xs text-slate-500">{item.folderName}</span>
+							<span class="block truncate font-medium">{item.title}</span>
+							<span class="mt-1 flex flex-wrap gap-1.5 text-xs">
+								{#if item.isNew}
+									<span
+										class="flex items-center gap-1 rounded-full bg-accent-50 px-2 py-0.5 font-medium text-accent-700"
+										><Sparkles size={12} aria-hidden="true" /> Neue Karte</span
+									>
+								{:else if item.changed}
+									<span
+										class="flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-600"
+										><Pencil size={12} aria-hidden="true" /> Geändert</span
+									>
+								{/if}
+								{#if item.newComments}
+									<span
+										class="flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 font-medium text-brand-800"
+										><MessageCircle size={12} aria-hidden="true" />
+										{item.newComments}
+										{item.newComments === 1 ? 'neuer Kommentar' : 'neue Kommentare'}</span
+									>
+								{/if}
 							</span>
-						{/if}
-					</a>
-					<form method="POST" action="?/seen" use:enhance class="pt-1.5">
-						<input type="hidden" name="id" value={item.id} />
-						<button
-							class="icon-btn size-9 text-slate-400"
-							aria-label="„{item.title}“ als gelesen markieren"
-							title="Als gelesen markieren"><X size={18} /></button
-						>
-					</form>
-				</li>
-			{/each}
-		</ul>
-	{:else}
-		<p class="py-2 text-sm text-slate-400">Du bist auf dem neuesten Stand.</p>
-	{/if}
+							{#if item.lastComment}
+								<span class="mt-1 line-clamp-2 text-sm text-slate-600">
+									<span class="font-medium">{item.lastComment.author ?? 'Unbekannt'}:</span>
+									{item.lastComment.text}
+									<span class="text-xs text-slate-500">· {when(item.lastComment.createdAt)}</span>
+								</span>
+							{/if}
+						</a>
+						<form method="POST" action="?/seen" use:enhance class="pt-1.5">
+							<input type="hidden" name="id" value={item.id} />
+							<button
+								class="icon-btn size-9 text-slate-400"
+								aria-label="„{item.title}“ als gelesen markieren"
+								title="Als gelesen markieren"><X size={18} /></button
+							>
+						</form>
+					</li>
+				{/each}
+			</ul>
+		{:else}
+			<p class="py-2 text-sm text-slate-500">Du bist auf dem neuesten Stand.</p>
+		{/if}
+	</div>
 </section>

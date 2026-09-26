@@ -188,7 +188,7 @@
 		class="w-full"
 		value={text}
 		placeholder="Schreib etwas …"></textarea>
-	<p class="text-xs text-slate-400">
+	<p class="text-xs text-slate-500">
 		Formatierung: **fett**, *kursiv*, # Überschrift, - Liste, 1. Nummeriert, - [ ] Aufgabe
 	</p>
 {/snippet}
@@ -248,7 +248,7 @@
 			>
 				<input name="file" type="file" accept="image/*" required class="w-full text-sm" />
 				<input name="caption" maxlength="200" placeholder="Bildunterschrift (optional)" />
-				<p class="text-xs text-slate-400">
+				<p class="text-xs text-slate-500">
 					Große Fotos werden automatisch verkleinert. Maximal 10 MB.
 				</p>
 				{#if errorFor(null)}<p class="error">{errorFor(null)}</p>{/if}

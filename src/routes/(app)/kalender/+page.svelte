@@ -229,7 +229,7 @@
 			><Icon size={17} aria-hidden="true" /></span
 		>
 		{title}
-		{#if count}<span class="text-sm font-normal text-slate-400">{count}</span>{/if}
+		{#if count}<span class="text-sm font-normal text-slate-500">{count}</span>{/if}
 	</h3>
 {/snippet}
 
@@ -250,7 +250,7 @@
 						<span class="w-20 shrink-0 text-sm text-slate-500">{timeOf(event, selected)}</span>
 						<span class="flex-1">
 							<span class="block">{event.title}</span>
-							<span class="flex items-center gap-1.5 text-xs text-slate-400">
+							<span class="flex items-center gap-1.5 text-xs text-slate-500">
 								{#if !event.source}<PersonDot id={event.createdById} />{/if}
 								{#if event.startDate !== event.endDate}
 									{shortDate(event.startDate)}–{shortDate(event.endDate)} ·
@@ -280,7 +280,7 @@
 			{/each}
 		</ul>
 	{:else}
-		<p class="card px-4 py-3 text-sm text-slate-400">Keine Termine.</p>
+		<p class="card px-4 py-3 text-sm text-slate-500">Keine Termine.</p>
 	{/if}
 </section>
 
@@ -301,7 +301,7 @@
 			{/each}
 		</ul>
 	{:else}
-		<p class="card px-4 py-3 text-sm text-slate-400">Nichts zu erledigen.</p>
+		<p class="card px-4 py-3 text-sm text-slate-500">Nichts zu erledigen.</p>
 	{/if}
 </section>
 
@@ -324,7 +324,7 @@
 	</div>
 </section>
 
-<p class="mt-8 text-center text-xs text-slate-400">
+<p class="mt-8 text-center text-xs text-slate-500">
 	Feiertage: {data.stateName ?? 'nur bundesweite'} ·
 	<a href="/familie#feiertage" class="underline">ändern</a> ·
 	<a href="/kalender/abos" class="underline">Kalender-Abos</a>

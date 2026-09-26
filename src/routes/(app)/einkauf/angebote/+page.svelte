@@ -127,7 +127,7 @@
 										>
 									{/if}
 								</span>
-								<span class="block text-xs text-slate-400">
+								<span class="block text-xs text-slate-500">
 									{#if hit.offer.validFrom && hit.offer.validFrom > data.today}ab {shortDate(
 											hit.offer.validFrom
 										)}{/if}
@@ -209,7 +209,7 @@
 						<span class="font-medium">{storeLabel(o.store)}</span>
 						{o.product}
 						{#if o.price != null}· {formatPrice(o.price)}{/if}
-						<span class="block text-xs text-slate-400">
+						<span class="block text-xs text-slate-500">
 							{#if o.validFrom && o.validFrom > data.today}ab {shortDate(o.validFrom)}{/if}
 							bis {shortDate(o.validUntil)}{#if o.createdBy}&nbsp;· von {o.createdBy}{/if}
 						</span>

@@ -74,7 +74,7 @@
 			/>
 		</label>
 		<label class="block">
-			<span class="label">Zutaten <span class="font-normal text-slate-400">(optional)</span></span>
+			<span class="label">Zutaten <span class="font-normal text-slate-500">(optional)</span></span>
 			<textarea
 				name="ingredients"
 				rows="3"
@@ -117,7 +117,7 @@
 					<span class="min-w-0 flex-1">
 						{current.name}
 						{#if current.ingredients}
-							<span class="block truncate text-xs text-slate-400"
+							<span class="block truncate text-xs text-slate-500"
 								>{current.ingredients.split('\n').join(', ')}</span
 							>
 						{/if}

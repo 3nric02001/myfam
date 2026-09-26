@@ -8,12 +8,24 @@
  *   slate   – neutral grays for text, borders and backgrounds
  *   surface – background of cards, header and navigation
  *   cal-*   – colors to tell subscribed calendars apart (see $lib/subscriptions.ts)
- * Dark mode swaps the scales, so `bg-slate-50` stays the page background and `text-slate-900`
+ * Dark mode swaps the scales, so `bg-page` stays the page background and `text-slate-900`
  * stays the main text color without any `dark:` classes.
  */
 @theme {
 	/* Self-hosted (@fontsource-variable/manrope), so no request goes to Google. */
 	--font-sans: 'Manrope Variable', ui-sans-serif, system-ui, sans-serif;
+	/*
+	 * Manrope is thin at 400 on phones, so every weight moves one step up: running text is 500,
+	 * emphasis 600, headings 700. No text is smaller than 13px (text-xs).
+	 */
+	--font-weight-normal: 500;
+	--font-weight-medium: 600;
+	--font-weight-semibold: 700;
+	--font-weight-bold: 800;
+	--text-xs: 0.8125rem;
+	--text-xs--line-height: 1.25rem;
+	--text-xl: 1.5rem;
+	--text-xl--line-height: 2rem;
 	--color-brand-50: #eef7f4;
 	--color-brand-100: #d6ede6;
 	--color-brand-200: #afdacd;
@@ -25,12 +37,12 @@
 	--color-brand-800: #1b483e;
 	--color-brand-900: #173b34;
 	--color-brand-950: #0c221e;
-	--color-slate-50: #fafaf9;
-	--color-slate-100: #f5f4f2;
+	--color-slate-50: #f5f3ef;
+	--color-slate-100: #f0ede8;
 	--color-slate-200: #e8e5e1;
 	--color-slate-300: #d7d3ce;
 	--color-slate-400: #a9a29b;
-	--color-slate-500: #7a726b;
+	--color-slate-500: #6b645e;
 	--color-slate-600: #59534d;
 	--color-slate-700: #45403b;
 	--color-slate-800: #2b2724;
@@ -48,6 +60,8 @@
 	--color-accent-900: #5c2f14;
 	--color-accent-950: #341708;
 	--color-surface: #ffffff;
+	/* Page background ("Sand"): dark enough that cards stand out without borders or shadows. */
+	--color-page: #efebe4;
 	/* Mid tones that read on light and dark backgrounds alike. */
 	--color-cal-blue: #4a78b5;
 	--color-cal-plum: #8a5a9e;
@@ -77,7 +91,7 @@
 		--color-slate-200: #2b2724;
 		--color-slate-300: #45403b;
 		--color-slate-400: #7a726b;
-		--color-slate-500: #a9a29b;
+		--color-slate-500: #b3aca5;
 		--color-slate-600: #d7d3ce;
 		--color-slate-700: #d7d3ce;
 		--color-slate-800: #e8e5e1;
@@ -94,7 +108,8 @@
 		--color-accent-800: #f4c58f;
 		--color-accent-900: #fae3c9;
 		--color-accent-950: #fdf4ea;
-		--color-surface: #1d1a18;
+		--color-surface: #221f1c;
+		--color-page: #0e0c0b;
 	}
 }
 :root[data-theme='dark'] {
@@ -117,7 +132,7 @@
 	--color-slate-200: #2b2724;
 	--color-slate-300: #45403b;
 	--color-slate-400: #7a726b;
-	--color-slate-500: #a9a29b;
+	--color-slate-500: #b3aca5;
 	--color-slate-600: #d7d3ce;
 	--color-slate-700: #d7d3ce;
 	--color-slate-800: #e8e5e1;
@@ -134,7 +149,8 @@
 	--color-accent-800: #f4c58f;
 	--color-accent-900: #fae3c9;
 	--color-accent-950: #fdf4ea;
-	--color-surface: #1d1a18;
+	--color-surface: #221f1c;
+	--color-page: #0e0c0b;
 }
 :root[data-theme='light'] {
 	color-scheme: light;
@@ -142,12 +158,20 @@
 :root[data-theme='dark'] {
 	color-scheme: dark;
 }
+/* Einstellungen → Darstellung → Schrift „Größer“: everything in rem grows by 12.5%. */
+:root[data-text='large'] {
+	font-size: 112.5%;
+}
 
 @layer base {
 	html {
-		@apply bg-slate-50 text-slate-900 antialiased;
+		@apply bg-page text-slate-900 antialiased;
 		color-scheme: light dark;
 		-webkit-tap-highlight-color: transparent;
+	}
+	/* Running text 17px; form fields stay at 16px (text-base), which also keeps iOS from zooming. */
+	body {
+		font-size: 1.0625rem;
 	}
 	input:not([type='checkbox']):not([type='radio']) {
 		@apply w-full min-w-0;
@@ -185,10 +209,18 @@
 		@apply border-transparent bg-current;
 	}
 	.card {
-		@apply rounded-2xl border border-slate-200/70 bg-surface shadow-[0_1px_2px_rgb(0_0_0/0.04),0_4px_12px_-4px_rgb(0_0_0/0.06)];
+		@apply rounded-2xl bg-surface;
 	}
 	.card.space-y-4:not(.p-4) {
 		@apply p-5;
+	}
+	/* Heading of a group that sits on the page background, above its card. */
+	.section-title {
+		@apply mb-2 flex min-h-8 items-center justify-between gap-2 px-1 font-semibold;
+	}
+	/* Small group heading inside a card, e.g. "Heute" or "Nächste 7 Tage". */
+	.group-title {
+		@apply text-sm font-semibold text-brand-700;
 	}
 	.label {
 		@apply mb-1 block text-sm font-medium text-slate-700;

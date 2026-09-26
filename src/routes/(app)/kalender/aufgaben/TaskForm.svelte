@@ -86,7 +86,7 @@
 	/>
 
 	<label class="block">
-		<span class="label">Notiz <span class="font-normal text-slate-400">(optional)</span></span>
+		<span class="label">Notiz <span class="font-normal text-slate-500">(optional)</span></span>
 		<textarea name="notes" rows="3" maxlength="1000" class="w-full">{values.notes ?? ''}</textarea>
 	</label>
 

@@ -14,7 +14,7 @@
 		UserRound
 	} from '@lucide/svelte';
 	import { enhance } from '$app/forms';
-	import { themeColor, type Theme } from '$lib/theme';
+	import { themeColor, type TextSize, type Theme } from '$lib/theme';
 	import { COLORS } from '$lib/colors';
 	import PushSettings from './PushSettings.svelte';
 	import type { PageProps } from './$types';
@@ -29,6 +29,20 @@
 
 	// svelte-ignore state_referenced_locally
 	let theme = $state<Theme>(data.theme);
+
+	const textSizes = [
+		{ value: 'normal', label: 'Normal', sample: 'text-base' },
+		{ value: 'large', label: 'Größer', sample: 'text-xl' }
+	] as const;
+
+	// svelte-ignore state_referenced_locally
+	let textSize = $state<TextSize>(data.textSize);
+
+	function applyTextSize() {
+		const root = document.documentElement;
+		if (textSize === 'large') root.dataset.text = 'large';
+		else delete root.dataset.text;
+	}
 
 	/** Switches the page right away; the form stores the choice for the next visit. */
 	function applyTheme() {
@@ -57,6 +71,7 @@
 		if (
 			form?.action &&
 			form.action !== 'theme' &&
+			form.action !== 'textSize' &&
 			form.action !== 'push' &&
 			form.action !== 'color'
 		)
@@ -98,7 +113,7 @@
 {/if}
 
 {#if data.family}
-	<h2 class="mb-2 px-1 text-xs font-semibold tracking-wide text-slate-500 uppercase">Familie</h2>
+	<h2 class="section-title">Familie</h2>
 	<div class="card mb-6 divide-y divide-slate-100 overflow-hidden">
 		<a href="/familie" class="flex min-h-14 items-center gap-3 px-4 py-2">
 			<span
@@ -154,7 +169,7 @@
 	</div>
 {/if}
 
-<h2 class="mb-2 px-1 text-xs font-semibold tracking-wide text-slate-500 uppercase">Darstellung</h2>
+<h2 class="section-title">Darstellung</h2>
 <form
 	method="POST"
 	action="?/theme"
@@ -192,9 +207,45 @@
 	</p>
 </form>
 
-<h2 class="mb-2 px-1 text-xs font-semibold tracking-wide text-slate-500 uppercase">
-	Benachrichtigungen
-</h2>
+<h2 class="section-title">Schriftgröße</h2>
+<form
+	method="POST"
+	action="?/textSize"
+	use:enhance={() =>
+		({ update }) =>
+			update({ reset: false })}
+	class="card mb-6 p-2"
+>
+	<div class="grid grid-cols-2 gap-1" role="radiogroup" aria-label="Schriftgröße">
+		{#each textSizes as option (option.value)}
+			<label
+				class="flex cursor-pointer items-center justify-center gap-2 rounded-xl p-2.5 text-sm {textSize ===
+				option.value
+					? 'bg-brand-50 font-medium text-brand-800 ring-1 ring-brand-600'
+					: 'text-slate-600'}"
+			>
+				<input
+					type="radio"
+					name="textSize"
+					value={option.value}
+					bind:group={textSize}
+					onchange={(e) => {
+						applyTextSize();
+						e.currentTarget.form?.requestSubmit();
+					}}
+					class="sr-only"
+				/>
+				<span class="{option.sample} leading-none font-semibold" aria-hidden="true">Aa</span>
+				{option.label}
+			</label>
+		{/each}
+	</div>
+	<p class="px-2 pt-2 pb-1 text-xs text-slate-500">
+		Gilt für dieses Gerät. „Größer“ vergrößert Text und Schaltflächen in der ganzen App.
+	</p>
+</form>
+
+<h2 class="section-title">Benachrichtigungen</h2>
 <PushSettings
 	publicKey={data.push.publicKey}
 	devices={data.push.devices}
@@ -202,7 +253,7 @@
 	success={form?.action === 'push' && 'success' in form ? form.success : undefined}
 />
 
-<h2 class="mb-2 px-1 text-xs font-semibold tracking-wide text-slate-500 uppercase">Konto</h2>
+<h2 class="section-title">Konto</h2>
 
 {#snippet row(section: Section, label: string, value: string, Icon: typeof UserRound)}
 	<button
