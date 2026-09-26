@@ -20,11 +20,13 @@ import {
 	listCards,
 	listFolders,
 	moveBlock,
+	notifyComment,
 	parseBlock,
 	updateFolder,
 	type Viewer
 } from './planning';
 import { parseVisibility } from './visibility';
+import { saveSubscription, type Sender } from './push';
 import { seedFamily, testDb } from './test/setup';
 
 async function familyOfThree() {
@@ -270,6 +272,53 @@ describe('planning comments', () => {
 
 		expect(await deleteComment(db, anna, card.id, first.id)).toBe(true);
 		expect((await listComments(db, anna, card.id)).map((c) => c.text)).toEqual(['Ich!']);
+	});
+
+	it('notifies everyone else who sees the card about a new comment', async () => {
+		const { db, anna, bert, cara } = await familyOfThree();
+		for (const [n, v] of [anna, bert, cara].entries()) {
+			await saveSubscription(
+				db,
+				v.userId,
+				{ endpoint: `https://fcm.googleapis.com/fcm/send/${n}`, keys: { p256dh: 'p', auth: 'a' } },
+				null
+			);
+		}
+		const inbox: { to: string; title: string; body: string; url: string }[] = [];
+		const send: Sender = async (target, payload) => {
+			inbox.push({
+				to: ['anna', 'bert', 'cara'][Number(target.endpoint.at(-1))],
+				...JSON.parse(payload)
+			});
+			return { statusCode: 201 };
+		};
+
+		const shared = await createFolder(db, anna, 'Urlaub', {
+			visibility: 'shared',
+			shareWith: [bert.userId]
+		});
+		const card = (await createCard(db, anna, shared.id, 'Packliste'))!;
+		const long = 'Zelt '.repeat(40);
+		expect(await notifyComment(db, bert, card.id, long, send)).toBe(1);
+		expect(inbox).toEqual([
+			{
+				to: 'anna',
+				title: 'bert zu „Packliste“',
+				body: expect.stringMatching(/^Zelt Zelt .*…$/),
+				url: `/planung/${shared.id}/${card.id}`,
+				tag: `comment:${card.id}`
+			}
+		]);
+		expect(inbox[0].body.length).toBeLessThanOrEqual(140);
+
+		inbox.length = 0;
+		const family = await createFolder(db, cara, 'Garten', { visibility: 'family', shareWith: [] });
+		const beet = (await createCard(db, cara, family.id, 'Beet'))!;
+		await notifyComment(db, cara, beet.id, 'Tomaten?', send);
+		expect(inbox.map((m) => m.to).sort()).toEqual(['anna', 'bert']);
+
+		// Someone who can't see the card can't trigger anything.
+		expect(await notifyComment(db, cara, card.id, 'Hallo?', send)).toBe(0);
 	});
 
 	it('validates comments', () => {

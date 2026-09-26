@@ -185,5 +185,6 @@
 	{/each}
 </div>
 <p class="-mt-4 mb-6 px-1 text-xs text-slate-500">
-	Du bekommst Erinnerungen zu Terminen, die du sehen darfst. Die Zeit legt man pro Termin fest.
+	Du bekommst Erinnerungen zu Terminen, die du sehen darfst (die Zeit legt man pro Termin fest), und
+	eine Nachricht bei neuen Kommentaren unter Planungs-Karten.
 </p>

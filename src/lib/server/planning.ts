@@ -7,11 +7,13 @@ import {
 	planningFolder,
 	planningFolderShare,
 	planningImage,
+	membership,
 	user,
 	type BlockType,
 	type Visibility
 } from './db/schema';
 import { visibleTo, type VisibilityInput } from './visibility';
+import { sendToUsers, type Sender } from './push';
 import {
 	LIMITS,
 	type Block,
@@ -449,6 +451,59 @@ export async function addComment(db: DB, v: Viewer, cardId: string, text: string
 		.values({ familyId: v.familyId, cardId, userId: v.userId, text })
 		.returning();
 	return row;
+}
+
+/** Everyone in the family who may see the card, i.e. its folder. */
+async function cardAudience(db: DB, familyId: string, cardId: string) {
+	const members = await db
+		.select({ userId: membership.userId })
+		.from(membership)
+		.where(eq(membership.familyId, familyId));
+	const [folder] = await db
+		.select({
+			id: planningFolder.id,
+			visibility: planningFolder.visibility,
+			createdBy: planningFolder.createdBy
+		})
+		.from(planningCard)
+		.innerJoin(planningFolder, eq(planningCard.folderId, planningFolder.id))
+		.where(and(eq(planningCard.familyId, familyId), eq(planningCard.id, cardId)));
+	if (!folder) return [];
+	const ids = members.map((m) => m.userId);
+	if (folder.visibility === 'family') return ids;
+	const shares =
+		folder.visibility === 'shared'
+			? await db
+					.select({ userId: planningFolderShare.userId })
+					.from(planningFolderShare)
+					.where(eq(planningFolderShare.folderId, folder.id))
+			: [];
+	const allowed = new Set([folder.createdBy, ...shares.map((s) => s.userId)]);
+	return ids.filter((id) => allowed.has(id));
+}
+
+/**
+ * Tells everyone else who may see the card about a new comment, on their devices with push
+ * switched on. Returns how many devices got it.
+ */
+export async function notifyComment(db: DB, v: Viewer, cardId: string, text: string, send: Sender) {
+	const card = await getCard(db, v, cardId);
+	if (!card) return 0;
+	const [author] = await db.select({ name: user.name }).from(user).where(eq(user.id, v.userId));
+	const recipients = (await cardAudience(db, v.familyId, cardId)).filter((id) => id !== v.userId);
+	const body = text.length > 140 ? `${text.slice(0, 139).trimEnd()}…` : text;
+	return sendToUsers(
+		db,
+		recipients,
+		{
+			title: `${author?.name ?? 'Jemand'} zu „${card.title}“`,
+			body,
+			url: `/planung/${card.folderId}/${card.id}`,
+			// Newer comments on the same card replace the older notification.
+			tag: `comment:${card.id}`
+		},
+		send
+	);
 }
 
 /** Only the author may change their comment. */

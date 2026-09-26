@@ -1,12 +1,15 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { requireViewer } from '$lib/server/guards';
+import { pushSender } from '$lib/server/push';
+import { env } from '$env/dynamic/private';
 import {
 	LIMITS,
 	addBlock,
 	addComment,
 	checkComment,
 	deleteComment,
+	notifyComment,
 	listComments,
 	updateComment,
 	addImage,
@@ -146,6 +149,10 @@ export const actions: Actions = {
 		if (!(await addComment(db, viewer, params.cardId, checked.text))) {
 			error(404, 'Karte nicht gefunden.');
 		}
+		// Don't make the author wait for the push services.
+		notifyComment(db, viewer, params.cardId, checked.text, pushSender(db, env)).catch((err) =>
+			console.error('Kommentar-Benachrichtigung fehlgeschlagen:', err)
+		);
 		return { commented: true };
 	},
 

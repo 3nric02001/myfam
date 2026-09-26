@@ -52,10 +52,11 @@
 				aria-hidden="true"><BellRing size={18} /></span
 			>
 			<div class="min-w-0 flex-1">
-				<p class="font-medium">Erinnerungen an Termine</p>
+				<p class="font-medium">Benachrichtigungen</p>
 				{#if show === 'ask'}
 					<p class="text-sm text-slate-500">
-						MyFam meldet sich auf diesem Gerät, bevor ein Termin beginnt.
+						MyFam erinnert dich auf diesem Gerät an Termine und meldet neue Kommentare in der
+						Planung.
 					</p>
 				{:else}
 					<p class="text-sm text-slate-500">
