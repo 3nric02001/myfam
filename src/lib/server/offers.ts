@@ -190,7 +190,7 @@ export async function offersForList(
 	familyId: string,
 	items: Item[],
 	today: string,
-	options: { auto: boolean; week?: Week; search?: Search }
+	options: { auto: boolean; week?: Week; on?: string; search?: Search }
 ) {
 	const settings = await getOfferSettings(db, familyId);
 	const manual: Offer[] = (await listManualOffers(db, familyId, today)).map((o) => ({
@@ -212,7 +212,10 @@ export async function offersForList(
 		({ offers: auto, failed } = await autoOffers(db, settings.zip, queries, today, options.search));
 	}
 
-	const range = weekRange(today, options.week ?? 'this');
+	// A planned trip looks at the offers of that one day, otherwise at the whole week.
+	const range = options.on
+		? { from: options.on, to: options.on }
+		: weekRange(today, options.week ?? 'this');
 	const offers = [...manual, ...auto].filter((o) => runsDuring(o, range));
 	return {
 		configured: settings.stores.length > 0,

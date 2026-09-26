@@ -142,6 +142,10 @@ Ein Angebot zählt sicher, wenn der Artikel als eigenes Wort im Produktnamen ste
 
 **Preise:** Beim Abhaken lässt sich über das €-Symbol eintragen, was ein Artikel gekostet hat (Markt, Preis, optional das genaue Produkt wie „Gut&Günstig Mozzarella“). Daraus und aus den Angeboten schätzt die App den Gesamtpreis der offenen Liste. Ist ein gemerkter Preis niedriger als das beste Angebot, zeigt die Liste die günstigere Alternative. Ein Tipp auf einen Eintrag öffnet seine Detailansicht: Name, Menge und Bereich ändern, alle Angebote mit Quelle, Bild und Link (bei marktguru die Seite der Marke in diesem Markt, z. B. /rb/lidl/milbona, weil die API keine Seite für das einzelne Angebot nennt) sowie die gemerkten Preise. Abgehakt wird nur über den Kreis links. Eine freie Quelle für normale Regalpreise gibt es nicht, deshalb lernt die App sie beim Einkaufen.
 
+**Kassenzettel:** Unter /einkauf/kassenzettel fotografiert man den Bon. Der Server liest ihn mit tesseract.js und dem deutschen Sprachmodell aus `@tesseract.js-data/deu` (alles lokal, kein externer Dienst, das Foto wird nicht gespeichert). Die erkannten Zeilen werden den Einträgen der Liste zugeordnet und nach dem Prüfen als Preise gemerkt. Der voraussichtliche Preis steht als Summe unter der Liste, wie in einem Warenkorb.
+
+**Einkauf planen:** Mit einem Datum vergleicht die Liste die Angebote dieses Tages, und alle sehen den Einkauf als Aufgabe im Kalender (Tabelle `shopping_plan`). Verschieben ändert die Aufgabe, Absagen löscht sie, solange sie niemand abgehakt hat.
+
 Angebote kommen aus zwei Quellen:
 
 - **Von Hand eingetragen** (z. B. aus dem Prospekt). Funktioniert immer; abgelaufene Angebote verschwinden von selbst.
