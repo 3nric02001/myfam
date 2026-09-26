@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { ChevronLeft } from '@lucide/svelte';
 	import EventForm from '../EventForm.svelte';
+	import { DEFAULT_ALL_DAY_REMINDER } from '$lib/reminders';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
@@ -28,6 +29,8 @@
 		endDate: data.date,
 		endTime: null,
 		visibility: 'family',
-		sharedWith: []
+		sharedWith: [],
+		// The form starts as all-day; switching to a time picks the timed default.
+		reminder: DEFAULT_ALL_DAY_REMINDER
 	}}
 />

@@ -4,12 +4,28 @@ import { changeEmail, changeName, changePassword } from '$lib/server/account';
 import { requireUser } from '$lib/server/guards';
 import { field, rawField } from '$lib/server/validation';
 import { dev } from '$app/environment';
+import { env } from '$env/dynamic/private';
+import {
+	deleteSubscription,
+	listSubscriptions,
+	sendToUsers,
+	vapidKeys,
+	vapidSubject,
+	webPushSender
+} from '$lib/server/push';
 import { parseTheme, themeCookieName } from '$lib/theme';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = ({ cookies }) => ({
-	theme: parseTheme(cookies.get(themeCookieName))
-});
+export const load: PageServerLoad = async ({ cookies, locals }) => {
+	const { user } = requireUser(locals);
+	return {
+		theme: parseTheme(cookies.get(themeCookieName)),
+		push: {
+			publicKey: vapidKeys(db, env).publicKey,
+			devices: await listSubscriptions(db, user.id)
+		}
+	};
+};
 
 export const actions: Actions = {
 	// Stored per device in a cookie, so the phone can stay light while the tablet is dark.
@@ -23,6 +39,34 @@ export const actions: Actions = {
 			maxAge: 60 * 60 * 24 * 400
 		});
 		return { action: 'theme', theme };
+	},
+
+	pushTest: async ({ locals }) => {
+		const { user } = requireUser(locals);
+		const send = webPushSender(vapidKeys(db, env), vapidSubject(env));
+		const count = await sendToUsers(
+			db,
+			[user.id],
+			{ title: 'MyFam', body: 'So sehen Erinnerungen aus.', url: '/einstellungen', tag: 'test' },
+			send
+		);
+		if (count === 0) {
+			return fail(400, {
+				action: 'push',
+				message: 'Die Testnachricht ist bei keinem Gerät angekommen.'
+			});
+		}
+		return {
+			action: 'push',
+			success:
+				count === 1 ? 'Testnachricht verschickt.' : `Testnachricht an ${count} Geräte verschickt.`
+		};
+	},
+
+	pushRemove: async ({ request, locals }) => {
+		const { user } = requireUser(locals);
+		await deleteSubscription(db, user.id, { id: field(await request.formData(), 'id') });
+		return { action: 'push', success: 'Das Gerät bekommt keine Benachrichtigungen mehr.' };
 	},
 
 	name: async ({ request, locals }) => {

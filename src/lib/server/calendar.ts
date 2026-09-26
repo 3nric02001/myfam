@@ -1,6 +1,7 @@
 import { and, asc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 import type { DB } from './db/client';
 import { field } from './validation';
+import { isReminder } from '$lib/reminders';
 import { visibleTo as sharedVisibleTo } from './visibility';
 import { calendarEvent, calendarEventShare, membership, user, type Visibility } from './db/schema';
 
@@ -17,6 +18,8 @@ export type EventInput = {
 	visibility: Visibility;
 	/** Only used for visibility 'shared'. */
 	sharedWith?: string[];
+	/** Minutes before the start for a push reminder, see $lib/reminders. */
+	reminder?: number | null;
 };
 
 /** An event that passed checkEvent(). */
@@ -29,6 +32,7 @@ export type CheckedEvent = {
 	endTime: string | null;
 	visibility: Visibility;
 	sharedWith: string[];
+	reminder: number | null;
 };
 
 const DATE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
@@ -68,6 +72,10 @@ export function checkEvent(input: EventInput): { error: string } | { event: Chec
 	if (input.visibility === 'shared' && sharedWith.length === 0) {
 		return { error: 'Wähle mindestens eine Person aus, mit der du den Termin teilen willst.' };
 	}
+	const reminder = input.reminder ?? null;
+	if (reminder !== null && !isReminder(reminder, !startTime)) {
+		return { error: 'Bitte wähle eine gültige Erinnerung.' };
+	}
 	return {
 		event: {
 			title,
@@ -77,7 +85,8 @@ export function checkEvent(input: EventInput): { error: string } | { event: Chec
 			endDate,
 			endTime,
 			visibility: input.visibility,
-			sharedWith
+			sharedWith,
+			reminder
 		}
 	};
 }
@@ -85,6 +94,7 @@ export function checkEvent(input: EventInput): { error: string } | { event: Chec
 /** Reads the event form used on the new and edit pages. */
 export function eventFromForm(form: FormData): EventInput {
 	const allDay = form.get('allDay') === 'on';
+	const reminder = field(form, 'reminder');
 	return {
 		title: field(form, 'title'),
 		notes: field(form, 'notes'),
@@ -93,7 +103,8 @@ export function eventFromForm(form: FormData): EventInput {
 		endDate: field(form, 'endDate'),
 		endTime: allDay ? null : field(form, 'endTime'),
 		visibility: field(form, 'visibility') as Visibility,
-		sharedWith: form.getAll('sharedWith').filter((v) => typeof v === 'string')
+		sharedWith: form.getAll('sharedWith').filter((v) => typeof v === 'string'),
+		reminder: reminder ? Number(reminder) : null
 	};
 }
 

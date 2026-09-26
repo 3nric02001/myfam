@@ -43,6 +43,13 @@
       "when": 1790420943773,
       "tag": "0005_shopping_categories",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1790421548047,
+      "tag": "0006_push",
+      "breakpoints": true
     }
   ]
 }

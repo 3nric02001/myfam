@@ -11,6 +11,7 @@ Ein gemeinsamer Ort für die ganze Familie: Einkaufsliste, Termine und Planung. 
 | Einkaufsliste                     | fertig (hinzufügen, abhaken, löschen, Erledigte löschen)   |
 | Kalender                          | fertig (Termine mit Sichtbarkeit, deutsche Feiertage)      |
 | Planung                           | fertig (Ordner, Karten mit Text, Tabellen, Links, Bildern) |
+| Erinnerungen per Push             | fertig für Termine                                         |
 
 ## Technik
 
@@ -26,6 +27,8 @@ src/lib/server/
   shopping.ts    Einkaufsliste
   calendar.ts    Kalender: Termine, Sichtbarkeit, Freigaben
   planning.ts    Planung: Ordner, Karten, Inhalte, Bilder
+  push.ts        Web Push: VAPID-Schlüssel, Geräte, Versand
+  reminders.ts   Erinnerungen: was fällig ist, Scheduler im App-Prozess
   visibility.ts  Gemeinsames Sichtbarkeitsmodell (Familie / bestimmte Personen / nur ich)
   uploads.ts     Hochgeladene Bilder im Dateisystem
   db/schema.ts   Datenbankschema
@@ -40,6 +43,15 @@ src/routes/
 - **Sichtbarkeit pro Termin:** ganze Familie (Standard), bestimmte Personen oder nur ich. Wer einen Termin nicht sehen darf, bekommt ihn auch über den direkten Link nicht (404).
 - **Bearbeiten:** Die Person, die den Termin angelegt hat. Admins dürfen zusätzlich Termine der ganzen Familie ändern oder löschen, aber deren Sichtbarkeit nicht ändern. Private und geteilte Termine bleiben allein bei ihrer Person.
 - **Feiertage:** Die bundesweiten Feiertage werden immer angezeigt. Unter **Familie → Feiertage im Kalender** kann ein Admin das Bundesland wählen, dann kommen die regionalen dazu. Die Berechnung läuft offline (Osterformel), es wird kein externer Dienst gebraucht. Feiertage, die nur in Teilen eines Landes gelten (z. B. Mariä Himmelfahrt in Bayern), werden nicht angezeigt.
+
+## Erinnerungen per Push
+
+- **Einschalten** pro Gerät unter **Einstellungen → Benachrichtigungen**. Wer mehrere Geräte nutzt, schaltet es auf jedem ein. Dort gibt es auch eine Testnachricht und die Liste der eigenen Geräte.
+- **iPhone/iPad:** nur ab iOS 16.4 und nur, wenn MyFam über „Teilen → Zum Home-Bildschirm“ als App installiert ist. Die Einstellungsseite erklärt das.
+- **Pro Termin** wählt man die Erinnerung im Terminformular: bei Terminen mit Uhrzeit standardmäßig 30 Minuten vorher, bei ganztägigen am Vortag um 18 Uhr (oder „Keine“). Die Erinnerung geht an alle, die den Termin sehen dürfen und Benachrichtigungen eingeschaltet haben. Termine, die vor diesem Update angelegt wurden, haben keine Erinnerung.
+- **Technik:** Web Push mit eigenem VAPID-Schlüssel, ohne Konto bei einem Drittanbieter. Der Server schickt die verschlüsselte Nachricht direkt an den Push-Dienst des Browsers (Google, Apple, Mozilla, Microsoft), der Container braucht dafür ausgehendes HTTPS. Der Schlüssel wird beim ersten Start erzeugt und in der Datenbank gespeichert. Alternativ `VAPID_PUBLIC_KEY` und `VAPID_PRIVATE_KEY` setzen (`npx web-push generate-vapid-keys`); ändert sich der Schlüssel, muss jedes Gerät neu eingeschaltet werden.
+- **Zeitplan:** Ein Timer im App-Prozess prüft jede Minute, was fällig ist (deutsche Zeit, auch über die Zeitumstellung). War der Server kurz weg, werden bis zu 30 Minuten alte Erinnerungen nachgeholt, jede genau einmal. Weitere Arten (z. B. Aufgaben) hängen sich als eigene Quelle in `src/lib/server/reminders.ts` ein.
+- Der Service Worker (`src/service-worker.ts`) zeigt nur Benachrichtigungen an und speichert keine Seiten zwischen.
 
 ## Planung
 
