@@ -13,6 +13,7 @@
 	import { enhance } from '$app/forms';
 	import type { SubmitFunction } from '@sveltejs/kit';
 	import BlockView from '$lib/components/planning/BlockView.svelte';
+	import Comments from '$lib/components/planning/Comments.svelte';
 	import TableEditor from '$lib/components/planning/TableEditor.svelte';
 	import VisibilityBadge from '$lib/components/VisibilityBadge.svelte';
 	import { shrinkImage } from '$lib/images';
@@ -65,7 +66,9 @@
 	};
 
 	let errorFor = $derived((blockId: string | null) =>
-		form?.message && (form.blockId ?? null) === blockId ? form.message : null
+		form && 'message' in form && form.message && (form.blockId ?? null) === blockId
+			? form.message
+			: null
 	);
 </script>
 
@@ -271,6 +274,12 @@
 		{/if}
 	</div>
 {/if}
+
+<Comments
+	comments={data.comments}
+	error={form && 'commentError' in form ? form.commentError : null}
+	errorFor={form && 'commentId' in form ? form.commentId : null}
+/>
 
 <form
 	method="POST"

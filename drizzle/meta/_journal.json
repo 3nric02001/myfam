@@ -47,8 +47,15 @@
     {
       "idx": 6,
       "version": "6",
-      "when": 1790421327088,
-      "tag": "0006_meals",
+      "when": 1790421492705,
+      "tag": "0006_planning_comments",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1790421695249,
+      "tag": "0007_meals",
       "breakpoints": true
     }
   ]

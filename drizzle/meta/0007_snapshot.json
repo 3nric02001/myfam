@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "ceb1fe48-3732-4eb5-b136-022ef2e3a64b",
-  "prevId": "f7b5a114-3a41-4438-9737-f3e0f43610b9",
+  "id": "9f0f03af-67f2-4fa1-adcf-037985b4a3fe",
+  "prevId": "ceb1fe48-3732-4eb5-b136-022ef2e3a64b",
   "tables": {
     "calendar_event": {
       "name": "calendar_event",
@@ -293,6 +293,118 @@
             "id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "meal": {
+      "name": "meal",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "family_id": {
+          "name": "family_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "date": {
+          "name": "date",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "slot": {
+          "name": "slot",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "ingredients": {
+          "name": "ingredients",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "added_to_list": {
+          "name": "added_to_list",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch())"
+        }
+      },
+      "indexes": {
+        "meal_family_day_slot_idx": {
+          "name": "meal_family_day_slot_idx",
+          "columns": [
+            "family_id",
+            "date",
+            "slot"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "meal_family_id_family_id_fk": {
+          "name": "meal_family_id_family_id_fk",
+          "tableFrom": "meal",
+          "tableTo": "family",
+          "columnsFrom": [
+            "family_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "meal_created_by_user_id_fk": {
+          "name": "meal_created_by_user_id_fk",
+          "tableFrom": "meal",
+          "tableTo": "user",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
