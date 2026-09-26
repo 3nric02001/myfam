@@ -12,7 +12,7 @@
 		Repeat,
 		UtensilsCrossed
 	} from '@lucide/svelte';
-	import { replaceState } from '$app/navigation';
+	import { afterNavigate, replaceState } from '$app/navigation';
 	import { page } from '$app/state';
 	import { addDays, addMonths, dayLabel, monthLabel, shortDate, weekStart } from '$lib/dates';
 	import { visibilityLabel } from '$lib/visibility';
@@ -28,9 +28,10 @@
 	let { data }: PageProps = $props();
 
 	// Picking a day happens in the browser. It survives the regular refresh of the data,
-	// and a new month falls back to the day the server chose.
+	// and a navigation (arrows, Heute) falls back to the day the server chose.
 	let picked = $state<string | null>(null);
 	let selected = $derived(picked && data.days.includes(picked) ? picked : data.selected);
+	afterNavigate(() => (picked = null));
 
 	// Only the selected week is shown until the month is expanded; kept in the URL.
 	let expandedLocal = $state<boolean | null>(null);
