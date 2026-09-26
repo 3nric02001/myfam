@@ -1,7 +1,7 @@
 import { and, asc, eq, gte, isNull, lt, lte, or, sql } from 'drizzle-orm';
 import type { DB } from './db/client';
 import { calendarSubscription, subscriptionEvent } from './db/schema';
-import { CalendarError, fetchCalendar, normalizeUrl } from './caldav';
+import { CalendarError, calendarFetch, fetchCalendar, normalizeUrl } from './caldav';
 import { occurrences } from './ical';
 import { decrypt, encrypt } from './secrets';
 import { field } from './validation';
@@ -152,7 +152,7 @@ export async function syncSubscription(
 	db: DB,
 	key: Buffer,
 	subscription: typeof calendarSubscription.$inferSelect,
-	fetchFn: Fetch = fetch,
+	fetchFn: Fetch = calendarFetch,
 	now = new Date()
 ): Promise<string | null> {
 	if (running.has(subscription.id)) return null;
@@ -215,7 +215,7 @@ export async function syncSubscription(
 }
 
 /** Syncs all subscriptions (of all families) not fetched within the interval. */
-export async function syncDue(db: DB, key: Buffer, fetchFn: Fetch = fetch, now = new Date()) {
+export async function syncDue(db: DB, key: Buffer, fetchFn: Fetch = calendarFetch, now = new Date()) {
 	const due = await db
 		.select()
 		.from(calendarSubscription)

@@ -1,7 +1,15 @@
+import { env } from '$env/dynamic/private';
+import { BlockedAddressError, parseHostList, publicFetch } from './safe-fetch';
+
 // Reads events from a CalDAV calendar (e.g. Nextcloud) or a plain ICS link. Only reads, never
 // writes. Error messages are shown to family admins, so they never contain the server's response.
 
 type Fetch = typeof fetch;
+
+/** Only public addresses, plus the hosts the operator allows (CALDAV_ALLOW_HOSTS). */
+export const calendarFetch: Fetch = publicFetch({
+	allowHosts: () => parseHostList(env.CALDAV_ALLOW_HOSTS)
+});
 
 export type Source = { url: string; username?: string | null; password?: string | null };
 
@@ -33,12 +41,29 @@ function headers(source: Source, extra: Record<string, string> = {}) {
 	return result;
 }
 
+/** Reads the body, but stops as soon as it gets too large instead of loading all of it. */
 async function readBody(res: Response) {
+	const tooLarge = () => new CalendarError('Der Kalender ist zu groß.');
 	const length = Number(res.headers.get('content-length') ?? 0);
-	if (length > MAX_BYTES) throw new CalendarError('Der Kalender ist zu groß.');
-	const text = await res.text();
-	if (text.length > MAX_BYTES) throw new CalendarError('Der Kalender ist zu groß.');
-	return text;
+	if (length > MAX_BYTES) {
+		await res.body?.cancel();
+		throw tooLarge();
+	}
+	if (!res.body) return '';
+	const reader = res.body.getReader();
+	const chunks: Uint8Array[] = [];
+	let size = 0;
+	for (;;) {
+		const { done, value } = await reader.read();
+		if (done) break;
+		size += value.byteLength;
+		if (size > MAX_BYTES) {
+			await reader.cancel();
+			throw tooLarge();
+		}
+		chunks.push(value);
+	}
+	return Buffer.concat(chunks).toString('utf8');
 }
 
 function statusError(status: number) {
@@ -57,6 +82,11 @@ async function request(fetchFn: Fetch, url: string, init: RequestInit) {
 			signal: AbortSignal.timeout(TIMEOUT)
 		});
 	} catch (e) {
+		if (e instanceof BlockedAddressError) {
+			throw new CalendarError(
+				'Diese Adresse liegt im internen Netz. Der Betreiber kann sie mit CALDAV_ALLOW_HOSTS freigeben.'
+			);
+		}
 		if (e instanceof Error && e.name === 'TimeoutError') {
 			throw new CalendarError('Der Server antwortet nicht.');
 		}
@@ -128,7 +158,7 @@ const isIcs = (text: string) => text.trimStart().startsWith('BEGIN:VCALENDAR');
  * Returns the calendar as iCalendar texts. Tries CalDAV first and falls back to downloading
  * the link as an ICS file, so Nextcloud calendars and public links both work.
  */
-export async function fetchCalendar(source: Source, fetchFn: Fetch = fetch): Promise<string[]> {
+export async function fetchCalendar(source: Source, fetchFn: Fetch = calendarFetch): Promise<string[]> {
 	const report = await request(fetchFn, source.url, {
 		method: 'REPORT',
 		headers: headers(source, { Depth: '1', 'Content-Type': 'application/xml; charset=utf-8' }),

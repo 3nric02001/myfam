@@ -145,6 +145,32 @@ describe('fetchCalendar', () => {
 		);
 		await expect(fetchCalendar({ url }, fetchFn)).resolves.toEqual([]);
 	});
+
+	it('stops reading a calendar that is too large, even without a length', async () => {
+		const chunk = new Uint8Array(1024 * 1024).fill(65);
+		let sent = 0;
+		const { fetchFn } = fakeServer(
+			() =>
+				new Response(
+					new ReadableStream({
+						pull(controller) {
+							sent++;
+							controller.enqueue(chunk);
+						}
+					})
+				)
+		);
+		await expect(fetchCalendar({ url: 'https://example.de/gross.ics' }, fetchFn)).rejects.toThrow(
+			/zu groß/
+		);
+		expect(sent).toBeLessThan(30);
+	});
+
+	it('refuses addresses in the internal network', async () => {
+		await expect(fetchCalendar({ url: 'http://192.168.178.1/kalender.ics' })).rejects.toThrow(
+			/internen Netz/
+		);
+	});
 });
 
 describe('subscriptions', () => {
