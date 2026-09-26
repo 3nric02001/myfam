@@ -5,6 +5,7 @@
 	import { onMount } from 'svelte';
 	import {
 		CalendarDays,
+		CalendarHeart,
 		ChevronDown,
 		CloudOff,
 		HouseHeart,
@@ -30,7 +31,11 @@
 		{ href: '/planung', label: 'Planung', icon: ListTodo }
 	];
 	// The menu behind the logo lists every page; the tab bar stays as the shortcut for daily ones.
-	const menuPages = [...tabs, { href: '/finanzen', label: 'Finanzen', icon: Wallet }];
+	const menuPages = [
+		...tabs,
+		{ href: '/woche', label: 'Wochenplanung', icon: CalendarHeart },
+		{ href: '/finanzen', label: 'Finanzen', icon: Wallet }
+	];
 	const menuFamily = [
 		{ href: '/familie', label: 'Familie', icon: Users },
 		{ href: '/einstellungen', label: 'Einstellungen', icon: Settings }

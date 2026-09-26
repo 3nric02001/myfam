@@ -9,6 +9,7 @@ import { saveMeal } from './meals';
 import { addItem, setDone } from './shopping';
 import { savePurchase } from './purchases';
 import { calendarEvent, task } from './db/schema';
+import { markWeekDone } from './week';
 import { createTask, notifyAssignee, setTaskDone, type TaskInput } from './tasks';
 import { seedFamily, testDb } from './test/setup';
 
@@ -280,6 +281,42 @@ describe('reminders', () => {
 		}
 		expect(await sendDueReminders(db, berlinTime('2026-10-04', '18:00'), send)).toEqual([]);
 		expect(inbox).toEqual([]);
+	});
+
+	it('invites every family to the weekly planning on Sunday afternoon', async () => {
+		const { db, family, anna, ben, inbox, send } = await setup();
+		await setNotification(db, ben.id, 'week', false);
+		// Dinner on several weekdays counts every day; the Sunday roast only asks for Sunday lunch.
+		for (const date of ['2026-09-28', '2026-09-29', '2026-09-30']) {
+			await saveMeal(db, family.id, anna.id, { date, slot: 'dinner', name: 'Suppe' });
+		}
+		await saveMeal(db, family.id, anna.id, { date: '2026-09-27', slot: 'lunch', name: 'Braten' });
+		await saveMeal(db, family.id, anna.id, { date: '2026-10-05', slot: 'dinner', name: 'Pizza' });
+
+		// 2026-10-04 is a Sunday.
+		expect(await sendDueReminders(db, berlinTime('2026-10-04', '14:59'), send)).toEqual([]);
+		expect(await sendDueReminders(db, berlinTime('2026-10-04', '15:00'), send)).toEqual([
+			`week:${family.id}:2026-10-05`
+		]);
+		expect(inbox).toEqual([
+			{
+				to: 'anna',
+				title: 'Zeit für die Wochenplanung',
+				body: 'Termine, Aufgaben und 7 offene Mahlzeiten: ein paar kurze Fragen, dann steht die nächste Woche.'
+			}
+		]);
+		expect(await sendDueReminders(db, berlinTime('2026-10-04', '15:10'), send)).toEqual([]);
+	});
+
+	it('skips both Sunday reminders once the family finished the weekly planning', async () => {
+		const { db, family, anna, inbox, send } = await setup();
+		await saveMeal(db, family.id, anna.id, { date: '2026-09-28', slot: 'dinner', name: 'Suppe' });
+		await markWeekDone(db, family.id, '2026-10-05', anna.id);
+		expect(await sendDueReminders(db, berlinTime('2026-10-04', '15:00'), send)).toEqual([]);
+		expect(await sendDueReminders(db, berlinTime('2026-10-04', '18:00'), send)).toEqual([]);
+		expect(inbox).toEqual([]);
+		// The week after is a new week.
+		expect(await sendDueReminders(db, berlinTime('2026-10-11', '15:00'), send)).toHaveLength(1);
 	});
 
 	it('reminds whoever ticked off items to photograph the receipt', async () => {

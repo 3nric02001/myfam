@@ -134,6 +134,20 @@
       "when": 1790451521142,
       "tag": "0018_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1790453492547,
+      "tag": "0019_week_plan",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1790454923922,
+      "tag": "0020_dish_idea",
+      "breakpoints": true
     }
   ]
 }

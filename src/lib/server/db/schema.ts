@@ -618,7 +618,7 @@ export const planningCardSeen = sqliteTable(
 
 /** Kinds of push notifications a member can switch off in the settings. */
 export type NotificationKind =
-	'morning' | 'event' | 'task' | 'evening' | 'comment' | 'meals' | 'receipt';
+	'morning' | 'event' | 'task' | 'evening' | 'comment' | 'week' | 'meals' | 'receipt';
 
 /** A kind of notification a member switched off. Everything else is on. */
 export const notificationOff = sqliteTable(
@@ -651,4 +651,36 @@ export const shoppingTrip = sqliteTable(
 		checks: integer('checks').notNull().default(0)
 	},
 	(t) => [primaryKey({ columns: [t.familyId, t.userId] })]
+);
+
+/** A family finished the weekly planning for the week starting on `week` (a Monday). */
+export const weekPlan = sqliteTable(
+	'week_plan',
+	{
+		familyId: text('family_id')
+			.notNull()
+			.references(() => family.id, { onDelete: 'cascade' }),
+		/** Local 'YYYY-MM-DD' of the Monday. */
+		week: text('week').notNull(),
+		doneBy: text('done_by').references(() => user.id, { onDelete: 'set null' }),
+		doneAt: integer('done_at', { mode: 'timestamp' }).notNull()
+	},
+	(t) => [primaryKey({ columns: [t.familyId, t.week] })]
+);
+
+/** A dish the family wants to try or keep in mind, without planning it for a day yet. */
+export const dishIdea = sqliteTable(
+	'dish_idea',
+	{
+		id: id(),
+		familyId: text('family_id')
+			.notNull()
+			.references(() => family.id, { onDelete: 'cascade' }),
+		name: text('name').notNull(),
+		/** One ingredient per line, like meals. */
+		ingredients: text('ingredients'),
+		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+		createdAt: createdAt()
+	},
+	(t) => [index('dish_idea_family_idx').on(t.familyId)]
 );

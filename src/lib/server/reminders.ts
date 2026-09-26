@@ -18,6 +18,7 @@ import { listEvents } from './calendar';
 import { listMeals } from './meals';
 import { listSubscriptionEvents } from './subscriptions';
 import { listTasks } from './tasks';
+import { isWeekDone, usedSlots } from './week';
 import { occurrences } from '$lib/repeat';
 
 // Push reminders. Each source lists what is due around `now` together with the users who may
@@ -296,8 +297,16 @@ export const eveningTasks: ReminderSource = async (db, now) => {
 	return due;
 };
 
+/** On Sunday afternoon every family is invited to plan the coming week. */
+export const WEEK_PLAN_TIME = '15:00';
+
 /** On Sundays at this time the family hears about meals still open for the coming week. */
 export const MEAL_REMINDER_TIME = '18:00';
+
+/** The Sunday before the coming week: today, or yesterday just after midnight on a Monday. */
+function lastSunday(day: string) {
+	return weekStart(day) === day ? addDays(day, -1) : addDays(weekStart(day), 6);
+}
 
 const WEEKDAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
@@ -313,48 +322,105 @@ export function openMealsLabel(open: { day: number; slots: MealSlot[] }[], used:
 }
 
 /**
- * Sunday evening: meals of the coming week that are still open, to the whole family. Only the
- * meals the family plans at all count (e.g. no breakfast if they never plan one), judged by the
- * last four weeks; a family that doesn't use the meal plan hears nothing.
+ * Meals of the week starting on `monday` that are still open, per family that uses the meal
+ * plan. Only the meals the family plans on that day count (see usedSlots), e.g. no breakfast if
+ * they never plan one.
  */
-export const mealReminders: ReminderSource = async (db, now) => {
-	const day = today(now);
-	// Sunday, or Monday just after midnight while the grace period of Sunday evening lasts.
-	const sunday = weekStart(day) === day ? addDays(day, -1) : addDays(weekStart(day), 6);
-	const at = berlinTime(sunday, MEAL_REMINDER_TIME);
-	if (at > now || now.getTime() - at.getTime() > GRACE_MS) return [];
-	const monday = addDays(sunday, 1);
+async function openMeals(db: DB, monday: string) {
 	const rows = await db
 		.select({ familyId: meal.familyId, date: meal.date, slot: meal.slot })
 		.from(meal)
-		.where(and(gte(meal.date, addDays(sunday, -27)), lte(meal.date, addDays(monday, 6))));
+		.where(and(gte(meal.date, addDays(monday, -28)), lte(meal.date, addDays(monday, 6))));
 	const byFamily = new Map<string, { date: string; slot: MealSlot }[]>();
 	for (const row of rows) {
 		byFamily.set(row.familyId, [...(byFamily.get(row.familyId) ?? []), row]);
 	}
-	const due: DueReminder[] = [];
+	const result = new Map<
+		string,
+		{ open: { day: number; slots: MealSlot[] }[]; used: MealSlot[]; count: number }
+	>();
 	for (const [familyId, meals] of byFamily) {
-		const used = mealSlots.filter((slot) => meals.some((m) => m.slot === slot));
+		const perDay = usedSlots(meals, monday);
+		const used = mealSlots.filter((slot) => perDay.some((day) => day.includes(slot)));
 		const planned = new Set(meals.map((m) => `${m.date}:${m.slot}`));
-		const open = Array.from({ length: 7 }, (_, i) => ({
-			day: i,
-			slots: used.filter((slot) => !planned.has(`${addDays(monday, i)}:${slot}`))
-		})).filter((d) => d.slots.length > 0);
-		const count = open.reduce((sum, d) => sum + d.slots.length, 0);
+		const open = perDay
+			.map((slots, i) => ({
+				day: i,
+				slots: slots.filter((slot) => !planned.has(`${addDays(monday, i)}:${slot}`))
+			}))
+			.filter((d) => d.slots.length > 0);
+		result.set(familyId, { open, used, count: open.reduce((sum, d) => sum + d.slots.length, 0) });
+	}
+	return result;
+}
+
+async function familyMembers(db: DB, familyId: string) {
+	const rows = await db
+		.select({ userId: membership.userId })
+		.from(membership)
+		.where(eq(membership.familyId, familyId));
+	return rows.map((r) => r.userId);
+}
+
+/**
+ * Sunday afternoon: an invitation to the weekly planning (/woche), to every family that hasn't
+ * done it for the coming week yet.
+ */
+export const weekPlanReminders: ReminderSource = async (db, now) => {
+	const sunday = lastSunday(today(now));
+	const at = berlinTime(sunday, WEEK_PLAN_TIME);
+	if (at > now || now.getTime() - at.getTime() > GRACE_MS) return [];
+	const monday = addDays(sunday, 1);
+	const meals = await openMeals(db, monday);
+	const families = new Map<string, string[]>();
+	for (const { userId, familyId } of await memberships(db)) {
+		families.set(familyId, [...(families.get(familyId) ?? []), userId]);
+	}
+	const due: DueReminder[] = [];
+	for (const [familyId, userIds] of families) {
+		if (await isWeekDone(db, familyId, monday)) continue;
+		const count = meals.get(familyId)?.count ?? 0;
+		due.push({
+			key: `week:${familyId}:${monday}`,
+			at,
+			kind: 'week',
+			userIds,
+			message: {
+				title: 'Zeit für die Wochenplanung',
+				body: count
+					? `Termine, Aufgaben und ${count === 1 ? 'eine offene Mahlzeit' : `${count} offene Mahlzeiten`}: ein paar kurze Fragen, dann steht die nächste Woche.`
+					: 'Termine, Aufgaben und Essen: ein paar kurze Fragen, dann steht die nächste Woche.',
+				url: `/woche?woche=${monday}`,
+				tag: `week:${monday}`
+			}
+		});
+	}
+	return due;
+};
+
+/**
+ * Sunday evening: meals of the coming week that are still open, to the whole family. A family
+ * that doesn't use the meal plan, or finished the weekly planning already, hears nothing.
+ */
+export const mealReminders: ReminderSource = async (db, now) => {
+	const sunday = lastSunday(today(now));
+	const at = berlinTime(sunday, MEAL_REMINDER_TIME);
+	if (at > now || now.getTime() - at.getTime() > GRACE_MS) return [];
+	const monday = addDays(sunday, 1);
+	const due: DueReminder[] = [];
+	for (const [familyId, { open, used, count }] of await openMeals(db, monday)) {
 		if (count === 0) continue;
-		const members = await db
-			.select({ userId: membership.userId })
-			.from(membership)
-			.where(eq(membership.familyId, familyId));
+		// Whoever went through the planning left the rest open on purpose.
+		if (await isWeekDone(db, familyId, monday)) continue;
 		due.push({
 			key: `meals:${familyId}:${monday}`,
 			at,
 			kind: 'meals',
-			userIds: members.map((m) => m.userId),
+			userIds: await familyMembers(db, familyId),
 			message: {
 				title: 'Essensplan für nächste Woche',
 				body: `Noch ${count === 1 ? 'eine Mahlzeit' : `${count} Mahlzeiten`} offen: ${openMealsLabel(open, used)}.`,
-				url: `/kalender/essen?woche=${monday}`,
+				url: `/woche?woche=${monday}&schritt=essen`,
 				tag: `meals:${monday}`
 			}
 		});
@@ -407,6 +473,7 @@ export const sources: ReminderSource[] = [
 	eventReminders,
 	taskReminders,
 	eveningTasks,
+	weekPlanReminders,
 	mealReminders,
 	receiptReminders
 ];

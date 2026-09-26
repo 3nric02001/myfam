@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
 	addMealsToList,
 	cleanIngredients,
+	deleteIdea,
 	deleteMeal,
 	listDishes,
+	listIdeas,
+	saveIdea,
 	listMeals,
 	parseIngredient,
 	saveMeal
@@ -117,5 +120,32 @@ describe('meal plan', () => {
 			ingredients: '3 Eier\n500 ml Milch\nMehl'
 		});
 		expect((await listMeals(db, family.id, '2026-10-01', '2026-10-01'))[0].addedToList).toBe(false);
+	});
+
+	it('keeps a list of dish ideas per family, each name once', async () => {
+		const db = testDb();
+		const a = await seedFamily(db, 'anna');
+		const b = await seedFamily(db, 'bert');
+		expect(await saveIdea(db, a.family.id, a.owner.id, { name: '  ' })).toBe(false);
+		await saveIdea(db, a.family.id, a.owner.id, { name: 'Shakshuka' });
+		await saveIdea(db, a.family.id, a.owner.id, { name: 'shakshuka', ingredients: '6 Eier' });
+		await saveIdea(db, a.family.id, a.owner.id, { name: 'Ramen' });
+		const ideas = await listIdeas(db, a.family.id);
+		expect(ideas.map((i) => [i.name, i.ingredients])).toEqual([
+			['Ramen', null],
+			['Shakshuka', '6 Eier']
+		]);
+		expect(await listIdeas(db, b.family.id)).toEqual([]);
+		await deleteIdea(db, b.family.id, ideas[0].id);
+		expect(await listIdeas(db, a.family.id)).toHaveLength(2);
+		// The name field of the meal plan offers ideas too.
+		await saveMeal(db, a.family.id, a.owner.id, {
+			date: '2026-10-01',
+			slot: 'dinner',
+			name: 'Ramen'
+		});
+		expect((await listDishes(db, a.family.id)).map((d) => d.name)).toEqual(['Ramen', 'Shakshuka']);
+		await deleteIdea(db, a.family.id, ideas[0].id);
+		expect(await listIdeas(db, a.family.id)).toHaveLength(1);
 	});
 });

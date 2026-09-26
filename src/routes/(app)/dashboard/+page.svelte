@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import {
 		CalendarDays,
+		CalendarHeart,
 		CalendarSync,
 		Check,
 		CheckCheck,
@@ -160,6 +161,25 @@
 			{/each}
 		</ul>
 	</section>
+{/if}
+
+{#if data.weekPlan}
+	<a
+		href="/woche?woche={data.weekPlan}"
+		class="mb-5 flex items-center gap-3 rounded-2xl bg-brand-600 p-4 text-white active:bg-brand-700"
+	>
+		<span
+			class="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white/15"
+			aria-hidden="true"><CalendarHeart size={22} /></span
+		>
+		<span class="min-w-0 flex-1">
+			<span class="block font-semibold">Wochenplanung</span>
+			<span class="block text-sm text-white/85"
+				>{data.weekPlan === data.today ? 'Diese Woche' : 'Nächste Woche'}: Termine, Aufgaben, Essen</span
+			>
+		</span>
+		<ChevronRight size={20} aria-hidden="true" />
+	</a>
 {/if}
 
 <section class="mb-5" aria-labelledby="termine">
