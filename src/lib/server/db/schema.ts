@@ -511,6 +511,20 @@ export const taskShare = sqliteTable(
 	(t) => [primaryKey({ columns: [t.taskId, t.userId] })]
 );
 
+/** The family's next planned shopping trip, with the task that puts it in everyone's calendar. */
+export const shoppingPlan = sqliteTable('shopping_plan', {
+	familyId: text('family_id')
+		.primaryKey()
+		.references(() => family.id, { onDelete: 'cascade' }),
+	/** Local 'YYYY-MM-DD'. */
+	date: text('date').notNull(),
+	taskId: text('task_id').references(() => task.id, { onDelete: 'set null' }),
+	createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+	updatedAt: integer('updated_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`)
+});
+
 export type User = typeof user.$inferSelect;
 export type Family = typeof family.$inferSelect;
 export type ShoppingItem = typeof shoppingItem.$inferSelect;

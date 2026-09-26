@@ -1,10 +1,12 @@
 <script lang="ts">
 	import {
+		CalendarDays,
 		Check,
 		ChevronRight,
 		Euro,
 		ExternalLink,
 		Plus,
+		ReceiptText,
 		ShoppingBasket,
 		Tag,
 		X
@@ -12,7 +14,7 @@
 	import { enhance } from '$app/forms';
 	import { formatPrice, STORES, storeLabel } from '$lib/offers';
 	import { pricesFor } from '$lib/prices';
-	import { shortDate } from '$lib/dates';
+	import { addDays, dayLabel, shortDate } from '$lib/dates';
 	import { CATEGORIES } from '$lib/categories';
 	import CategoryIcon from '$lib/components/CategoryIcon.svelte';
 	import type { PageProps } from './$types';
@@ -30,6 +32,13 @@
 	);
 	let suggestions = $derived(data.history.slice(0, 12));
 	let done = $derived(data.items.filter((i) => i.done));
+
+	let planning = $state(false);
+	// Most families shop on Saturday: suggest the next one.
+	let suggestedDay = $derived.by(() => {
+		const weekday = new Date(`${data.today}T00:00:00Z`).getUTCDay();
+		return addDays(data.today, weekday === 6 ? 7 : 6 - weekday);
+	});
 
 	/** The done item whose price is being entered. */
 	let pricing = $state<string | null>(null);
@@ -79,6 +88,73 @@
 	>
 </form>
 {#if form?.message}<p class="error mb-4">{form.message}</p>{/if}
+
+<div class="mb-5 flex flex-wrap items-center gap-2 text-sm">
+	{#if data.plan}
+		<span
+			class="flex min-h-9 items-center gap-1.5 rounded-full bg-brand-50 py-1 pr-3 pl-2.5 font-medium text-brand-700"
+			><CalendarDays size={16} aria-hidden="true" /> Einkauf am {dayLabel(data.plan.date)}</span
+		>
+	{/if}
+	<button
+		class="flex min-h-9 items-center gap-1.5 rounded-full border border-slate-300 bg-white py-1 pr-3 pl-2.5"
+		aria-expanded={planning}
+		onclick={() => (planning = !planning)}
+	>
+		{#if !data.plan}<CalendarDays size={16} aria-hidden="true" />{/if}
+		{data.plan ? 'Ändern' : 'Einkauf planen'}
+	</button>
+	<a
+		href="/einkauf/kassenzettel"
+		class="flex min-h-9 items-center gap-1.5 rounded-full border border-slate-300 bg-white py-1 pr-3 pl-2.5"
+		><ReceiptText size={16} aria-hidden="true" /> Kassenzettel</a
+	>
+</div>
+{#if planning}
+	<div class="card mb-5 p-3">
+		<form
+			method="POST"
+			action="?/plan"
+			class="flex items-end gap-2"
+			use:enhance={() =>
+				async ({ result, update }) => {
+					await update();
+					if (result.type === 'success') planning = false;
+				}}
+		>
+			<label class="flex-1">
+				<span class="label">Wann wird eingekauft?</span>
+				<input
+					type="date"
+					name="date"
+					required
+					min={data.today}
+					max={addDays(data.today, 60)}
+					value={data.plan?.date ?? suggestedDay}
+					class="w-full"
+				/>
+			</label>
+			<button class="btn-primary">{data.plan ? 'Verschieben' : 'Planen'}</button>
+		</form>
+		<p class="mt-2 text-xs text-slate-500">
+			Die Angebote werden für diesen Tag verglichen, und alle sehen den Einkauf als Aufgabe im
+			Kalender.
+		</p>
+		{#if data.plan}
+			<form
+				method="POST"
+				action="?/unplan"
+				use:enhance={() =>
+					async ({ update }) => {
+						await update();
+						planning = false;
+					}}
+			>
+				<button class="mt-2 text-sm text-slate-500 underline">Einkauf absagen</button>
+			</form>
+		{/if}
+	</div>
+{/if}
 
 {#if suggestions.length}
 	<section class="mb-5" aria-label="Oft gekauft">
@@ -133,23 +209,21 @@
 					<span class="block text-slate-500">Märkte wählen, um passende Angebote zu sehen</span>
 				{:else if offers.best}
 					<span class="block font-medium">
-						Tipp: {offers.best.stores.map(storeLabel).join(' + ')}
+						{data.plan ? `Tipp für ${shortDate(data.plan.date)}` : 'Tipp'}: {offers.best.stores
+							.map(storeLabel)
+							.join(' + ')}
 					</span>
 					<span class="block text-slate-500">
 						{offers.best.covered} von {open.length}
 						{open.length === 1 ? 'Artikel' : 'Artikeln'} im Angebot
 					</span>
 				{:else}
-					<span class="block font-medium">Keine passenden Angebote diese Woche</span>
+					<span class="block font-medium"
+						>Keine passenden Angebote {data.plan
+							? `am ${shortDate(data.plan.date)}`
+							: 'diese Woche'}</span
+					>
 					<span class="block text-slate-500">Angebot eintragen oder Märkte ändern</span>
-				{/if}
-				{#if offers.cost.priced}
-					<span class="mt-1 block text-xs font-medium text-slate-700">
-						Voraussichtlich ≈ {formatPrice(offers.cost.total)}
-						<span class="font-normal text-slate-500">
-							({offers.cost.priced} von {open.length} mit Preis)</span
-						>
-					</span>
 				{/if}
 				{#if offers.configured && offers.next}
 					<span class="mt-1 block text-xs text-slate-500">
@@ -256,6 +330,16 @@
 					<span class="block text-xs text-slate-400">von {item.createdBy}</span>
 				{/if}
 			</div>
+			{#if !item.done && !editCategories}
+				{#await data.offers then offers}
+					{@const cost = offers.cost.perItem[item.id]}
+					{#if cost}
+						<span class="shrink-0 text-right text-sm text-slate-600 tabular-nums">
+							{formatPrice(cost.price * cost.packs)}
+						</span>
+					{/if}
+				{/await}
+			{/if}
 			{#if editCategories && !item.done}
 				<form method="POST" action="?/category" use:enhance>
 					<input type="hidden" name="name" value={item.name} />
@@ -346,6 +430,26 @@
 			</section>
 		{/each}
 	</div>
+	{#await data.offers then offers}
+		<section class="card mt-4 p-4" aria-label="Voraussichtlicher Preis">
+			<div class="flex items-baseline justify-between gap-3">
+				<span class="font-semibold">Voraussichtlich</span>
+				<span class="text-xl font-semibold tabular-nums">
+					{offers.cost.priced ? `≈ ${formatPrice(offers.cost.total)}` : '–'}
+				</span>
+			</div>
+			<p class="mt-1 text-xs text-slate-500">
+				{#if offers.cost.priced === open.length}
+					Alle {open.length} Artikel mit Preis{data.plan
+						? `, Angebote vom ${shortDate(data.plan.date)}`
+						: ''}.
+				{:else}
+					{offers.cost.priced} von {open.length} Artikeln mit Preis. Fehlende Preise lernt MyFam vom
+					<a href="/einkauf/kassenzettel" class="underline">Kassenzettel</a>.
+				{/if}
+			</p>
+		</section>
+	{/await}
 {/if}
 
 {#if done.length}

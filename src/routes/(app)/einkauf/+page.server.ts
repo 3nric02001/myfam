@@ -1,5 +1,5 @@
 import { fail } from '@sveltejs/kit';
-import { today } from '$lib/dates';
+import { addDays, today } from '$lib/dates';
 import { db } from '$lib/server/db';
 import { requireFamily } from '$lib/server/guards';
 import {
@@ -17,6 +17,7 @@ import { isCategory } from '$lib/categories';
 import { marktguruEnabled } from '$lib/server/marktguru';
 import { offersForList, purgeOffers } from '$lib/server/offers';
 import { deleteKnownPrice, listKnownPrices, recordPrice } from '$lib/server/prices';
+import { cancelPlan, getPlan, planTrip, tripText } from '$lib/server/plan';
 import { field } from '$lib/server/validation';
 import { estimate } from '$lib/prices';
 import { isStore, parsePrice } from '$lib/offers';
@@ -27,11 +28,13 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const items = await listItemsWithCategory(db, family.id);
 	const day = today();
 	const known = await listKnownPrices(db, family.id);
+	const plan = await getPlan(db, family.id, day);
 	const open = items.filter((i) => !i.done).map(({ id, name }) => ({ id, name }));
 	// Streamed, so the list shows at once even when fetching offers takes a moment.
 	const auto = marktguruEnabled();
 	const offers = purgeOffers(db, day).then(async () => {
-		const thisWeek = await offersForList(db, family.id, open, day, { auto });
+		// With a planned trip, the tip is for that day.
+		const thisWeek = await offersForList(db, family.id, open, day, { auto, on: plan?.date });
 		const nextWeek = await offersForList(db, family.id, open, day, { auto, week: 'next' });
 		const openWithQuantity = items.filter((i) => !i.done);
 		const cost = estimate(openWithQuantity, thisWeek.byItem, known, thisWeek.preferred);
@@ -41,7 +44,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const history = (await listHistory(db, family.id)).filter(
 		(h) => !onList.has(h.name.trim().toLowerCase())
 	);
-	return { items, offers, history, known, today: day };
+	return { items, offers, history, known, plan, today: day };
 };
 
 export const actions: Actions = {
@@ -107,6 +110,36 @@ export const actions: Actions = {
 			seenOn: today()
 		});
 		return { priced: field(form, 'name') };
+	},
+
+	plan: async ({ request, locals }) => {
+		const { user, family } = requireFamily(locals);
+		const date = field(await request.formData(), 'date');
+		const day = today();
+		if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < day || date > addDays(day, 60)) {
+			return fail(400, { message: 'Bitte wähle einen Tag in den nächsten zwei Monaten.' });
+		}
+		const items = (await listItemsWithCategory(db, family.id)).filter((i) => !i.done);
+		const offers = await offersForList(db, family.id, items, day, {
+			auto: marktguruEnabled(),
+			on: date
+		}).catch(() => null);
+		const known = await listKnownPrices(db, family.id);
+		const cost = offers ? estimate(items, offers.byItem, known, offers.preferred) : null;
+		const text = tripText({
+			stores: offers?.best?.stores ?? [],
+			covered: offers?.best?.covered ?? 0,
+			open: items.length,
+			total: cost?.total ?? 0,
+			priced: cost?.priced ?? 0
+		});
+		await planTrip(db, family.id, user.id, { date, ...text });
+		return { planned: date };
+	},
+
+	unplan: async ({ locals }) => {
+		const { family } = requireFamily(locals);
+		await cancelPlan(db, family.id);
 	},
 
 	forgetPrice: async ({ request, locals }) => {
