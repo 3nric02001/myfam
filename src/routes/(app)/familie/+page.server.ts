@@ -63,6 +63,6 @@ export const actions: Actions = {
 		const familyId = field(await request.formData(), 'familyId');
 		if (!(await getMembership(db, user.id, familyId))) return fail(403);
 		await setSessionFamily(db, sessionId, familyId);
-		redirect(303, '/einkauf');
+		redirect(303, '/dashboard');
 	}
 };

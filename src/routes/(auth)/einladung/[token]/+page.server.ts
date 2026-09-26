@@ -18,7 +18,7 @@ export const actions: Actions = {
 		const familyId = await acceptInvite(db, params.token, locals.user.id);
 		if (!familyId) return fail(400, { message: 'Diese Einladung ist ungültig oder abgelaufen.' });
 		await setSessionFamily(db, locals.sessionId, familyId);
-		redirect(303, '/einkauf');
+		redirect(303, '/dashboard');
 	},
 
 	register: async (event) => {
@@ -46,6 +46,6 @@ export const actions: Actions = {
 		const familyId = await acceptInvite(db, event.params.token, newUser.id);
 		const { token, expiresAt } = await createSession(db, newUser.id, familyId);
 		setSessionCookie(event, token, expiresAt);
-		redirect(303, '/einkauf');
+		redirect(303, '/dashboard');
 	}
 };

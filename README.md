@@ -12,6 +12,7 @@ Ein gemeinsamer Ort für die ganze Familie: Einkaufsliste, Termine und Planung. 
 | Kalender                          | fertig (Termine mit Sichtbarkeit, Feiertage, CalDAV-Abos)  |
 | Planung                           | fertig (Ordner, Karten mit Text, Tabellen, Links, Bildern) |
 | Erinnerungen per Push             | fertig für Termine und Planungs-Kommentare                 |
+| Dashboard                         | fertig (Termine, meine Aufgaben, Neues aus der Planung)    |
 
 ## Technik
 
@@ -37,8 +38,16 @@ src/lib/server/
 src/lib/holidays.ts  Deutsche Feiertage (offline berechnet, optional je Bundesland)
 src/routes/
   (auth)/        Login, Registrieren, Einladung annehmen
-  (app)/         Einkauf, Kalender, Planung, Familie
+  (app)/         Dashboard, Einkauf, Kalender, Planung, Familie
 ```
+
+## Dashboard
+
+Die Startseite nach dem Login fasst den Tag zusammen:
+
+- **Termine** von heute und morgen, eigene und aus Kalender-Abos, mit Feiertagen.
+- **Meine Aufgaben** (wie der Filter „Meine“): überfällige und heutige, darunter die der nächsten 7 Tage. Abhaken geht direkt hier.
+- **Neu in der Planung:** Karten, die jemand anderes neu angelegt hat, Karten, die seit dem letzten Öffnen geändert wurden, und Kommentare anderer seit dem letzten Öffnen, mit dem neuesten Kommentar als Vorschau. Wer eine Karte öffnet, hat sie gesehen (gespeichert pro Person in `planning_card_seen`). Einzelne Karten lassen sich mit dem „x“ ausblenden, alle auf einmal mit „Alle gelesen“. Berücksichtigt werden die letzten 30 Tage. Beim Update zählt alles, was es schon gibt, als gesehen.
 
 ## Kalender
 
