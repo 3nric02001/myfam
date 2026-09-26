@@ -201,6 +201,27 @@ export const planningBlock = sqliteTable(
 	(t) => [index('planning_block_card_idx').on(t.cardId)]
 );
 
+/** A comment on a planning card, visible to everyone who can see the card. */
+export const planningComment = sqliteTable(
+	'planning_comment',
+	{
+		id: id(),
+		familyId: text('family_id')
+			.notNull()
+			.references(() => family.id, { onDelete: 'cascade' }),
+		cardId: text('card_id')
+			.notNull()
+			.references(() => planningCard.id, { onDelete: 'cascade' }),
+		// Kept (without a name) when the author's account is deleted.
+		userId: text('user_id').references(() => user.id, { onDelete: 'set null' }),
+		text: text('text').notNull(),
+		createdAt: createdAt(),
+		/** Set when the author changed the comment. */
+		editedAt: integer('edited_at', { mode: 'timestamp' })
+	},
+	(t) => [index('planning_comment_card_idx').on(t.cardId)]
+);
+
 /** An uploaded image. The file lives in the uploads folder next to the database, named by id. */
 export const planningImage = sqliteTable('planning_image', {
 	id: id(),
@@ -345,8 +366,62 @@ export const reminderSent = sqliteTable('reminder_sent', {
 	key: text('key').primaryKey(),
 	sentAt: integer('sent_at', { mode: 'timestamp' }).notNull()
 });
+/**
+ * A calendar the family follows: a CalDAV calendar (e.g. Nextcloud) or a public ICS link.
+ * Read only. The password is stored encrypted (see server/secrets.ts).
+ */
+export const calendarSubscription = sqliteTable(
+	'calendar_subscription',
+	{
+		id: id(),
+		familyId: text('family_id')
+			.notNull()
+			.references(() => family.id, { onDelete: 'cascade' }),
+		name: text('name').notNull(),
+		url: text('url').notNull(),
+		username: text('username'),
+		password: text('password'),
+		color: text('color').notNull().default('blue'),
+		syncedAt: integer('synced_at', { mode: 'timestamp' }),
+		/** Message of the last failed sync, cleared by the next successful one. */
+		error: text('error'),
+		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+		createdAt: createdAt()
+	},
+	(t) => [index('calendar_subscription_family_idx').on(t.familyId)]
+);
+
+/**
+ * Occurrences of subscribed events, replaced on every sync. Repeating events are expanded
+ * (see server/ical.ts), so each row is one day range like a calendar_event.
+ */
+export const subscriptionEvent = sqliteTable(
+	'subscription_event',
+	{
+		/** Derived from subscription, UID and start, so it stays the same across syncs. */
+		id: text('id').primaryKey(),
+		subscriptionId: text('subscription_id')
+			.notNull()
+			.references(() => calendarSubscription.id, { onDelete: 'cascade' }),
+		familyId: text('family_id')
+			.notNull()
+			.references(() => family.id, { onDelete: 'cascade' }),
+		title: text('title').notNull(),
+		location: text('location'),
+		notes: text('notes'),
+		startDate: text('start_date').notNull(),
+		startTime: text('start_time'),
+		endDate: text('end_date').notNull(),
+		endTime: text('end_time')
+	},
+	(t) => [
+		index('subscription_event_family_idx').on(t.familyId, t.startDate),
+		index('subscription_event_subscription_idx').on(t.subscriptionId)
+	]
+);
 
 export type User = typeof user.$inferSelect;
 export type Family = typeof family.$inferSelect;
 export type ShoppingItem = typeof shoppingItem.$inferSelect;
 export type CalendarEvent = typeof calendarEvent.$inferSelect;
+export type CalendarSubscription = typeof calendarSubscription.$inferSelect;

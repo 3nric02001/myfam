@@ -3,6 +3,11 @@ import { createUser } from './auth';
 import { acceptInvite, createInvite } from './families';
 import {
 	addBlock,
+	addComment,
+	checkComment,
+	deleteComment,
+	listComments,
+	updateComment,
 	addImage,
 	createCard,
 	createFolder,
@@ -227,5 +232,49 @@ describe('planning cards and blocks', () => {
 
 		expect(await deleteBlock(db, anna, card.id, block!.id)).toEqual([image.id]);
 		expect(await getImage(db, anna, image.id)).toBeNull();
+	});
+});
+
+describe('planning comments', () => {
+	it('shows comments to everyone who sees the card, editable only by their author', async () => {
+		const { db, anna, bert, cara } = await familyOfThree();
+		const folder = await createFolder(db, anna, 'Urlaub', {
+			visibility: 'shared',
+			shareWith: [bert.userId]
+		});
+		const card = (await createCard(db, anna, folder.id, 'Packliste'))!;
+
+		const first = (await addComment(db, anna, card.id, 'Wer nimmt das Zelt?'))!;
+		await addComment(db, bert, card.id, 'Ich!');
+		expect((await listCards(db, anna, folder.id))[0]).toMatchObject({ comments: 2 });
+
+		const seen = await listComments(db, bert, card.id);
+		expect(seen.map((c) => [c.author, c.text, c.isOwn])).toEqual([
+			['anna', 'Wer nimmt das Zelt?', false],
+			['bert', 'Ich!', true]
+		]);
+
+		// Bert cannot change Anna's comment, Anna can.
+		expect(await updateComment(db, bert, card.id, first.id, 'gehackt')).toBe(false);
+		expect(await deleteComment(db, bert, card.id, first.id)).toBe(false);
+		expect(await updateComment(db, anna, card.id, first.id, 'Wer nimmt das große Zelt?')).toBe(
+			true
+		);
+		const [edited] = await listComments(db, anna, card.id);
+		expect(edited.text).toBe('Wer nimmt das große Zelt?');
+		expect(edited.editedAt).toBeInstanceOf(Date);
+
+		// Cara does not see the folder, so she can neither read nor write comments.
+		expect(await listComments(db, cara, card.id)).toEqual([]);
+		expect(await addComment(db, cara, card.id, 'Hallo?')).toBeNull();
+
+		expect(await deleteComment(db, anna, card.id, first.id)).toBe(true);
+		expect((await listComments(db, anna, card.id)).map((c) => c.text)).toEqual(['Ich!']);
+	});
+
+	it('validates comments', () => {
+		expect(checkComment('  \r\n ')).toHaveProperty('error');
+		expect(checkComment('x'.repeat(2001))).toHaveProperty('error');
+		expect(checkComment(' Hallo\r\nWelt ')).toEqual({ text: 'Hallo\nWelt' });
 	});
 });

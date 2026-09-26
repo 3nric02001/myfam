@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Check, Share2, X } from '@lucide/svelte';
+	import { Check, ChevronRight, Share2, X } from '@lucide/svelte';
 	import { enhance } from '$app/forms';
 	import { STATES } from '$lib/holidays';
 	import type { PageProps } from './$types';
@@ -134,6 +134,14 @@
 		</p>
 	{/if}
 </section>
+
+<a href="/kalender/abos" class="card mb-5 flex items-center gap-3 p-4">
+	<span class="flex-1">
+		<span class="block font-semibold">Kalender-Abos</span>
+		<span class="block text-sm text-slate-500">Nextcloud- oder andere Kalender einbinden</span>
+	</span>
+	<ChevronRight size={20} class="text-slate-400" aria-hidden="true" />
+</a>
 
 {#if data.families.length > 1}
 	<section class="card mb-5 p-4">
