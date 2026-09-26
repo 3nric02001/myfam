@@ -4,7 +4,6 @@
 		Check,
 		ChevronRight,
 		Euro,
-		ExternalLink,
 		Plus,
 		ReceiptText,
 		ShoppingBasket,
@@ -17,6 +16,7 @@
 	import { addDays, dayLabel, shortDate } from '$lib/dates';
 	import { CATEGORIES } from '$lib/categories';
 	import CategoryIcon from '$lib/components/CategoryIcon.svelte';
+	import OfferLink from '$lib/components/OfferLink.svelte';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
@@ -575,16 +575,7 @@
 										marktguru.de
 									{/if}
 								</span>
-								{#if o.url}
-									<a
-										href={o.url}
-										target="_blank"
-										rel="noopener noreferrer"
-										class="link mt-1 inline-flex items-center gap-1 text-xs"
-										>{o.source === 'manual' ? 'Prospekt öffnen' : 'Bei marktguru öffnen'}
-										<ExternalLink size={12} aria-hidden="true" /></a
-									>
-								{/if}
+								<OfferLink offer={o} />
 							</li>
 						{/each}
 					</ul>
