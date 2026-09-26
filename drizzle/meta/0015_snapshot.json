@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "098e810d-496d-4c06-911b-7d9beb8f51c7",
-  "prevId": "11606708-c736-4260-a662-1c4ed2681470",
+  "id": "f7bbe8a7-d4ca-4415-b2c5-1fd3997a1ac5",
+  "prevId": "098e810d-496d-4c06-911b-7d9beb8f51c7",
   "tables": {
     "app_setting": {
       "name": "app_setting",
@@ -1030,6 +1030,79 @@
             "id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "password_reset": {
+      "name": "password_reset",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "password_reset_user_id_user_id_fk": {
+          "name": "password_reset_user_id_user_id_fk",
+          "tableFrom": "password_reset",
+          "tableTo": "user",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "password_reset_created_by_user_id_fk": {
+          "name": "password_reset_created_by_user_id_fk",
+          "tableFrom": "password_reset",
+          "tableTo": "user",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },

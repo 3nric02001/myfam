@@ -8,14 +8,36 @@ import { startCalendarSync } from '$lib/server/calendar-sync';
 import { parseTheme, themeColor, themeCookieName } from '$lib/theme';
 import { vapidKeys, vapidSubject, webPushSender } from '$lib/server/push';
 import { startReminderScheduler } from '$lib/server/reminders';
+import { startCleanup } from '$lib/server/cleanup';
 
 export const init: ServerInit = () => {
 	if (env.ORIGIN) console.log(`MyFam erwartet Aufrufe über ${env.ORIGIN}`);
 	startReminderScheduler(db, webPushSender(vapidKeys(db, env), vapidSubject(env)));
 	startCalendarSync();
+	startCleanup(db);
 };
 
-export const handle: Handle = async ({ event, resolve }) => {
+// Sent with every response, in addition to the content security policy in vite.config.ts.
+const SECURITY_HEADERS: Record<string, string> = {
+	'x-frame-options': 'DENY',
+	'x-content-type-options': 'nosniff',
+	'referrer-policy': 'strict-origin-when-cross-origin',
+	'permissions-policy': 'geolocation=(), microphone=(), payment=(), usb=()'
+};
+
+export const handle: Handle = async (input) => {
+	const response = await handleRequest(input);
+	try {
+		for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
+			if (!response.headers.has(name)) response.headers.set(name, value);
+		}
+	} catch {
+		// Some responses (e.g. passed through from fetch) can't be changed.
+	}
+	return response;
+};
+
+const handleRequest: Handle = async ({ event, resolve }) => {
 	event.locals.user = null;
 	event.locals.sessionId = null;
 	event.locals.family = null;

@@ -10,6 +10,7 @@
 		Moon,
 		Smartphone,
 		Sun,
+		Trash2,
 		UserRound
 	} from '@lucide/svelte';
 	import { enhance } from '$app/forms';
@@ -49,7 +50,7 @@
 		} else add(themeColor[theme]);
 	}
 
-	type Section = 'name' | 'email' | 'password';
+	type Section = 'name' | 'email' | 'password' | 'delete';
 	// A section with an error stays open so the message and the entered values are visible.
 	let open = $state<Section | null>(null);
 	$effect(() => {
@@ -323,6 +324,31 @@
 					/>
 				</label>
 				<button class="btn-primary w-full">Passwort ändern</button>
+			</form>
+		{/if}
+	</div>
+
+	<div>
+		{@render row('delete', 'Konto löschen', 'Konto und eigene Daten entfernen', Trash2)}
+		{#if open === 'delete'}
+			<form
+				method="POST"
+				action="?/deleteAccount"
+				use:enhance={({ cancel }) => {
+					if (!confirm('Dein Konto wirklich endgültig löschen?')) cancel();
+				}}
+				class="space-y-3 px-4 pb-4"
+			>
+				{@render error('delete')}
+				<p class="text-sm text-slate-600">
+					Deine privaten Termine, Aufgaben und Ordner werden gelöscht. Was die Familie sieht, bleibt
+					für die anderen erhalten. Familien, in denen du allein bist, werden mit gelöscht.
+				</p>
+				<label class="block">
+					<span class="label">Aktuelles Passwort zur Bestätigung</span>
+					<input name="currentPassword" type="password" autocomplete="current-password" required />
+				</label>
+				<button class="btn-secondary w-full text-red-600">Konto endgültig löschen</button>
 			</form>
 		{/if}
 	</div>

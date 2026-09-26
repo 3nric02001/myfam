@@ -137,9 +137,22 @@ location / {
 - `PORT` ändert den Port auf dem Host. `BIND=0.0.0.0` macht ihn im Netzwerk erreichbar, falls der Proxy auf einem anderen Rechner läuft.
 - `SECRET_KEY` (optional, beliebiger langer Text) verschlüsselt die Passwörter der Kalender-Abos. Ohne Angabe wird `/data/secret.key` erzeugt.
 - `MARKTGURU_ENABLED=true` schaltet automatische Angebote für die Einkaufsliste ein (siehe unten). Standardmäßig aus.
+- `ADDRESS_HEADER=X-Forwarded-For` (empfohlen, passend zur nginx-Konfiguration oben) gibt der App die echte Adresse der Besucher. Dann zählen Fehlversuche beim Login auch pro IP und nicht nur pro E-Mail-Adresse. Nur setzen, wenn der Proxy den Header wirklich schickt.
+- `CALDAV_ALLOW_HOSTS` erlaubt Kalender-Abos von Servern im Heimnetz, z. B. `nextcloud.fritz.box,192.168.178.20`. Ohne Eintrag ruft die App nur öffentliche Adressen ab.
+- `ALLOW_REGISTRATION=true` erlaubt jedem, sich zu registrieren. Standardmäßig kann nur das allererste Konto frei angelegt werden, alle weiteren kommen über Einladungslinks.
 - Läuft der Proxy selbst in Docker, kannst du den Container stattdessen in dasselbe Docker-Netzwerk hängen und `app:3000` als Ziel nehmen.
 
-Danach unter `https://<deine Domain>/registrieren` die erste Familie anlegen und die anderen über **Familie → Einladungslink erstellen** einladen.
+Danach unter `https://<deine Domain>/registrieren` die erste Familie anlegen und die anderen über **Familie → Einladungslink erstellen** einladen. Nach dem ersten Konto ist die freie Registrierung geschlossen.
+
+## Sicherheit
+
+- **Konten:** Nur das erste Konto lässt sich frei registrieren, alle weiteren kommen per Einladungslink (siehe `ALLOW_REGISTRATION`). Nach 5 falschen Passwörtern für eine E-Mail-Adresse (oder 20 von einer IP, mit `ADDRESS_HEADER`) pausiert der Login 15 Minuten.
+- **Passwort vergessen:** Ein Admin tippt unter **Familie** beim Mitglied auf den Schlüssel und schickt den Link (24 Stunden gültig, einmal nutzbar). Das geht nur, wenn der Admin in allen Familien dieser Person Admin ist. Hat niemand mehr Zugang, erzeugt der Server den Link: `docker compose exec app node scripts/reset-link.js anna@example.de`.
+- **Abmelden** beendet auch die Push-Nachrichten dieses Geräts, eine Passwortänderung die aller anderen Geräte.
+- **Konto löschen** unter Einstellungen (mit Passwort). Private Einträge der Person werden gelöscht, Familien, in denen sie allein ist, ebenfalls. **Familie löschen** unter Familie entfernt eine Familie mit allen Inhalten.
+- **Kalender-Abos** rufen nur öffentliche Adressen ab, auch bei Weiterleitungen (Schutz vor Zugriffen ins Heimnetz, siehe `CALDAV_ALLOW_HOSTS`).
+- **Kassenzettel** werden nacheinander gelesen, Fotos über 50 Megapixel abgelehnt.
+- Die App sendet eine Content-Security-Policy und verbietet das Einbetten in fremde Seiten.
 
 - **Update:** `git pull && docker compose up -d --build`
 - **Backup:** Die Datenbank liegt im Volume `app-data` (`/data/myfam.db`), z. B.

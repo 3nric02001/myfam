@@ -5,6 +5,7 @@ import {
 	createUser,
 	findUserByEmail,
 	invalidateSession,
+	registrationOpen,
 	validateSession,
 	verifyPassword
 } from './auth';
@@ -49,5 +50,13 @@ describe('auth', () => {
 			.set({ expiresAt: new Date(Date.now() - 1000) })
 			.where(eq(session.userId, u.id));
 		expect(await validateSession(db, token)).toBeNull();
+	});
+
+	it('lets only the first person register, unless registration is switched on', async () => {
+		const db = testDb();
+		expect(registrationOpen(db)).toBe(true);
+		await createUser(db, { email: 'a@b.de', name: 'A', password: 'richtig-lang' });
+		expect(registrationOpen(db)).toBe(false);
+		expect(registrationOpen(db, { ALLOW_REGISTRATION: 'true' })).toBe(true);
 	});
 });

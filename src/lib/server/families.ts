@@ -1,6 +1,19 @@
-import { and, asc, eq, gt, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, sql } from 'drizzle-orm';
 import type { DB } from './db/client';
-import { family, invite, membership, user, type Role } from './db/schema';
+import {
+	calendarEvent,
+	calendarEventShare,
+	family,
+	invite,
+	membership,
+	planningFolder,
+	planningFolderShare,
+	planningImage,
+	task,
+	taskShare,
+	user,
+	type Role
+} from './db/schema';
 import { generateToken, hashToken } from './auth';
 import type { State } from '$lib/holidays';
 import { assignColors, type ColorId } from '$lib/colors';
@@ -81,7 +94,68 @@ export async function removeMember(db: DB, familyId: string, userId: string) {
 	await db
 		.delete(membership)
 		.where(and(eq(membership.familyId, familyId), eq(membership.userId, userId)));
+	await detachMember(db, familyId, userId);
 	return { ok: true as const };
+}
+
+/**
+ * Tidies up after someone left a family: their tasks go back to nobody (so the reminder reaches
+ * whoever created them), and they are taken off everything that was shared with them.
+ */
+export async function detachMember(db: DB, familyId: string, userId: string) {
+	await db
+		.update(task)
+		.set({ assigneeId: null })
+		.where(and(eq(task.familyId, familyId), eq(task.assigneeId, userId)));
+	await db
+		.delete(calendarEventShare)
+		.where(
+			and(
+				eq(calendarEventShare.userId, userId),
+				inArray(
+					calendarEventShare.eventId,
+					db
+						.select({ id: calendarEvent.id })
+						.from(calendarEvent)
+						.where(eq(calendarEvent.familyId, familyId))
+				)
+			)
+		);
+	await db
+		.delete(taskShare)
+		.where(
+			and(
+				eq(taskShare.userId, userId),
+				inArray(
+					taskShare.taskId,
+					db.select({ id: task.id }).from(task).where(eq(task.familyId, familyId))
+				)
+			)
+		);
+	await db
+		.delete(planningFolderShare)
+		.where(
+			and(
+				eq(planningFolderShare.userId, userId),
+				inArray(
+					planningFolderShare.folderId,
+					db
+						.select({ id: planningFolder.id })
+						.from(planningFolder)
+						.where(eq(planningFolder.familyId, familyId))
+				)
+			)
+		);
+}
+
+/** Deletes the family with everything in it. Returns the ids of image files to remove. */
+export async function deleteFamily(db: DB, familyId: string) {
+	const images = await db
+		.select({ id: planningImage.id })
+		.from(planningImage)
+		.where(eq(planningImage.familyId, familyId));
+	await db.delete(family).where(eq(family.id, familyId));
+	return images.map((i) => i.id);
 }
 
 export async function setRole(db: DB, familyId: string, userId: string, role: Role) {

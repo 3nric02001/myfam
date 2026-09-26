@@ -4,7 +4,7 @@
 	import { onMount } from 'svelte';
 	import type { PageProps } from './$types';
 
-	let { form }: PageProps = $props();
+	let { data, form }: PageProps = $props();
 
 	// After logging out, nothing of the last account stays on the phone for offline use.
 	onMount(() => {
@@ -33,7 +33,17 @@
 	<button class="btn-primary w-full">Anmelden</button>
 </form>
 
-<p class="mt-6 text-center text-sm text-slate-600">
-	Noch kein Konto?
-	<a class="link" href="/registrieren{page.url.search}">Familie anlegen</a>
-</p>
+<details class="mt-4 text-center text-sm text-slate-600">
+	<summary class="link cursor-pointer">Passwort vergessen?</summary>
+	<p class="mt-2">
+		Bitte einen Admin deiner Familie um einen Link zum Zurücksetzen. Den Link gibt es unter
+		<strong>Familie</strong> bei deinem Namen.
+	</p>
+</details>
+
+{#if data.registrationOpen}
+	<p class="mt-6 text-center text-sm text-slate-600">
+		Noch kein Konto?
+		<a class="link" href="/registrieren{page.url.search}">Familie anlegen</a>
+	</p>
+{/if}

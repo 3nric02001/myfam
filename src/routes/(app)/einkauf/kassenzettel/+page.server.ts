@@ -5,7 +5,7 @@ import { guessEntry, parseReceipt, tidy } from '$lib/receipt';
 import { db } from '$lib/server/db';
 import { requireFamily } from '$lib/server/guards';
 import { getOfferSettings } from '$lib/server/offers';
-import { readText } from '$lib/server/ocr';
+import { OcrError, readText } from '$lib/server/ocr';
 import { recordPrice } from '$lib/server/prices';
 import { listHistory, listItems } from '$lib/server/shopping';
 import { field } from '$lib/server/validation';
@@ -40,6 +40,9 @@ export const actions: Actions = {
 		try {
 			text = await readText(Buffer.from(await photo.arrayBuffer()));
 		} catch (e) {
+			if (e instanceof OcrError) {
+				return fail(400, { message: `${e.message} Bitte versuche es noch einmal.` });
+			}
 			console.error('Kassenzettel lesen:', e);
 			return fail(500, { message: 'Das Foto konnte nicht gelesen werden.' });
 		}

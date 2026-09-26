@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Check, ChevronLeft, ChevronRight, Share2, X } from '@lucide/svelte';
+	import { Check, ChevronLeft, ChevronRight, KeyRound, Share2, X } from '@lucide/svelte';
 	import PersonDot from '$lib/components/PersonDot.svelte';
 	import { enhance } from '$app/forms';
 	import { STATES } from '$lib/holidays';
@@ -10,9 +10,9 @@
 	let isAdmin = $derived(data.family?.role === 'admin');
 	let copied = $state(false);
 
-	async function share(url: string) {
+	async function share(url: string, title = 'Einladung zu MyFam') {
 		if (navigator.share) {
-			await navigator.share({ title: 'Einladung zu MyFam', url }).catch(() => {});
+			await navigator.share({ title, url }).catch(() => {});
 		} else {
 			await navigator.clipboard.writeText(url);
 			copied = true;
@@ -56,6 +56,17 @@
 							{member.role === 'admin' ? 'Zum Mitglied' : 'Zum Admin'}
 						</button>
 					</form>
+					{#if data.resettable.includes(member.id)}
+						<form method="POST" action="?/resetLink" use:enhance>
+							<input type="hidden" name="userId" value={member.id} />
+							<button
+								class="icon-btn"
+								aria-label="Link zum Zurücksetzen des Passworts für {member.name}"
+								title="Passwort vergessen? Link erstellen"
+								><KeyRound size={18} aria-hidden="true" /></button
+							>
+						</form>
+					{/if}
 					<form
 						method="POST"
 						action="?/remove"
@@ -70,6 +81,28 @@
 					</form>
 				{/if}
 			</li>
+			{#if form && 'resetFor' in form && form.resetFor === member.id}
+				<li class="space-y-2 border-b border-slate-100 pb-3">
+					<p class="text-sm text-slate-600">
+						Mit diesem Link legt {member.name} ein neues Passwort fest. Er gilt 24 Stunden und nur einmal.
+					</p>
+					<input
+						readonly
+						value={form.resetUrl}
+						class="w-full text-sm"
+						onfocus={(e) => e.currentTarget.select()}
+					/>
+					<button
+						class="btn-secondary w-full"
+						onclick={() => share(form.resetUrl, 'Neues Passwort für MyFam')}
+					>
+						{#if copied}<Check size={18} aria-hidden="true" /> Link kopiert{:else}<Share2
+								size={18}
+								aria-hidden="true"
+							/> Link teilen{/if}
+					</button>
+				</li>
+			{/if}
 		{/each}
 	</ul>
 </section>
@@ -184,3 +217,28 @@
 		<button class="btn-secondary w-full">Familie verlassen</button>
 	</form>
 </section>
+
+{#if isAdmin}
+	<details class="card mt-5 p-4" open={!!(form && 'deleteError' in form)}>
+		<summary class="cursor-pointer font-semibold text-red-600">Familie löschen</summary>
+		<form
+			method="POST"
+			action="?/deleteFamily"
+			use:enhance={({ cancel }) => {
+				if (!confirm(`„${data.family?.name}“ mit allen Inhalten endgültig löschen?`)) cancel();
+			}}
+			class="mt-3 space-y-3"
+		>
+			<p class="text-sm text-slate-600">
+				Löscht die Familie mit allen Terminen, Aufgaben, Listen, Ordnern und Bildern für alle
+				Mitglieder. Die Konten der Mitglieder bleiben bestehen.
+			</p>
+			{#if form && 'deleteError' in form}<p class="error">{form.deleteError}</p>{/if}
+			<label class="block">
+				<span class="label">Zur Bestätigung den Namen „{data.family?.name}“ eingeben</span>
+				<input name="confirmName" required autocomplete="off" />
+			</label>
+			<button class="btn-secondary w-full text-red-600">Familie endgültig löschen</button>
+		</form>
+	</details>
+{/if}
