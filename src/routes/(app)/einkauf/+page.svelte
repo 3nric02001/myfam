@@ -7,6 +7,7 @@
 		ChevronRight,
 		Clock,
 		Euro,
+		History,
 		Plus,
 		ReceiptText,
 		ShoppingBasket,
@@ -242,7 +243,14 @@
 		href="/einkauf/kassenzettel"
 		class="flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-slate-300 px-3 text-sm font-medium whitespace-nowrap text-slate-700"
 		><ReceiptText size={16} aria-hidden="true" />
-		<span class="max-[379px]:sr-only">Kassenzettel</span></a
+		<span class="max-[429px]:sr-only">Kassenzettel</span></a
+	>
+	<a
+		href="/einkauf/verlauf"
+		class="flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-slate-300 px-3 text-sm font-medium whitespace-nowrap text-slate-700"
+		aria-label="Verlauf"
+		><History size={16} aria-hidden="true" />
+		<span class="max-[429px]:hidden" aria-hidden="true">Verlauf</span></a
 	>
 	<button
 		type="button"

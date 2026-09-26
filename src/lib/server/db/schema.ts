@@ -553,6 +553,45 @@ export const shoppingPlan = sqliteTable('shopping_plan', {
 		.default(sql`(unixepoch())`)
 });
 
+/** One shopping trip, saved from a photographed receipt. */
+export const purchase = sqliteTable(
+	'purchase',
+	{
+		id: id(),
+		familyId: text('family_id')
+			.notNull()
+			.references(() => family.id, { onDelete: 'cascade' }),
+		store: text('store').notNull(),
+		/** Local 'YYYY-MM-DD' printed on the receipt. */
+		date: text('date').notNull(),
+		/** Sum of the saved lines in cents. */
+		total: integer('total').notNull(),
+		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+		createdAt: createdAt()
+	},
+	(t) => [index('purchase_family_date_idx').on(t.familyId, t.date)]
+);
+
+/** A line of a purchase: what was bought and what it cost. */
+export const purchaseLine = sqliteTable(
+	'purchase_line',
+	{
+		id: id(),
+		purchaseId: text('purchase_id')
+			.notNull()
+			.references(() => purchase.id, { onDelete: 'cascade' }),
+		position: integer('position').notNull(),
+		name: text('name').notNull(),
+		/** The product as printed on the receipt. */
+		product: text('product').notNull(),
+		/** Price of one pack in cents. */
+		price: integer('price').notNull(),
+		count: integer('count').notNull().default(1),
+		weighed: integer('weighed', { mode: 'boolean' }).notNull().default(false)
+	},
+	(t) => [index('purchase_line_purchase_idx').on(t.purchaseId)]
+);
+
 export type User = typeof user.$inferSelect;
 export type Family = typeof family.$inferSelect;
 export type ShoppingItem = typeof shoppingItem.$inferSelect;
